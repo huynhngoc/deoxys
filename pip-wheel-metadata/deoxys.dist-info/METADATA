@@ -1,0 +1,55 @@
+Metadata-Version: 2.1
+Name: deoxys
+Version: 0.0.1
+Summary: Keras-based framework for UNet structure in Cancer Tumor Delineation
+Home-page: https://github.com/huynhngoc/deoxys
+Author: Ngoc Huynh Bao
+Author-email: ngoc.huynh.bao@nmbu.no
+License: "MIT license",
+Keywords: deoxys
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Requires-Dist: numpy
+Requires-Dist: keras
+Requires-Dist: h5py
+
+======
+deoxys
+======
+
+
+.. image:: https://img.shields.io/travis/huynhngoc/deoxys.svg
+        :target: https://travis-ci.org/huynhngoc/deoxys
+
+.. image:: https://readthedocs.org/projects/deoxys/badge/?version=latest
+        :target: https://deoxys.readthedocs.io/en/latest/?badge=latest
+        :alt: Documentation Status
+
+.. image:: https://travis-ci.org/huynhngoc/deoxys.svg
+   :target: https://travis-ci.org/huynhngoc/deoxys
+
+.. image:: https://coveralls.io/repos/github/huynhngoc/deoxys/badge.svg
+   :target: https://coveralls.io/github/huynhngoc/deoxys
+
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/psf/black
+
+
+Keras-based framework for UNet structure in Cancer Tumor Delineation
+
+
+* Free software: MIT license
+* Documentation: https://deoxys.readthedocs.io.
+
+
+Features
+--------
+
+* TODO
+
+
+
