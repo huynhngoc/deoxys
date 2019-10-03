@@ -1,10 +1,6 @@
 from deoxys.model import Model
 
 
-def test_attr():
-    pass
-
-
 def test_load():
     pass
 

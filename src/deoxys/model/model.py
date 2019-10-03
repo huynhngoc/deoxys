@@ -5,10 +5,18 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
+from tensorflow.keras.models import Model
+from tensorflow.keras.models import model_from_config, model_from_json
+from tensorflow.keras.models import load_model, save_model
+
+
 class Model:
     """
     Model
     """
+
+    def __init__(self):
+        pass
 
     def from_config(self, json):
         """

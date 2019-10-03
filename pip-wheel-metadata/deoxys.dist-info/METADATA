@@ -13,9 +13,7 @@ Classifier: License :: OSI Approved :: MIT License
 Classifier: Natural Language :: English
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
-Requires-Dist: numpy
-Requires-Dist: keras
-Requires-Dist: h5py
+Requires-Dist: tensorflow (>=2.0.0)
 
 ======
 deoxys
@@ -49,7 +47,16 @@ Keras-based framework for UNet structure in Cancer Tumor Delineation
 Features
 --------
 
-* TODO
+Editable mode installation
+```
+pip install -e .
+```
 
+Run test
+```
+tox test
+```
+
+* TODO
 
 

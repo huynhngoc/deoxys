@@ -30,5 +30,14 @@ Keras-based framework for UNet structure in Cancer Tumor Delineation
 Features
 --------
 
-* TODO
+Editable mode installation
+```
+pip install -e .
+```
 
+Run test
+```
+tox test
+```
+
+* TODO

@@ -6,5 +6,7 @@ __version__ = "0.0.1"
 
 
 from .model import Model
-from .layers import Layers
+
+# from .layers import Layers
 from .layers import register_layer
+from .layers import unregister_layer
