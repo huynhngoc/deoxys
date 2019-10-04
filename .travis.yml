@@ -8,6 +8,6 @@ python:
 install:
 before_script:
   - pip install tox-travis
-- pip install coveralls # command to run tests
+  - pip install coveralls # command to run tests
 script: tox
 after_success: coveralls
