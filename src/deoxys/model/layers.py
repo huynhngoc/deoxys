@@ -19,16 +19,14 @@ class Layers(metaclass=Singleton):
 
     def register(self, key, layer):
         if not issubclass(layer, Layer):
-            raise (
-                ValueError,
+            raise ValueError(
                 "The customized layer has to be a subclass"
-                + " of keras.layers.Layer",
+                + " of keras.layers.Layer"
             )
 
         if key in self._layers:
-            raise (
-                KeyError,
-                "Duplicated key, please use another key name for this layer",
+            raise KeyError(
+                "Duplicated key, please use another key name for this layer"
             )
         else:
             self._layers[key] = layer

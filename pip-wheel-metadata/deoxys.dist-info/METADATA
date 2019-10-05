@@ -13,7 +13,7 @@ Classifier: License :: OSI Approved :: MIT License
 Classifier: Natural Language :: English
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
-Requires-Dist: tensorflow (>=2.0.0)
+Requires-Dist: tensorflow (>=2.0.0b1)
 
 ======
 deoxys

@@ -6,3 +6,4 @@ __version__ = "0.0.1"
 
 
 from .singleton import Singleton
+from file_reader import *
