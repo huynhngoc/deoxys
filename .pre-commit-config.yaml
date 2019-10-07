@@ -6,13 +6,4 @@ repos:
     rev: v2.1.0
     hooks:
     -  id: flake8
-# #!/bin/sh
-
-
-# if "C:\Users\admin\Anaconda3\Scripts\pycodestyle" . 2>&1
-# then
-# 	echo "PEP8 passed"
-# else
-# 	echo "PEP8 violation"
-# 	exit 1
-# fi
+       args: ["--ignore=F401,F403"]

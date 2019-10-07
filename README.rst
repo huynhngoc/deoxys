@@ -37,7 +37,7 @@ pip install -e .
 
 Run test
 ```
-tox test
+tox
 ```
 
 * TODO

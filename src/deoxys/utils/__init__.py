@@ -6,4 +6,5 @@ __version__ = "0.0.1"
 
 
 from .singleton import Singleton
-from file_reader import *
+from file_utils import *
+from json_utils import *
