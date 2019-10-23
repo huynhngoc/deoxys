@@ -1,4 +1,5 @@
 from deoxys.model import Model
+from deoxys.utils import read_file
 
 
 def test_load():
@@ -10,4 +11,5 @@ def test_save():
 
 
 def test_from_config():
-    pass
+    config = read_file('tests/data/sequential-config.json')
+    Model.from_config(config, shape=(28, 28, 1))

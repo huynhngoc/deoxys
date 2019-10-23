@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from .model import Model
+from .model import *
 
 # from .layers import Layers
 from .layers import register_layer

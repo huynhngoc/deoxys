@@ -6,4 +6,4 @@ repos:
     rev: v2.1.0
     hooks:
     -  id: flake8
-       args: ["--ignore=F401,F403"]
+       args: ["--ignore=F401,F403,W503"]
