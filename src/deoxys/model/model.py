@@ -47,10 +47,10 @@ class Model:
         :param json: [description]
         :type json: [type]
         """
-        model, kwargs = ModelLoader.create(
+        model, model_kwargs = ModelLoader.create(
             model_json, **kwargs).load()
 
-        return Model(model, **kwargs)
+        return Model(model, **model_kwargs)
 
     @staticmethod
     def from_keras_config(json, **kwarg):
@@ -81,10 +81,13 @@ class Model:
         """
         Train model
         """
-        pass
+        self._model.fit(*args, **kwargs)
 
-    def predict(self):
+    def predict(self, *args, **kwargs):
         """
         Predict from model
         """
-        pass
+        return self._model.predict(*args, **kwargs)
+
+    def evaluate(self, *args, **kwargs):
+        return self._model.evaluate(*args, **kwargs)
