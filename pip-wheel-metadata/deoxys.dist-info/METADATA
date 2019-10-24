@@ -15,7 +15,6 @@ Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
 Requires-Dist: tensorflow (>=2.0.0b1)
 Requires-Dist: numpy
-Requires-Dist: json
 
 ======
 deoxys

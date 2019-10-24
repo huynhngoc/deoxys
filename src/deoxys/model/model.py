@@ -27,10 +27,10 @@ class Model:
         self._optimizer = optimizer or model.optimizer
         self._loss = loss or model.losses
         self._metrics = metrics or model.metrics
-        self._loss_weights = loss_weights or model.loss_weights
-        self._sample_weight_mode = sample_weight_mode or model.sample_weights
-        self._weighted_metrics = weighted_metrics or model.weighted_metrics
-        self._target_tensors = target_tensors or model.target_tensors
+        self._loss_weights = loss_weights
+        self._sample_weight_mode = sample_weight_mode
+        self._weighted_metrics = weighted_metrics
+        self._target_tensors = target_tensors
 
         # TODO do not compile if it's a trained model
         if (optimizer or loss or metrics or loss_weights
