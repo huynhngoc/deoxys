@@ -6,6 +6,7 @@ __version__ = "0.0.1"
 
 
 from tensorflow.keras.layers import Layer
+from tensorflow.keras.models import model_from_config
 from ..utils import Singleton
 
 
@@ -61,3 +62,7 @@ def unregister_layer(key):
     :type key: str
     """
     Layers().unregister(key)
+
+
+def layer_from_config(config):
+    return model_from_config(config, custom_objects=Layers().layers)

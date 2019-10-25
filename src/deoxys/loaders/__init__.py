@@ -4,5 +4,5 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
-
-from .model import *
+from .architecture import load_architecture
+from .params import load_params

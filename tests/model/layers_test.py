@@ -7,7 +7,8 @@ __version__ = "0.0.1"
 
 import pytest
 from tensorflow.keras.layers import Layer as KerasLayer
-from deoxys.model.layers import register_layer, unregister_layer, Layers
+from deoxys.model.customize import register_layer, unregister_layer
+from deoxys.model.layers import Layers
 from deoxys.utils import Singleton
 
 

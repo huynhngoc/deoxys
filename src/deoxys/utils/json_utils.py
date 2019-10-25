@@ -1,10 +1,19 @@
 import json
 
 
-def load_data_from_json(json_content):
-    content = json.loads(json_content)
+def load_json_config(*args):
+    data = []
+    for arg in args:
+        if type(arg) == dict:
+            data.append(arg)
+        elif type(arg) == str:
+            try:
+                data.append(json.loads(arg))
+            except json.JSONDecodeError:
+                data.append(None)
+                raise Warning('Decode JSON failed. Return None instead.')
+        else:
+            data.append(None)
+            raise Warning('Invalid datatype. Return None instead.')
 
-    if 'type' in content and 'structure' in content:
-        return content['type'], content['structure']
-    else:
-        raise ValueError()
+    return tuple(data)

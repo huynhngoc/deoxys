@@ -5,11 +5,14 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from tensorflow.keras.models import Model as KerasModel
-from tensorflow.keras.models import model_from_config, model_from_json
-from tensorflow.keras.models import load_model, save_model
+from tensorflow.keras.models import Model as KerasModel, \
+    model_from_config as keras_model_from_config, \
+    model_from_json as keras_model_from_json, \
+    load_model as keras_load_model, \
+    save_model as keras_save_model
 
-from .loader import ModelLoader
+from ..loaders import load_architecture, load_params
+from ..utils import load_json_config
 
 
 class Model:
@@ -39,33 +42,6 @@ class Model:
                                 sample_weight_mode, weighted_metrics,
                                 target_tensors, **kwargs)
 
-    @staticmethod
-    def from_config(model_json, **kwargs):
-        """
-        Create model from JSON configuration
-
-        :param json: [description]
-        :type json: [type]
-        """
-        model, model_kwargs = ModelLoader.create(
-            model_json, **kwargs).load()
-
-        return Model(model, **model_kwargs)
-
-    @staticmethod
-    def from_keras_config(json, **kwarg):
-        return Model(model_from_json(json), **kwarg)
-
-    @staticmethod
-    def load(filename):
-        """
-        Load model from file
-
-        :param filename: path to the h5 file
-        :type filename: str
-        """
-        return Model(load_model(filename))
-
     def save(self, filename):
         """
         Save model to file
@@ -91,3 +67,59 @@ class Model:
 
     def evaluate(self, *args, **kwargs):
         return self._model.evaluate(*args, **kwargs)
+
+
+def model_from_full_config(model_config, **kwargs):
+    """
+    Return the model from the full config
+
+    :param model_config: a json string or a dictionary contains the
+    architecture, model_params, input_params of the model
+    :type model_config: a JSON string or a dictionary object
+    :return: The model
+    :rtype: deoxys.model.Model
+    """
+    config, = load_json_config(model_config)
+
+    if ('architecture' not in config or 'model_params' not in config
+            or 'input_params' not in config):
+        raise ValueError()
+
+    return model_from_config(config['architecture'],
+                             config['input_params'],
+                             config['model_params'],
+                             **kwargs)
+
+
+def model_from_config(architecture, input_params, model_params, **kwargs):
+    architecture, input_params, model_params = load_json_config(
+        architecture, input_params, model_params)
+
+    # load the model based on the architecture type (Unet / Dense/ Sequential)
+    loaded_model = load_architecture(architecture, input_params)
+
+    # Load the parameters to compile the model
+    loaded_params = load_params(model_params)
+
+    # the keyword arguments will replace existing params
+    loaded_params.update(kwargs)
+
+    return Model(loaded_model, **loaded_params)
+
+
+def model_from_keras_config(config, **kwarg):
+    return Model(keras_model_from_config(config), **kwarg)
+
+
+def model_from_keras_json(json, **kwarg):
+    return Model(keras_model_from_json(json), **kwarg)
+
+
+def load_model(filename):
+    """
+    Load model from file
+
+    :param filename: path to the h5 file
+    :type filename: str
+    """
+    return Model(keras_load_model(filename))

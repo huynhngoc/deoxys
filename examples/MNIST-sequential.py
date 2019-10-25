@@ -1,4 +1,4 @@
-from deoxys.model import Model
+from deoxys.model import model_from_full_config
 from deoxys.utils import read_file
 from tensorflow.keras.datasets import mnist
 
@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     # Prepare the model
     config = read_file('examples/json/sequential-config.json')
-    model = Model.from_config(config, shape=input_shape)
+    model = model_from_full_config(config)
 
     model.fit(x_train, y_train, epochs=5)
 
