@@ -8,4 +8,4 @@ from ..model.layers import register_layer, unregister_layer
 from ..model.optimizers import register_optimizer, unregister_optimizer
 from ..model.losses import register_loss, unregister_loss
 
-from ..model.loaders import register_architecture
+from ..loaders.architecture import register_architecture

@@ -1,4 +1,4 @@
-from deoxys.model import Model
+from deoxys.model import Model, model_from_full_config
 from deoxys.utils import read_file
 
 
@@ -12,4 +12,4 @@ def test_save():
 
 def test_from_config():
     config = read_file('tests/data/sequential-config.json')
-    Model.from_config(config, shape=(28, 28, 1))
+    model_from_full_config(config)
