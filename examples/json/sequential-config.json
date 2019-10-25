@@ -2,54 +2,13 @@
     "type": "Sequential",
     "structure": {
         "params": {
-            "loss": "categorical_crossentropy",
-            "optimizer": "Adadelta",
+            "loss": "sparse_categorical_crossentropy",
+            "optimizer": "adam",
             "metrics": [
                 "accuracy"
             ]
         },
         "layers": [
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 32,
-                    "kernel_size": [
-                        3,
-                        3
-                    ],
-                    "activation": "relu"
-                },
-                "inputs": {}
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 64,
-                    "kernel_size": [
-                        3,
-                        3
-                    ],
-                    "activation": "relu"
-                },
-                "inputs": {}
-            },
-            {
-                "class_name": "MaxPooling2D",
-                "config": {
-                    "pool_size": [
-                        2,
-                        2
-                    ]
-                },
-                "inputs": {}
-            },
-            {
-                "class_name": "Dropout",
-                "config": {
-                    "rate": 0.25
-                },
-                "inputs": {}
-            },
             {
                 "class_name": "Flatten",
                 "config": {},
@@ -66,7 +25,7 @@
             {
                 "class_name": "Dropout",
                 "config": {
-                    "rate": 0.5
+                    "rate": 0.2
                 },
                 "inputs": {}
             },
