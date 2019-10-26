@@ -63,4 +63,10 @@ def unregister_loss(key):
 
 
 def loss_from_config(config):
+    if 'class_name' not in config:
+        raise ValueError('class_name is needed to define loss')
+
+    if 'config' not in config:
+        # auto add empty config for loss with only class_name
+        config['config'] = {}
     return deserialize(config, custom_objects=Losses().losses)

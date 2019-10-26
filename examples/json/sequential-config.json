@@ -9,8 +9,7 @@
     "model_params": {
         "loss": "sparse_categorical_crossentropy",
         "optimizer": {
-            "class_name": "adam",
-            "config": {}
+            "class_name": "adam"
         },
         "metrics": [
             "accuracy"
@@ -20,8 +19,7 @@
         "type": "Sequential",
         "layers": [
             {
-                "class_name": "Flatten",
-                "config": {}
+                "class_name": "Flatten"
             },
             {
                 "class_name": "Dense",

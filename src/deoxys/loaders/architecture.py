@@ -6,7 +6,7 @@ __version__ = "0.0.1"
 
 
 from tensorflow.keras.models import Model as KerasModel
-from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import Input, concatenate
 
 from ..model.layers import layer_from_config
 
@@ -49,8 +49,35 @@ class SequentialModelLoader(BaseModelLoader):
 
 
 class UnetModelLoader(BaseModelLoader):
-    def load():
-        pass
+    def load(self):
+        layers = [Input(**self._input_params)]
+        saved_input = {}
+
+        for i, layer in enumerate(self._layers):
+            next_tensor = layer_from_config(layer)
+
+            if 'inputs' in layer:
+                inputs = []
+                for input_name in layer['inputs']:
+                    inputs.append(saved_input[input_name])
+                connected_input = concatenate(inputs)
+            else:
+                connected_input = layers[i]
+
+            next_layer = next_tensor(connected_input)
+
+            if 'normalizer' in layer:
+                next_layer = layer_from_config(layer['normalizer'])(next_layer)
+
+            if 'activation' in layer:
+                next_layer = layer_from_config(layer['activation'])(next_layer)
+
+            if 'name' in layer:
+                saved_input[layer['name']] = next_layer
+
+            layers.append(next_layer)
+
+        return KerasModel(inputs=layers[0], outputs=layers[-1])
 
 
 class DenseModelLoader(BaseModelLoader):

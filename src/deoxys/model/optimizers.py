@@ -63,4 +63,10 @@ def unregister_optimizer(key):
 
 
 def optimizer_from_config(config):
+    if 'class_name' not in config:
+        raise ValueError('class_name is needed to define optimizer')
+
+    if 'config' not in config:
+        # auto add empty config for optimizer with only class_name
+        config['config'] = {}
     return deserialize(config, custom_objects=Optimizers().optimizers)

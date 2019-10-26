@@ -65,4 +65,10 @@ def unregister_layer(key):
 
 
 def layer_from_config(config):
+    if 'class_name' not in config:
+        raise ValueError('class_name is needed to define layer')
+
+    if 'config' not in config:
+        # auto add empty config for layer with only class_name
+        config['config'] = {}
     return model_from_config(config, custom_objects=Layers().layers)
