@@ -1,4 +1,5 @@
 {
+    "train_params": {},
     "input_params": {
         "shape": [
             28,

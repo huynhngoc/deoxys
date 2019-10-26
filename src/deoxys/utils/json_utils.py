@@ -4,7 +4,9 @@ import json
 def load_json_config(*args):
     data = []
     for arg in args:
-        if type(arg) == dict:
+        if arg is None:
+            data.append(arg)
+        elif type(arg) == dict:
             data.append(arg)
         elif type(arg) == str:
             try:

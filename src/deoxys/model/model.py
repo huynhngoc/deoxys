@@ -20,27 +20,35 @@ class Model:
     Model
     """
 
-    def __init__(self, model, optimizer=None, loss=None, metrics=None,
-                 loss_weights=None,
-                 sample_weight_mode=None, weighted_metrics=None,
-                 target_tensors=None, **kwargs):
+    def __init__(self, model, model_params=None, train_params=None,
+                 pre_compiled=False):
         # TODO add other arguments
 
         self._model = model
-        self._optimizer = optimizer or model.optimizer
-        self._loss = loss or model.losses
-        self._metrics = metrics or model.metrics
-        self._loss_weights = loss_weights
-        self._sample_weight_mode = sample_weight_mode
-        self._weighted_metrics = weighted_metrics
-        self._target_tensors = target_tensors
+        self._model_params = model_params
+        self._train_parms = train_params
+        self._compiled = pre_compiled
 
-        # TODO do not compile if it's a trained model
-        if (optimizer or loss or metrics or loss_weights
-                or sample_weight_mode or weighted_metrics or target_tensors):
-            self._model.compile(optimizer, loss, metrics, loss_weights,
-                                sample_weight_mode, weighted_metrics,
-                                target_tensors, **kwargs)
+        if model_params:
+            if 'optimizer' in model_params:
+                self._model.compile(**model_params)
+                self._compiled = True
+            else:
+                raise ValueError('optimizer is a required parameter.')
+
+    def compile(self, optimizer=None, loss=None, metrics=None,
+                loss_weights=None,
+                sample_weight_mode=None, weighted_metrics=None,
+                target_tensors=None, **kwargs):
+        if self._compiled:
+            raise Warning(
+                'This will override the previous configuration of the model.')
+
+        self._model.compile(optimizer, loss, metrics,
+                            loss_weights,
+                            sample_weight_mode, weighted_metrics,
+                            target_tensors, **kwargs)
+        self._compiled = True
 
     def save(self, filename):
         """
@@ -68,6 +76,10 @@ class Model:
     def evaluate(self, *args, **kwargs):
         return self._model.evaluate(*args, **kwargs)
 
+    @property
+    def is_compiled(self):
+        return self._compiled
+
 
 def model_from_full_config(model_config, **kwargs):
     """
@@ -81,17 +93,20 @@ def model_from_full_config(model_config, **kwargs):
     """
     config, = load_json_config(model_config)
 
-    if ('architecture' not in config or 'model_params' not in config
-            or 'input_params' not in config):
-        raise ValueError()
+    if ('architecture' not in config or 'input_params' not in config):
+        raise ValueError('architecture and input_params are required')
 
-    return model_from_config(config['architecture'],
-                             config['input_params'],
-                             config['model_params'],
-                             **kwargs)
+    return model_from_config(
+        config['architecture'],
+        config['input_params'],
+        config['model_params'] if 'model_params' in config else None,
+        config['train_params'] if 'train_params' in config else None,
+        **kwargs)
 
 
-def model_from_config(architecture, input_params, model_params, **kwargs):
+def model_from_config(architecture, input_params,
+                      model_params=None, train_params=None,
+                      **kwargs):
     architecture, input_params, model_params = load_json_config(
         architecture, input_params, model_params)
 
@@ -104,7 +119,7 @@ def model_from_config(architecture, input_params, model_params, **kwargs):
     # the keyword arguments will replace existing params
     loaded_params.update(kwargs)
 
-    return Model(loaded_model, **loaded_params)
+    return Model(loaded_model, loaded_params, train_params, **kwargs)
 
 
 def model_from_keras_config(config, **kwarg):
@@ -122,4 +137,4 @@ def load_model(filename):
     :param filename: path to the h5 file
     :type filename: str
     """
-    return Model(keras_load_model(filename))
+    return Model(keras_load_model(filename), pre_compiled=True)
