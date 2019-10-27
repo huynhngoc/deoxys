@@ -69,9 +69,6 @@ class UnetModelLoader(BaseModelLoader):
             if 'normalizer' in layer:
                 next_layer = layer_from_config(layer['normalizer'])(next_layer)
 
-            if 'activation' in layer:
-                next_layer = layer_from_config(layer['activation'])(next_layer)
-
             if 'name' in layer:
                 saved_input[layer['name']] = next_layer
 

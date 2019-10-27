@@ -4,6 +4,6 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
-from .architecture import load_architecture
-from .params import load_params
-from .generator import load_generator
+
+def load_generator(dataset_params):
+    pass

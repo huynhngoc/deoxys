@@ -11,7 +11,7 @@ from tensorflow.keras.models import Model as KerasModel, \
     load_model as keras_load_model, \
     save_model as keras_save_model
 
-from ..loaders import load_architecture, load_params
+from ..loaders import load_architecture, load_params, load_generator
 from ..utils import load_json_config
 
 
@@ -21,6 +21,7 @@ class Model:
     """
 
     def __init__(self, model, model_params=None, train_params=None,
+                 data_generator=None,
                  pre_compiled=False):
         # TODO add other arguments
 
@@ -28,6 +29,7 @@ class Model:
         self._model_params = model_params
         self._train_parms = train_params
         self._compiled = pre_compiled
+        self._data_generator = data_generator
 
         if model_params:
             if 'optimizer' in model_params:
@@ -76,9 +78,22 @@ class Model:
     def evaluate(self, *args, **kwargs):
         return self._model.evaluate(*args, **kwargs)
 
+    def fit_generator(self, *args, **kwargs):
+        return self._model.fit_generator(*args, **kwargs)
+
+    def evaluate_generator(self, *args, **kwargs):
+        return self._model.evaluate_generator(*args, **kwargs)
+
+    def predict_generator(self, *args, **kwargs):
+        return self._model.predict_generator(*args, **kwargs)
+
     @property
     def is_compiled(self):
         return self._compiled
+
+    @property
+    def model(self):
+        return self._model
 
 
 def model_from_full_config(model_config, **kwargs):
@@ -101,12 +116,13 @@ def model_from_full_config(model_config, **kwargs):
         config['input_params'],
         config['model_params'] if 'model_params' in config else None,
         config['train_params'] if 'train_params' in config else None,
+        config['dataset_params'] if 'dataset_params' in config else None,
         **kwargs)
 
 
 def model_from_config(architecture, input_params,
                       model_params=None, train_params=None,
-                      **kwargs):
+                      dataset_params=None, **kwargs):
     architecture, input_params, model_params = load_json_config(
         architecture, input_params, model_params)
 
@@ -119,7 +135,12 @@ def model_from_config(architecture, input_params,
     # the keyword arguments will replace existing params
     loaded_params.update(kwargs)
 
-    return Model(loaded_model, loaded_params, train_params, **kwargs)
+    # load the data generator
+    if dataset_params:
+        data_generator = load_generator(dataset_params)
+
+    return Model(loaded_model, loaded_params, train_params, data_generator,
+                 **kwargs)
 
 
 def model_from_keras_config(config, **kwarg):
