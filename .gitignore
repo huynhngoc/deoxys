@@ -104,3 +104,9 @@ ENV/
 
 .vscode
 .idea
+
+notebooks/*
+!notebooks/*.bib
+!notebooks/*.tplx
+!notebooks/*.ipynb
+!notebooks/*.txt

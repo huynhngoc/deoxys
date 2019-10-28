@@ -1,0 +1,34 @@
+((*- extends 'article.tplx' -*))
+
+((* set cell_style = 'style_python.tplx' *))
+
+((* block author *))
+    \author{Ngoc Huynh Bao}
+((* endblock author *))
+
+((* block title *))
+    \title{}
+((* endblock title *))
+
+((* block header *))
+    ((( super() )))
+    
+    \usepackage[authoryear,round]{natbib}
+    \date{Nov 21th 2019}
+    % insert other LaTeX packages you may need here   
+((* endblock header *))
+
+((* block abstract *))
+   \abstract{
+   This report provides the results of benchmarking experiments on a range of sorting algorithms for varied types of data for the INF221 Term Paper. The algorithms to be benchmarked include insertion sort, merge sort, quick sort and heap sort.
+   }
+   
+((* endblock abstract *))
+
+\documentclass[11pt,twocolumn]{article}
+
+((* block bibliography *))
+\cite{*}
+\bibliographystyle{plainnat}
+\bibliography{dat390_report}
+((* endblock bibliography *))
