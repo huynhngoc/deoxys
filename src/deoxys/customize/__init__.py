@@ -9,3 +9,4 @@ from ..model.optimizers import register_optimizer, unregister_optimizer
 from ..model.losses import register_loss, unregister_loss
 
 from ..loaders.architecture import register_architecture
+from .custom_obj import register_obj, unregister_obj

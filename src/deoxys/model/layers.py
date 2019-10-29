@@ -8,6 +8,8 @@ __version__ = "0.0.1"
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.models import model_from_config
 from ..utils import Singleton
+from ..customize.custom_obj import CustomObj
+from .activations import Activations
 
 
 class Layers(metaclass=Singleton):
@@ -71,4 +73,8 @@ def layer_from_config(config):
     if 'config' not in config:
         # auto add empty config for layer with only class_name
         config['config'] = {}
-    return model_from_config(config, custom_objects=Layers().layers)
+    return model_from_config(
+        config,
+        custom_objects=[*Layers().layers,
+                        *Activations().activations,
+                        *CustomObj.obj])

@@ -6,4 +6,4 @@ __version__ = "0.0.1"
 
 from .architecture import load_architecture
 from .params import load_params
-from .generator import load_generator
+from .data_loader import load_data

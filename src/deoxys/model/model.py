@@ -5,11 +5,10 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from tensorflow.keras.models import Model as KerasModel, \
+from tensorflow.keras.model import \
     model_from_config as keras_model_from_config, \
     model_from_json as keras_model_from_json, \
-    load_model as keras_load_model, \
-    save_model as keras_save_model
+    load_model as keras_load_model
 
 from ..loaders import load_architecture, load_params, load_generator
 from ..utils import load_json_config
@@ -21,7 +20,7 @@ class Model:
     """
 
     def __init__(self, model, model_params=None, train_params=None,
-                 data_generator=None,
+                 data_reader=None,
                  pre_compiled=False):
         # TODO add other arguments
 
@@ -29,7 +28,7 @@ class Model:
         self._model_params = model_params
         self._train_parms = train_params
         self._compiled = pre_compiled
-        self._data_generator = data_generator
+        self._data_reader = data_reader
 
         if model_params:
             if 'optimizer' in model_params:
@@ -86,6 +85,47 @@ class Model:
 
     def predict_generator(self, *args, **kwargs):
         return self._model.predict_generator(*args, **kwargs)
+
+    def fit_train(self, **kwargs):
+        params = {}
+        params.update(self._train_parms)
+        params.update(kwargs)
+
+        train_data_gen = self._data_reader.train_generator
+        train_steps_per_epoch = train_data_gen.total_batch
+
+        val_data_gen = self._data_reader.val_generator
+        val_steps_per_epoch = val_data_gen.total_batch
+
+        return self.fit_generator(train_data_gen.generate(),
+                                  steps_per_epoch=train_steps_per_epoch,
+                                  validation_data=val_data_gen.generate(),
+                                  validation_steps=val_steps_per_epoch,
+                                  **params)
+
+    def evaluate_train(self, **kwargs):
+        params = {}
+        params.update(self._train_parms)
+        params.update(kwargs)
+
+        data_gen = self._data_reader.train_generator
+        steps_per_epoch = data_gen.total_batch
+
+        return self.evaluate_generator(data_gen.generate(),
+                                       steps=steps_per_epoch,
+                                       **params)
+
+    def evaluate_test(self, **kwargs):
+        params = {}
+        params.update(self._train_parms)
+        params.update(kwargs)
+
+        data_gen = self._data_reader.test_generator
+        steps_per_epoch = data_gen.total_batch
+
+        return self.evaluate_generator(data_gen.generate(),
+                                       steps=steps_per_epoch,
+                                       **params)
 
     @property
     def is_compiled(self):
@@ -151,11 +191,11 @@ def model_from_keras_json(json, **kwarg):
     return Model(keras_model_from_json(json), **kwarg)
 
 
-def load_model(filename):
+def load_model(filename, **kwargs):
     """
     Load model from file
 
     :param filename: path to the h5 file
     :type filename: str
     """
-    return Model(keras_load_model(filename), pre_compiled=True)
+    return Model(keras_load_model(filename), pre_compiled=True, **kwargs)

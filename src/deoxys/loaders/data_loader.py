@@ -5,5 +5,5 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-def load_generator(dataset_params):
+def load_data(dataset_params):
     pass

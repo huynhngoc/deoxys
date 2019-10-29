@@ -15,35 +15,32 @@ class DataReader:
 
     @property
     def train_generator(self):
-        return DataGenerator()
+        return DataGenerator().generate()
 
     @property
     def test_generator(self):
-        return DataGenerator()
+        return DataGenerator().generate()
+
+    @property
+    def val_generator(self):
+        return DataGenerator().generate
 
 
 class HDF5Reader(DataReader):
     def __init__(self, filename, batch_size=32, preprocessors=None,
                  x_name='x', y_name='y',
-                 total_folds=2, fold_prefix='fold', test_fold_idx=None):
+                 train_folds=[0], test_folds=[1], val_folds=[2],
+                 fold_prefix='fold'):
         self.hf = h5py.File(filename, 'r')
         self.batch_size = batch_size,
         self.preprocessors = preprocessors
         self.x_name = x_name
         self.y_name = y_name
-        self.total_folds = total_folds
         self.fold_prefix = fold_prefix
 
-        # List of test fold indice
-        if test_fold_idx:
-            self._test_folds = [test_fold_idx] if type(
-                test_fold_idx) == int else list(test_fold_idx)
-        else:
-            self._test_folds = [total_folds - 1]
-
-        # List of train folds indice
-        self._train_folds = [i for i in range(
-            total_folds) if i not in self._test_folds]
+        self.train_folds = list(train_folds)
+        self.test_folds = list(test_folds)
+        self.val_folds = list(val_folds)
 
     @property
     def train_generator(self):
@@ -51,11 +48,20 @@ class HDF5Reader(DataReader):
             self.hf, batch_size=self.batch_size,
             preprocessors=self.preprocessors,
             x_name=self.x_name, y_name=self.y_name,
-            fold_prefix=self.fold_prefix, folds=self._train_folds).generate()
+            fold_prefix=self.fold_prefix, folds=self.train_folds)
 
+    @property
     def test_generator(self):
         return HDF5DataGenerator(
             self.hf, batch_size=self.batch_size,
             preprocessors=self.preprocessors,
             x_name=self.x_name, y_name=self.y_name,
-            fold_prefix=self.fold_prefix, folds=self._test_folds).generate()
+            fold_prefix=self.fold_prefix, folds=self.test_folds)
+
+    @property
+    def val_generator(self):
+        return HDF5DataGenerator(
+            self.hf, batch_size=self.batch_size,
+            preprocessors=self.preprocessors,
+            x_name=self.x_name, y_name=self.y_name,
+            fold_prefix=self.fold_prefix, folds=self.val_folds)

@@ -7,25 +7,45 @@
 ((* endblock author *))
 
 ((* block title *))
-    \title{}
+    \title{Development of a Keras-based CNN framework for automatic delineation of cancer tumours}
 ((* endblock title *))
 
 ((* block header *))
     ((( super() )))
-    
+
     \usepackage[authoryear,round]{natbib}
     \date{Nov 21th 2019}
-    % insert other LaTeX packages you may need here   
+    % insert other LaTeX packages you may need here
 ((* endblock header *))
 
 ((* block abstract *))
    \abstract{
    This report provides the results of benchmarking experiments on a range of sorting algorithms for varied types of data for the INF221 Term Paper. The algorithms to be benchmarked include insertion sort, merge sort, quick sort and heap sort.
    }
-   
 ((* endblock abstract *))
 
-\documentclass[11pt,twocolumn]{article}
+((* block predoc *))
+    \twocolumn[{%
+    \begin{@twocolumnfalse}
+        ((( super() )))
+    \end{@twocolumnfalse}
+    }]
+((* endblock predoc *))
+
+((* block docclass *))
+    \documentclass[10pt,twocolumn,twoside]{article}
+    \usepackage{fancyhdr}
+    \pagestyle{fancy}
+    \fancyhf{}
+    \fancypagestyle{plain}{}
+    \pagestyle{fancy}
+    \renewcommand{\headrulewidth}{0pt}
+    \fancyhead[LE]{Page\ \thepage}
+    \fancyhead[RE]{\theauthor}
+    \fancyhead[LO]{\thetitle}
+
+
+((* endblock docclass *))
 
 ((* block bibliography *))
 \cite{*}

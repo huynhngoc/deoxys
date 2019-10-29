@@ -2,3 +2,6 @@ jupyter nbconvert --to latex --template dat390_report.tplx DAT390_Report.ipynb
 pdflatex dat390_report
 bibtex dat390_report
 pdflatex dat390_report
+
+Citation:
+\cite{Corm_Intr_2009}
