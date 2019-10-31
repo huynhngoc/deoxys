@@ -6,4 +6,4 @@ __version__ = "0.0.1"
 
 
 def load_data(dataset_params):
-    pass
+    return dataset_params

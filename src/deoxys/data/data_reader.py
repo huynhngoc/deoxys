@@ -28,11 +28,12 @@ class DataReader:
 
 class HDF5Reader(DataReader):
     def __init__(self, filename, batch_size=32, preprocessors=None,
-                 x_name='x', y_name='y',
+                 x_name='x', y_name='y', batch_cache=10,
                  train_folds=[0], test_folds=[1], val_folds=[2],
                  fold_prefix='fold'):
         self.hf = h5py.File(filename, 'r')
-        self.batch_size = batch_size,
+        self.batch_size = batch_size
+        self.batch_cache = batch_cache
         self.preprocessors = preprocessors
         self.x_name = x_name
         self.y_name = y_name
@@ -45,7 +46,7 @@ class HDF5Reader(DataReader):
     @property
     def train_generator(self):
         return HDF5DataGenerator(
-            self.hf, batch_size=self.batch_size,
+            self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
             x_name=self.x_name, y_name=self.y_name,
             fold_prefix=self.fold_prefix, folds=self.train_folds)
@@ -53,7 +54,7 @@ class HDF5Reader(DataReader):
     @property
     def test_generator(self):
         return HDF5DataGenerator(
-            self.hf, batch_size=self.batch_size,
+            self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
             x_name=self.x_name, y_name=self.y_name,
             fold_prefix=self.fold_prefix, folds=self.test_folds)
@@ -61,7 +62,7 @@ class HDF5Reader(DataReader):
     @property
     def val_generator(self):
         return HDF5DataGenerator(
-            self.hf, batch_size=self.batch_size,
+            self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
             x_name=self.x_name, y_name=self.y_name,
             fold_prefix=self.fold_prefix, folds=self.val_folds)

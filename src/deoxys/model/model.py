@@ -5,12 +5,12 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from tensorflow.keras.model import \
+from tensorflow.keras.models import \
     model_from_config as keras_model_from_config, \
     model_from_json as keras_model_from_json, \
     load_model as keras_load_model
 
-from ..loaders import load_architecture, load_params, load_generator
+from ..loaders import load_architecture, load_params, load_data
 from ..utils import load_json_config
 
 
@@ -176,8 +176,9 @@ def model_from_config(architecture, input_params,
     loaded_params.update(kwargs)
 
     # load the data generator
+    data_generator = None
     if dataset_params:
-        data_generator = load_generator(dataset_params)
+        data_generator = load_data(dataset_params)
 
     return Model(loaded_model, loaded_params, train_params, data_generator,
                  **kwargs)

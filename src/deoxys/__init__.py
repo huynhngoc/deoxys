@@ -6,3 +6,6 @@ __version__ = "0.0.1"
 
 
 from . import model
+from . import data
+from . import preprocessing
+from . import customize

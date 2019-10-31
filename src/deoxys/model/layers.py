@@ -77,4 +77,4 @@ def layer_from_config(config):
         config,
         custom_objects=[*Layers().layers,
                         *Activations().activations,
-                        *CustomObj.obj])
+                        *CustomObj().obj])
