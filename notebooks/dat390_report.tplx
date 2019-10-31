@@ -20,7 +20,8 @@
 
 ((* block abstract *))
    \abstract{
-   This report provides the results of benchmarking experiments on a range of sorting algorithms for varied types of data for the INF221 Term Paper. The algorithms to be benchmarked include insertion sort, merge sort, quick sort and heap sort.
+   This report provides the results of creating a keras-based framework for ...
+   \newline \newline
    }
 ((* endblock abstract *))
 
