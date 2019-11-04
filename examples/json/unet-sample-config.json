@@ -26,6 +26,9 @@
             "config": {}
         },
         "metrics": [
+            {
+                "class_name": "BinaryFbeta"
+            },
             "TruePositives",
             "FalsePositives"
         ]
