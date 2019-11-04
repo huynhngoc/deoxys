@@ -23,7 +23,9 @@ class DataGenerator:
 class HDF5DataGenerator(DataGenerator):
     def __init__(self, h5file, batch_size=32, batch_cache=10,
                  preprocessors=None,
-                 x_name='x', y_name='y', fold_prefix='fold', folds=[]):
+                 x_name='x', y_name='y', fold_prefix='fold', folds=None):
+        if not (folds and h5file):
+            raise ValueError("h5file or folds is empty")
         self.hf = h5file
         self.batch_size = batch_size
         self.seg_size = batch_size * batch_cache

@@ -7,6 +7,7 @@ __version__ = "0.0.1"
 
 from tensorflow.keras.models import Model as KerasModel
 from tensorflow.keras.layers import Input, concatenate
+from tensorflow import image
 
 from ..model.layers import layer_from_config
 
@@ -58,8 +59,24 @@ class UnetModelLoader(BaseModelLoader):
 
             if 'inputs' in layer:
                 inputs = []
+                size_factors = None
                 for input_name in layer['inputs']:
-                    inputs.append(saved_input[input_name])
+                    if size_factors:
+                        if len(size_factors) == 2:
+                            next_input = image.resize(
+                                saved_input[input_name],
+                                size_factors,
+                                # preserve_aspect_ratio=True,
+                                method='bilinear')
+                        else:
+                            raise NotImplementedError(
+                                "Resize 3D tensor not implemented")
+                        inputs.append(next_input)
+
+                    else:
+                        inputs.append(saved_input[input_name])
+                        size_factors = saved_input[
+                            input_name].get_shape().as_list()[1:-1]
                 connected_input = concatenate(inputs)
             else:
                 connected_input = layers[i]

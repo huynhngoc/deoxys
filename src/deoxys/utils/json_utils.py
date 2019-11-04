@@ -18,4 +18,6 @@ def load_json_config(*args):
             data.append(None)
             raise Warning('Invalid datatype. Return None instead.')
 
-    return tuple(data)
+    if len(data) == 1:
+        return data[0]
+    return data

@@ -27,13 +27,36 @@ class DummyPreprocessor:
         return x, y
 
 
+class WindowingPreprocessor(BasePreprocessor):
+    """Used to set the dynamic range of an image.
+    """
+
+    def __init__(self, window_center, window_width, channel):
+        self.window_center, self.window_width = window_center, window_width
+        self.channel = channel
+
+    def perform_windowing(self, image):
+        image = image - self.window_center
+        image[image < -self.window_width / 2] = -self.window_width / 2
+        image[image > self.window_width / 2] = self.window_width / 2
+        return image
+
+    def transform(self, images, targets):
+        images = images.copy()
+        images[..., self.channel] = self.perform_windowing(
+            images[..., self.channel])
+        return images, targets
+
+
 class Preprocessors(metaclass=Singleton):
     """
     A singleton that contains all the registered customized preprocessors
     """
 
     def __init__(self):
-        self._preprocessors = {}
+        self._preprocessors = {
+            'WindowingPreprocessor': WindowingPreprocessor
+        }
 
     def register(self, key, preprocessor):
         if not issubclass(preprocessor, BasePreprocessor):

@@ -26,7 +26,7 @@ class Model:
 
         self._model = model
         self._model_params = model_params
-        self._train_parms = train_params
+        self._train_params = train_params
         self._compiled = pre_compiled
         self._data_reader = data_reader
 
@@ -88,7 +88,7 @@ class Model:
 
     def fit_train(self, **kwargs):
         params = {}
-        params.update(self._train_parms)
+        params.update(self._train_params)
         params.update(kwargs)
 
         train_data_gen = self._data_reader.train_generator
@@ -146,7 +146,7 @@ def model_from_full_config(model_config, **kwargs):
     :return: The model
     :rtype: deoxys.model.Model
     """
-    config, = load_json_config(model_config)
+    config = load_json_config(model_config)
 
     if ('architecture' not in config or 'input_params' not in config):
         raise ValueError('architecture and input_params are required')

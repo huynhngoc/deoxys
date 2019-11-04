@@ -4,8 +4,35 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
+
+import tensorflow as tf
 from tensorflow.keras.losses import Loss, deserialize
+import numpy as np
 from ..utils import Singleton
+
+
+class BinaryFbeta(Loss):
+    def __init__(self, reduction='auto', name="loss_function", beta=1):
+        self.beta = beta
+        self.name = name
+        self.reduction = reduction
+
+    def call(self, target, prediction):
+        size = len(prediction.get_shape().as_list())
+        reduce_ax = list(range(1, size))
+        eps = 1e-8
+
+        true_positive = tf.reduce_sum(prediction * target, axis=reduce_ax)
+        target_positive = tf.reduce_sum(tf.square(target), axis=reduce_ax)
+        predicted_positive = tf.reduce_sum(
+            tf.square(prediction), axis=reduce_ax)
+
+        fb_numerator = (1 + self.beta ** 2) * true_positive + eps
+        fb_denominator = (
+            (self.beta ** 2) * target_positive + predicted_positive + eps
+        )
+
+        return 1 - fb_numerator / fb_denominator
 
 
 class Losses(metaclass=Singleton):
@@ -14,7 +41,9 @@ class Losses(metaclass=Singleton):
     """
 
     def __init__(self):
-        self._losses = {}
+        self._losses = {
+            'BinaryFbeta': BinaryFbeta
+        }
 
     def register(self, key, loss):
         if not issubclass(loss, Loss):
@@ -63,10 +92,14 @@ def unregister_loss(key):
 
 
 def loss_from_config(config):
-    if 'class_name' not in config:
-        raise ValueError('class_name is needed to define loss')
+    if type(config) == dict:
+        if 'class_name' not in config:
+            raise ValueError('class_name is needed to define loss')
 
-    if 'config' not in config:
-        # auto add empty config for loss with only class_name
-        config['config'] = {}
+        if 'config' not in config:
+            # auto add empty config for loss with only class_name
+            config['config'] = {}
+        return deserialize(
+            config,
+            custom_objects=Losses().losses)
     return deserialize(config, custom_objects=Losses().losses)
