@@ -14,3 +14,4 @@ if __name__ == '__main__':
     model = model_from_full_config(config)
     model.model.summary()
     model.fit_train(verbose=1)
+    model.save('model.h5')

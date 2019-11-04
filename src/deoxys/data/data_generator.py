@@ -69,7 +69,7 @@ class HDF5DataGenerator(DataGenerator):
         # Remove previous fold index and move to next one
         self.folds.append(self.folds.pop(0))
 
-        fold_name = '{}{}'.format(self.fold_prefix, self.folds[0])
+        fold_name = '{}_{}'.format(self.fold_prefix, self.folds[0])
         y = self.hf[fold_name][self.y_name]
 
         # Recalculate the total length
