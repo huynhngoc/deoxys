@@ -93,10 +93,7 @@ class Model:
         return self._model.predict_generator(*args, **kwargs)
 
     def fit_train(self, **kwargs):
-        params = {}
-        params.update(self._train_params)
-        params.update(kwargs)
-
+        params = self._get_train_params(**kwargs)
         train_data_gen = self._data_reader.train_generator
         train_steps_per_epoch = train_data_gen.total_batch
 
@@ -110,10 +107,7 @@ class Model:
                                   **params)
 
     def evaluate_train(self, **kwargs):
-        params = {}
-        params.update(self._train_params)
-        params.update(kwargs)
-
+        params = self._get_train_params(**kwargs)
         data_gen = self._data_reader.train_generator
         steps_per_epoch = data_gen.total_batch
 
@@ -122,16 +116,22 @@ class Model:
                                        **params)
 
     def evaluate_test(self, **kwargs):
-        params = {}
-        params.update(self._train_params)
-        params.update(kwargs)
-
+        params = self._get_train_params(**kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
 
         return self.evaluate_generator(data_gen.generate(),
                                        steps=steps_per_epoch,
                                        **params)
+
+    def predict_test(self, **kwargs):
+        params = self._get_train_params(**kwargs)
+        data_gen = self._data_reader.test_generator
+        steps_per_epoch = data_gen.total_batch
+
+        return self.predict_generator(data_gen.generate(),
+                                      steps=steps_per_epoch,
+                                      **params)
 
     @property
     def is_compiled(self):
@@ -140,6 +140,12 @@ class Model:
     @property
     def model(self):
         return self._model
+
+    def _get_train_params(self, **kwargs):
+        params = {}
+        params.update(self._train_params)
+        params.update(kwargs)
+        return params
 
 
 def model_from_full_config(model_config, **kwargs):
