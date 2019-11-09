@@ -20,6 +20,7 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
                  dtype=None, beta=1):
         super(Metric, self).__init__(name=name, dtype=dtype)
 
+        self.init_thresholds = thresholds
         self.thresholds = parse_init_thresholds(
             thresholds, default_threshold=0.5)
         num_thresholds = len(self.thresholds)
@@ -68,6 +69,11 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
         if len(res) == 1:
             return res[0]
         return res
+
+    def get_config(self):
+        config = {'thresholds': self.init_thresholds}
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
 
 class Metrics(metaclass=Singleton):

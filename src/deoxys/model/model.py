@@ -12,6 +12,10 @@ from tensorflow.keras.models import \
 
 from ..loaders import load_architecture, load_params, load_data
 from ..utils import load_json_config
+from .layers import Layers
+from .metrics import Metrics
+from .losses import Losses
+from .activations import Activations
 
 
 class Model:
@@ -21,7 +25,7 @@ class Model:
 
     def __init__(self, model, model_params=None, train_params=None,
                  data_reader=None,
-                 pre_compiled=False):
+                 pre_compiled=False, weights_file=None):
         # TODO add other arguments
 
         self._model = model
@@ -34,6 +38,8 @@ class Model:
             if 'optimizer' in model_params:
                 self._model.compile(**model_params)
                 self._compiled = True
+                if weights_file:
+                    self._model.load_weights(weights_file)
             else:
                 raise ValueError('optimizer is a required parameter.')
 
@@ -105,7 +111,7 @@ class Model:
 
     def evaluate_train(self, **kwargs):
         params = {}
-        params.update(self._train_parms)
+        params.update(self._train_params)
         params.update(kwargs)
 
         data_gen = self._data_reader.train_generator
@@ -117,7 +123,7 @@ class Model:
 
     def evaluate_test(self, **kwargs):
         params = {}
-        params.update(self._train_parms)
+        params.update(self._train_params)
         params.update(kwargs)
 
         data_gen = self._data_reader.test_generator
@@ -199,4 +205,11 @@ def load_model(filename, **kwargs):
     :param filename: path to the h5 file
     :type filename: str
     """
-    return Model(keras_load_model(filename), pre_compiled=True, **kwargs)
+    # Keras got the error of loading custom object
+    return Model(keras_load_model(filename,
+                                  custom_objects={
+                                      **Layers().layers,
+                                      **Activations().activations,
+                                      **Losses().losses,
+                                      **Metrics().metrics}),
+                 pre_compiled=True, **kwargs)

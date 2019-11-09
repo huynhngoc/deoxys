@@ -3,10 +3,22 @@
         "class_name": "HDF5Reader",
         "config": {
             "filename": "../../full_dataset_single.h5",
-            "batch_size": 8,
+            "batch_size": 4,
             "x_name": "input",
             "y_name": "target",
-            "batch_cache": 4
+            "batch_cache": 4,
+            "train_folds": [
+                0,
+                1
+            ],
+            "val_folds": [
+                10
+            ],
+            "test_folds": [
+                11,
+                12,
+                13
+            ]
         }
     },
     "train_params": {},
@@ -19,18 +31,21 @@
     },
     "model_params": {
         "loss": {
-            "class_name": "BinaryFbeta"
+            "class_name": "BinaryFbetaLoss"
         },
         "optimizer": {
             "class_name": "adam",
-            "config": {}
+            "config": {
+                "learning_rate": 0.0001
+            }
         },
         "metrics": [
             {
                 "class_name": "BinaryFbeta"
             },
             "TruePositives",
-            "FalsePositives"
+            "FalsePositives",
+            "FalseNegatives"
         ]
     },
     "architecture": {

@@ -7,6 +7,7 @@ __version__ = "0.0.1"
 
 import h5py
 from .data_generator import DataGenerator, HDF5DataGenerator
+from .preprocessor import WindowingPreprocessor
 from ..utils import Singleton
 
 
@@ -35,7 +36,8 @@ class HDF5Reader(DataReader):
         self.hf = h5py.File(filename, 'r')
         self.batch_size = batch_size
         self.batch_cache = batch_cache
-        self.preprocessors = preprocessors
+        self.preprocessors = preprocessors or [
+            WindowingPreprocessor(70 + 1024, 200, 0)]
         self.x_name = x_name
         self.y_name = y_name
         self.fold_prefix = fold_prefix

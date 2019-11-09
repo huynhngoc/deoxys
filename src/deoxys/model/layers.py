@@ -75,6 +75,6 @@ def layer_from_config(config):
         config['config'] = {}
     return model_from_config(
         config,
-        custom_objects=[*Layers().layers,
-                        *Activations().activations,
-                        *CustomObj().obj])
+        custom_objects={**Layers().layers,
+                        **Activations().activations,
+                        **CustomObj().obj})

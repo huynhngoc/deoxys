@@ -11,7 +11,7 @@ import numpy as np
 from ..utils import Singleton
 
 
-class BinaryFbeta(Loss):
+class BinaryFbetaLoss(Loss):
     def __init__(self, reduction='auto', name="loss_function", beta=1):
         self.beta = beta
         self.name = name
@@ -42,7 +42,7 @@ class Losses(metaclass=Singleton):
 
     def __init__(self):
         self._losses = {
-            'BinaryFbeta': BinaryFbeta
+            'BinaryFbetaLoss': BinaryFbetaLoss
         }
 
     def register(self, key, loss):
