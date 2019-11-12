@@ -18,10 +18,36 @@
                 11,
                 12,
                 13
-            ]
+            ],
+            "preprocessors": {
+                "class_name": "WindowingPreprocessor",
+                "config": {
+                    "window_center": 1094,
+                    "window_width": 200,
+                    "channel": 0
+                }
+            }
         }
     },
-    "train_params": {},
+    "train_params": {
+        "epochs": 5,
+        "callbacks": [
+            {
+                "class_name": "CSVLogger",
+                "config": {
+                    "filename": "../../unet_log.csv"
+                }
+            },
+            {
+                "class_name": "ModelCheckpoint",
+                "config": {
+                    "monitor": "binary_fbeta",
+                    "filepath": "../../unet.{epoch:02d}-{binary_fbeta:.5f}.h5",
+                    "period": 1
+                }
+            }
+        ]
+    },
     "input_params": {
         "shape": [
             191,

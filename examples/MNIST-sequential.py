@@ -12,6 +12,12 @@ if __name__ == "__main__":
     # Scale data in 1
     x_train, x_test = x_train / 255.0, x_test / 255.0
 
+    # Reshape data
+    train_shape = tuple(list(x_train.shape) + [1])
+    test_shape = tuple(list(x_test.shape) + [1])
+
+    x_train, x_test = x_train.reshape(train_shape), x_test.reshape(test_shape)
+
     # Prepare the model
     config = read_file('examples/json/sequential-config.json')
     model = model_from_full_config(config)

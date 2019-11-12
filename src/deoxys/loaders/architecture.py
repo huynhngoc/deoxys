@@ -138,3 +138,8 @@ def load_architecture(architecture, input_params):
 
 def register_architecture(model_type, loader):
     ModelLoaderFactory.register(model_type, loader)
+
+
+def modelloader(class_def):
+    register_architecture(class_def.__name__, class_def)
+    return class_def

@@ -10,7 +10,8 @@ from tensorflow.keras.models import \
     model_from_json as keras_model_from_json, \
     load_model as keras_load_model
 
-from ..loaders import load_architecture, load_params, load_data
+from ..loaders import load_architecture, load_params, \
+    load_data, load_train_params
 from ..utils import load_json_config
 from .layers import Layers
 from .metrics import Metrics
@@ -93,7 +94,10 @@ class Model:
         return self._model.predict_generator(*args, **kwargs)
 
     def fit_train(self, **kwargs):
-        params = self._get_train_params(**kwargs)
+        keys = ['epochs', 'verbose', 'callbacks', 'class_weight',
+                'max_queue_size', 'workers',
+                'use_multiprocessing', 'shuffle', 'initial_epoch']
+        params = self._get_train_params(keys, **kwargs)
         train_data_gen = self._data_reader.train_generator
         train_steps_per_epoch = train_data_gen.total_batch
 
@@ -107,7 +111,9 @@ class Model:
                                   **params)
 
     def evaluate_train(self, **kwargs):
-        params = self._get_train_params(**kwargs)
+        keys = ['callbacks', 'max_queue_size',
+                'workers', 'use_multiprocessing', 'verbose']
+        params = self._get_train_params(keys, **kwargs)
         data_gen = self._data_reader.train_generator
         steps_per_epoch = data_gen.total_batch
 
@@ -116,7 +122,9 @@ class Model:
                                        **params)
 
     def evaluate_test(self, **kwargs):
-        params = self._get_train_params(**kwargs)
+        keys = ['callbacks', 'max_queue_size',
+                'workers', 'use_multiprocessing', 'verbose']
+        params = self._get_train_params(keys, **kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
 
@@ -125,7 +133,9 @@ class Model:
                                        **params)
 
     def predict_test(self, **kwargs):
-        params = self._get_train_params(**kwargs)
+        keys = ['callbacks', 'max_queue_size',
+                'workers', 'use_multiprocessing', 'verbose']
+        params = self._get_train_params(keys, **kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
 
@@ -141,10 +151,17 @@ class Model:
     def model(self):
         return self._model
 
-    def _get_train_params(self, **kwargs):
+    def _get_train_params(self, keys, **kwargs):
         params = {}
+
+        if 'callbacks' in self._train_params and 'callbacks' in kwargs:
+            kwargs['callbacks'] = self._train_params['callbacks'] + \
+                kwargs['callbacks'] if type(
+                kwargs['callbacks']) == list else [kwargs['callbacks']]
+
         params.update(self._train_params)
         params.update(kwargs)
+        params = {key: params[key] for key in params if key in keys}
         return params
 
 
@@ -175,8 +192,8 @@ def model_from_full_config(model_config, **kwargs):
 def model_from_config(architecture, input_params,
                       model_params=None, train_params=None,
                       dataset_params=None, **kwargs):
-    architecture, input_params, model_params = load_json_config(
-        architecture, input_params, model_params)
+    architecture, input_params, model_params, train_params = load_json_config(
+        architecture, input_params, model_params, train_params)
 
     # load the model based on the architecture type (Unet / Dense/ Sequential)
     loaded_model = load_architecture(architecture, input_params)
@@ -187,13 +204,16 @@ def model_from_config(architecture, input_params,
     # the keyword arguments will replace existing params
     loaded_params.update(kwargs)
 
+    # Load the parameters when training
+    loaded_train_params = load_train_params(train_params)
+
     # load the data generator
     data_generator = None
     if dataset_params:
         data_generator = load_data(dataset_params)
 
-    return Model(loaded_model, loaded_params, train_params, data_generator,
-                 **kwargs)
+    return Model(loaded_model, loaded_params, loaded_train_params,
+                 data_generator, **kwargs)
 
 
 def model_from_keras_config(config, **kwarg):

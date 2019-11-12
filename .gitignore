@@ -110,3 +110,4 @@ notebooks/*
 !notebooks/*.tplx
 !notebooks/*.ipynb
 !notebooks/*.txt
+*.h5

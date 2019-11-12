@@ -6,6 +6,7 @@ __version__ = "0.0.1"
 
 
 import h5py
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from .data_generator import DataGenerator, HDF5DataGenerator
 from .preprocessor import WindowingPreprocessor
 from ..utils import Singleton
@@ -71,6 +72,19 @@ class HDF5Reader(DataReader):
             fold_prefix=self.fold_prefix, folds=self.val_folds)
 
 
+class KerasImageDataGenerator:
+    def __init__(self, img_datagen, x_train, y_train, x_test, y_test):
+        if type(img_datagen) is not ImageDataGenerator:
+            raise ValueError("This data reader requires an instance from "
+                             "from tensorflow.keras.preprocessing.image."
+                             "ImageDataGenerator")
+        self.img_datagen = img_datagen
+        self.x_train = x_train
+        self.x_test = x_test
+        self.y_train = y_train
+        self.y_test = y_test
+
+
 class DataReaders(metaclass=Singleton):
     """
     A singleton that contains all the registered customized preprocessors
@@ -78,7 +92,8 @@ class DataReaders(metaclass=Singleton):
 
     def __init__(self):
         self._dataReaders = {
-            'HDF5Reader': HDF5Reader
+            'HDF5Reader': HDF5Reader,
+            'KerasImageDataGenerator': KerasImageDataGenerator
         }
 
     def register(self, key, preprocessor):
@@ -100,7 +115,7 @@ class DataReaders(metaclass=Singleton):
             del self._dataReaders[key]
 
     @property
-    def preprocessors(self):
+    def data_readers(self):
         return self._dataReaders
 
 
@@ -138,4 +153,4 @@ def datareader_from_config(config):
     if 'config' not in config:
         # auto add empty config for preprocessor with only class_name
         config['config'] = {}
-    return _deserialize(config, custom_objects=DataReaders().preprocessors)
+    return _deserialize(config, custom_objects=DataReaders().data_readers)
