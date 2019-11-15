@@ -6,7 +6,6 @@ __version__ = "0.0.1"
 
 
 from ..model import model_from_full_config, model_from_config
-from ..model.callbacks import TestCheckpoint
 
 
 class Experiment:
@@ -44,11 +43,11 @@ class Experiment:
             test_history = None
 
             kwargs = {}
-            if test_checkpoint:
-                test_history = []
-                kwargs['callbacks'] = [
-                    TestCheckpoint(self.model, test_history,
-                                   filepath=test_file)]
+            # if test_checkpoint:
+            #     test_history = []
+            #     kwargs['callbacks'] = [
+            #         TestCheckpoint(self.model,
+            #                        filename=test_file)]
 
             train_history = self.model.fit_train(**kwargs)
             if model_filename:

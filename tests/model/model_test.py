@@ -11,5 +11,5 @@ def test_save():
 
 
 def test_from_config():
-    config = read_file('tests/data/sequential-config.json')
+    config = read_file('tests/json/sequential-config.json')
     model_from_full_config(config)

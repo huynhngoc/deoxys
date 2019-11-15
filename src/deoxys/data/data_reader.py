@@ -6,6 +6,7 @@ __version__ = "0.0.1"
 
 
 import h5py
+import numpy as np
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from .data_generator import DataGenerator, HDF5DataGenerator
 from .preprocessor import WindowingPreprocessor
@@ -26,7 +27,11 @@ class DataReader:
 
     @property
     def val_generator(self):
-        return DataGenerator().generate
+        return DataGenerator().generate()
+
+    @property
+    def original_test(self):
+        pass
 
 
 class HDF5Reader(DataReader):
@@ -43,9 +48,23 @@ class HDF5Reader(DataReader):
         self.y_name = y_name
         self.fold_prefix = fold_prefix
 
-        self.train_folds = list(train_folds) if train_folds else [0]
-        self.test_folds = list(test_folds) if test_folds else [2]
-        self.val_folds = list(val_folds) if val_folds else [1]
+        train_folds = list(train_folds) if train_folds else [0]
+        test_folds = list(test_folds) if test_folds else [2]
+        val_folds = list(val_folds) if val_folds else [1]
+
+        if fold_prefix:
+            self.train_folds = ['{}_{}'.format(
+                fold_prefix, train_fold) for train_fold in train_folds]
+            self.test_folds = ['{}_{}'.format(
+                fold_prefix, test_fold) for test_fold in test_folds]
+            self.val_folds = ['{}_{}'.format(
+                fold_prefix, val_fold) for val_fold in val_folds]
+        else:
+            self.train_folds = train_folds
+            self.test_folds = test_folds
+            self.val_folds = val_folds
+
+        self._original_test = None
 
     @property
     def train_generator(self):
@@ -53,7 +72,7 @@ class HDF5Reader(DataReader):
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
             x_name=self.x_name, y_name=self.y_name,
-            fold_prefix=self.fold_prefix, folds=self.train_folds)
+            folds=self.train_folds)
 
     @property
     def test_generator(self):
@@ -61,7 +80,7 @@ class HDF5Reader(DataReader):
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
             x_name=self.x_name, y_name=self.y_name,
-            fold_prefix=self.fold_prefix, folds=self.test_folds)
+            folds=self.test_folds)
 
     @property
     def val_generator(self):
@@ -69,7 +88,27 @@ class HDF5Reader(DataReader):
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
             x_name=self.x_name, y_name=self.y_name,
-            fold_prefix=self.fold_prefix, folds=self.val_folds)
+            folds=self.val_folds)
+
+    @property
+    def original_test(self):
+        """
+        Return a dictionary of all data in the test set
+        """
+        if self._original_test is None:
+            self._original_test = {}
+            for key in self.hf[self.test_folds[0]].keys():
+                data = None
+                for fold in self.test_folds:
+                    new_data = self.hf[fold][key][:]
+
+                    if data:
+                        data = np.concatenate((data, new_data))
+                    else:
+                        data = new_data
+                self._original_test[key] = data
+
+        return self._original_test
 
 
 class KerasImageDataGenerator:

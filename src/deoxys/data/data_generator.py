@@ -23,7 +23,7 @@ class DataGenerator:
 class HDF5DataGenerator(DataGenerator):
     def __init__(self, h5file, batch_size=32, batch_cache=10,
                  preprocessors=None,
-                 x_name='x', y_name='y', fold_prefix='fold', folds=None):
+                 x_name='x', y_name='y', folds=None):
         if not (folds and h5file):
             raise ValueError("h5file or folds is empty")
         self.hf = h5file
@@ -32,14 +32,14 @@ class HDF5DataGenerator(DataGenerator):
         self.preprocessors = preprocessors
         self.x_name = x_name
         self.y_name = y_name
-        self.fold_prefix = fold_prefix
+
         self.folds = list(folds)
 
         # Cache first segment for first fold
         self.index = 0
         self.seg_index = 0
 
-        first_fold_name = '{}_{}'.format(self.fold_prefix, self.folds[0])
+        first_fold_name = self.folds[0]
 
         self.x_cur = self.hf[first_fold_name][self.x_name][:self.seg_size]
         self.y_cur = self.hf[first_fold_name][self.y_name][:self.seg_size]
@@ -53,13 +53,12 @@ class HDF5DataGenerator(DataGenerator):
     def total_batch(self):
         if self._total_batch is None:
             total_batch = 0
-            fold_names = ['{}_{}'.format(
-                self.fold_prefix, fold) for fold in self.folds]
+            fold_names = self.folds
 
             for fold_name in fold_names:
                 total_batch += np.ceil(
                     len(self.hf[fold_name][self.y_name]) / self.batch_size)
-            self._total_batch = total_batch
+            self._total_batch = int(total_batch)
         return self._total_batch
 
     def next_fold(self):
@@ -69,7 +68,7 @@ class HDF5DataGenerator(DataGenerator):
         # Remove previous fold index and move to next one
         self.folds.append(self.folds.pop(0))
 
-        fold_name = '{}_{}'.format(self.fold_prefix, self.folds[0])
+        fold_name = self.folds[0]
         y = self.hf[fold_name][self.y_name]
 
         # Recalculate the total length
@@ -89,7 +88,7 @@ class HDF5DataGenerator(DataGenerator):
         # store local variable after seg_index changed
         seg_index = self.seg_index
 
-        fold_name = '{}_{}'.format(self.fold_prefix, self.folds[0])
+        fold_name = self.folds[0]
         # The last segment may has less items then seg_size
         if seg_index + self.seg_size >= self.fold_len:
             self.x_cur = self.hf[fold_name][self.x_name][seg_index:]

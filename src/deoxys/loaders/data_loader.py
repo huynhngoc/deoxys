@@ -10,6 +10,8 @@ from ..data.preprocessor import preprocessor_from_config
 
 
 def load_data(dataset_params):
+    if not dataset_params:
+        return {}
     params = dict(dataset_params)
 
     if params['config']:

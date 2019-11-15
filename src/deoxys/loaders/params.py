@@ -11,6 +11,8 @@ from ..model.metrics import metric_from_config
 
 
 def load_params(model_params):
+    if not model_params:
+        return {}
     params = dict(model_params)
     for key, val in params.items():
         if key == 'optimizer':

@@ -6,4 +6,4 @@ __version__ = "0.0.1"
 
 
 from .model import *
-from . import layers
+from . import layers, activations, callbacks, metrics, optimizers

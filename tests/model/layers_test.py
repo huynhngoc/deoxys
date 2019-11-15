@@ -7,7 +7,8 @@ __version__ = "0.0.1"
 
 import pytest
 from tensorflow.keras.layers import Layer as KerasLayer
-from deoxys.model.layers import Layers, register_layer, unregister_layer
+from deoxys.model.layers import Layers
+from deoxys.customize import register_layer, unregister_layer, custom_layer
 from deoxys.utils import Singleton
 
 
@@ -56,3 +57,11 @@ def test_unregister_layer(layer_class):
     unregister_layer("TestLayer")
 
     assert "TestLayer" not in Layers()._layers
+
+
+def test_decorator():
+    @custom_layer
+    class TestLayer2(KerasLayer):
+        pass
+
+    assert Layers()._layers["TestLayer2"] is TestLayer2

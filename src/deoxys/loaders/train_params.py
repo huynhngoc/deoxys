@@ -9,6 +9,8 @@ from ..model.callbacks import callback_from_config
 
 
 def load_train_params(train_params):
+    if not train_params:
+        return {}
     params = dict(train_params)
     for key, val in params.items():
         if key == 'callbacks':

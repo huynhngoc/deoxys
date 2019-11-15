@@ -17,6 +17,7 @@ from .layers import Layers
 from .metrics import Metrics
 from .losses import Losses
 from .activations import Activations
+from .callbacks import DeoxysModelCallback
 
 
 class Model:
@@ -27,7 +28,6 @@ class Model:
     def __init__(self, model, model_params=None, train_params=None,
                  data_reader=None,
                  pre_compiled=False, weights_file=None):
-        # TODO add other arguments
 
         self._model = model
         self._model_params = model_params
@@ -151,16 +151,30 @@ class Model:
     def model(self):
         return self._model
 
+    @property
+    def data_reader(self):
+        return self._data_reader
+
     def _get_train_params(self, keys, **kwargs):
         params = {}
 
-        if 'callbacks' in self._train_params and 'callbacks' in kwargs:
-            kwargs['callbacks'] = self._train_params['callbacks'] + \
+        # Load train_params every run
+        train_params = load_train_params(self._train_params)
+
+        if 'callbacks' in train_params and 'callbacks' in kwargs:
+            kwargs['callbacks'] = train_params['callbacks'] + \
                 kwargs['callbacks'] if type(
                 kwargs['callbacks']) == list else [kwargs['callbacks']]
 
-        params.update(self._train_params)
+        params.update(train_params)
         params.update(kwargs)
+
+        if params['callbacks']:
+            # set deoxys model for custom model
+            for callback in params['callbacks']:
+                if isinstance(callback, DeoxysModelCallback):
+                    callback.set_deoxys_model(self)
+
         params = {key: params[key] for key in params if key in keys}
         return params
 
@@ -204,15 +218,12 @@ def model_from_config(architecture, input_params,
     # the keyword arguments will replace existing params
     loaded_params.update(kwargs)
 
-    # Load the parameters when training
-    loaded_train_params = load_train_params(train_params)
-
     # load the data generator
     data_generator = None
     if dataset_params:
         data_generator = load_data(dataset_params)
 
-    return Model(loaded_model, loaded_params, loaded_train_params,
+    return Model(loaded_model, loaded_params, train_params,
                  data_generator, **kwargs)
 
 
