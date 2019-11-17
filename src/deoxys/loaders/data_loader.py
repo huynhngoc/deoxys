@@ -7,12 +7,13 @@ __version__ = "0.0.1"
 
 from ..data.data_reader import datareader_from_config
 from ..data.preprocessor import preprocessor_from_config
+from ..utils import deep_copy
 
 
 def load_data(dataset_params):
     if not dataset_params:
         return {}
-    params = dict(dataset_params)
+    params = deep_copy(dataset_params)
 
     if params['config']:
         for key, val in params['config'].items():

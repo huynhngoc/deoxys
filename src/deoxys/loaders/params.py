@@ -8,12 +8,13 @@ __version__ = "0.0.1"
 from ..model.optimizers import optimizer_from_config
 from ..model.losses import loss_from_config
 from ..model.metrics import metric_from_config
+from ..utils import deep_copy
 
 
 def load_params(model_params):
     if not model_params:
         return {}
-    params = dict(model_params)
+    params = deep_copy(model_params)
     for key, val in params.items():
         if key == 'optimizer':
             if type(val) == dict:

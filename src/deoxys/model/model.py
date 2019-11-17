@@ -10,6 +10,9 @@ from tensorflow.keras.models import \
     model_from_json as keras_model_from_json, \
     load_model as keras_load_model
 
+import json
+import h5py
+
 from ..loaders import load_architecture, load_params, \
     load_data, load_train_params
 from ..utils import load_json_config
@@ -27,13 +30,15 @@ class Model:
 
     def __init__(self, model, model_params=None, train_params=None,
                  data_reader=None,
-                 pre_compiled=False, weights_file=None):
+                 pre_compiled=False, weights_file=None, config=None):
 
         self._model = model
         self._model_params = model_params
         self._train_params = train_params
         self._compiled = pre_compiled
         self._data_reader = data_reader
+
+        self.config = config
 
         if model_params:
             if 'optimizer' in model_params:
@@ -58,16 +63,21 @@ class Model:
                             target_tensors, **kwargs)
         self._compiled = True
 
-    def save(self, filename):
+    def save(self, filename, *args, **kwargs):
         """
         Save model to file
 
         :param filename: name of the file
         :type filename: str
         """
+        self._model.save(filename, *args, **kwargs)
 
-        # TODO check if the filename str contains .h5
-        self._model.save(filename)
+        if self.config:
+            config = json.dumps(self.config)
+
+            saved_model = h5py.File(filename, 'a')
+            saved_model.attrs.create('deoxys_config', config)
+            saved_model.close()
 
     def fit(self, *args, **kwargs):
         """
@@ -169,7 +179,7 @@ class Model:
         params.update(train_params)
         params.update(kwargs)
 
-        if params['callbacks']:
+        if 'callbacks' in params:
             # set deoxys model for custom model
             for callback in params['callbacks']:
                 if isinstance(callback, DeoxysModelCallback):
@@ -209,6 +219,14 @@ def model_from_config(architecture, input_params,
     architecture, input_params, model_params, train_params = load_json_config(
         architecture, input_params, model_params, train_params)
 
+    config = {
+        'architecture': architecture,
+        'input_params': input_params,
+        'model_params': model_params,
+        'train_params': train_params,
+        'dataset_params': dataset_params
+    }
+
     # load the model based on the architecture type (Unet / Dense/ Sequential)
     loaded_model = load_architecture(architecture, input_params)
 
@@ -224,7 +242,7 @@ def model_from_config(architecture, input_params,
         data_generator = load_data(dataset_params)
 
     return Model(loaded_model, loaded_params, train_params,
-                 data_generator, **kwargs)
+                 data_generator, config=config, **kwargs)
 
 
 def model_from_keras_config(config, **kwarg):
@@ -243,10 +261,20 @@ def load_model(filename, **kwargs):
     :type filename: str
     """
     # Keras got the error of loading custom object
-    return Model(keras_load_model(filename,
-                                  custom_objects={
-                                      **Layers().layers,
-                                      **Activations().activations,
-                                      **Losses().losses,
-                                      **Metrics().metrics}),
-                 pre_compiled=True, **kwargs)
+    try:
+        model = Model(keras_load_model(filename,
+                                       custom_objects={
+                                           **Layers().layers,
+                                           **Activations().activations,
+                                           **Losses().losses,
+                                           **Metrics().metrics}),
+                      pre_compiled=True, **kwargs)
+    except Exception:
+        hf = h5py.File(filename, 'r')
+        if 'deoxys_config' in hf.attrs.keys():
+            config = hf.attrs['deoxys_config']
+        hf.close()
+
+        model = model_from_full_config(config, weights_file=filename)
+
+    return model

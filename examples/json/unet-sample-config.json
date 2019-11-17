@@ -30,23 +30,7 @@
         }
     },
     "train_params": {
-        "epochs": 5,
-        "callbacks": [
-            {
-                "class_name": "CSVLogger",
-                "config": {
-                    "filename": "../../unet_log.csv"
-                }
-            },
-            {
-                "class_name": "ModelCheckpoint",
-                "config": {
-                    "monitor": "val_loss",
-                    "filepath": "../../unet.{epoch:02d}-{binary_fbeta[0]:.5f}.h5",
-                    "period": 1
-                }
-            }
-        ]
+        "epochs": 5
     },
     "input_params": {
         "shape": [

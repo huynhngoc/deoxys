@@ -6,12 +6,13 @@ __version__ = "0.0.1"
 
 
 from ..model.callbacks import callback_from_config
+from ..utils import deep_copy
 
 
 def load_train_params(train_params):
     if not train_params:
         return {}
-    params = dict(train_params)
+    params = deep_copy(train_params)
     for key, val in params.items():
         if key == 'callbacks':
             if type(val) == dict:

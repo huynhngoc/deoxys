@@ -7,6 +7,8 @@ __version__ = "0.0.1"
 
 from tensorflow.keras.utils import deserialize_keras_object
 from tensorflow.keras.callbacks import *
+
+import warnings
 import numpy as np
 import io
 import csv
@@ -18,8 +20,8 @@ from ..utils import Singleton
 
 
 class DeoxysModelCallback(Callback):  # noqa: F405
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.deoxys_model = None
 
     def set_deoxys_model(self, deoxys_model):
@@ -169,6 +171,57 @@ class PredictionCheckpoint(DeoxysModelCallback):
                 hf.create_dataset('x', data=x)
                 hf.create_dataset('y', data=y)
                 hf.close()
+
+
+class DeoxysModelCheckpoint(DeoxysModelCallback,
+                            ModelCheckpoint):  # noqa: F405
+    def __init__(self, filepath, monitor='val_loss', verbose=0,
+                 save_best_only=False, save_weights_only=False,
+                 mode='auto', period=1):
+        super().__init__(filepath=filepath,
+                         monitor=monitor, verbose=verbose,
+                         save_best_only=save_best_only,
+                         save_weights_only=save_weights_only,
+                         mode=mode, period=period)
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        self.epochs_since_last_save += 1
+        if self.epochs_since_last_save >= self.period:
+            self.epochs_since_last_save = 0
+            filepath = self.filepath.format(epoch=epoch + 1, **logs)
+            if self.save_best_only:
+                current = logs.get(self.monitor)
+                if current is None:
+                    warnings.warn('Can save best model '
+                                  ' only with % s available, '
+                                  'skipping.' % (self.monitor), RuntimeWarning)
+                else:
+                    if self.monitor_op(current, self.best):
+                        if self.verbose > 0:
+                            print('\nEpoch %05d: %s improved from '
+                                  '%0.5f to %0.5f,'
+                                  ' saving model to %s'
+                                  % (epoch + 1, self.monitor, self.best,
+                                     current, filepath))
+                        self.best = current
+                        if self.save_weights_only:
+                            self.model.save_weights(filepath, overwrite=True)
+                        else:
+                            self.model.save(filepath, overwrite=True)
+                    else:
+                        if self.verbose > 0:
+                            print('\nEpoch %05d: %s did not improve from '
+                                  '%0.5f' %
+                                  (epoch + 1, self.monitor, self.best))
+            else:
+                if self.verbose > 0:
+                    print('\nEpoch %05d: saving model to %s' %
+                          (epoch + 1, filepath))
+                if self.save_weights_only:
+                    self.model.save_weights(filepath, overwrite=True)
+                else:
+                    self.deoxys_model.save(filepath, overwrite=True)
 
 
 class Callbacks(metaclass=Singleton):

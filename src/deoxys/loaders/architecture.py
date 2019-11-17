@@ -10,6 +10,7 @@ from tensorflow.keras.layers import Input, concatenate
 from tensorflow import image
 
 from ..model.layers import layer_from_config
+from ..utils import deep_copy
 
 
 class BaseModelLoader:
@@ -18,9 +19,9 @@ class BaseModelLoader:
 
     def __init__(self, architecture, input_params):
         if 'layers' in architecture:
-            self._layers = architecture['layers']
+            self._layers = deep_copy(architecture['layers'])
 
-        self._input_params = input_params
+        self._input_params = deep_copy(input_params)
 
 
 class SequentialModelLoader(BaseModelLoader):

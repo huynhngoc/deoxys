@@ -42,8 +42,7 @@ class HDF5Reader(DataReader):
         self.hf = h5py.File(filename, 'r')
         self.batch_size = batch_size
         self.batch_cache = batch_cache
-        self.preprocessors = preprocessors or [
-            WindowingPreprocessor(70 + 1024, 200, 0)]
+        self.preprocessors = preprocessors
         self.x_name = x_name
         self.y_name = y_name
         self.fold_prefix = fold_prefix
