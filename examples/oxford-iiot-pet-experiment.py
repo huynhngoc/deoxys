@@ -3,18 +3,16 @@ from deoxys.utils import read_file
 
 config = read_file('examples/json/oxford-pet-config.json')
 
-history = Experiment().from_full_config(
+exp = Experiment().from_full_config(
     config).run_experiment(
         train_history_log=True,
         model_checkpoint_period=1,
-        eval_checkpoint_period=1,
         prediction_checkpoint_period=1,
         plot_performance=True,
         masked_images=[0, 1, 2, 3],
         log_base_path='../../oxford_perf/logs',
-        epochs=1
+        epochs=20
 )
-print(history)
 
 
 # "callbacks": [

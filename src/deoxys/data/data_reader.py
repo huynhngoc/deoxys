@@ -9,7 +9,6 @@ import h5py
 import numpy as np
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from .data_generator import DataGenerator, HDF5DataGenerator
-from .preprocessor import WindowingPreprocessor
 from ..utils import Singleton
 
 
@@ -108,6 +107,26 @@ class HDF5Reader(DataReader):
                 self._original_test[key] = data
 
         return self._original_test
+
+    @property
+    def original_val(self):
+        """
+        Return a dictionary of all data in the val set
+        """
+        if self._original_val is None:
+            self._original_val = {}
+            for key in self.hf[self.val_folds[0]].keys():
+                data = None
+                for fold in self.val_folds:
+                    new_data = self.hf[fold][key][:]
+
+                    if data:
+                        data = np.concatenate((data, new_data))
+                    else:
+                        data = new_data
+                self._original_val[key] = data
+
+        return self._original_val
 
 
 class KerasImageDataGenerator:

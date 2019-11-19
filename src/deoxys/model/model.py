@@ -27,6 +27,15 @@ class Model:
     """
     Model
     """
+    _evaluate_param_keys = ['callbacks', 'max_queue_size',
+                            'workers', 'use_multiprocessing', 'verbose']
+
+    _predict_param_keys = ['callbacks', 'max_queue_size',
+                           'workers', 'use_multiprocessing', 'verbose']
+
+    _fit_param_keys = ['epochs', 'verbose', 'callbacks', 'class_weight',
+                       'max_queue_size', 'workers',
+                       'use_multiprocessing', 'shuffle', 'initial_epoch']
 
     def __init__(self, model, model_params=None, train_params=None,
                  data_reader=None,
@@ -38,7 +47,7 @@ class Model:
         self._compiled = pre_compiled
         self._data_reader = data_reader
 
-        self.config = config
+        self.config = config or {}
 
         if model_params:
             if 'optimizer' in model_params:
@@ -47,7 +56,8 @@ class Model:
                 if weights_file:
                     self._model.load_weights(weights_file)
             else:
-                raise ValueError('optimizer is a required parameter.')
+                raise ValueError('optimizer is a required parameter in '
+                                 'model_params.')
 
     def compile(self, optimizer=None, loss=None, metrics=None,
                 loss_weights=None,
@@ -104,10 +114,7 @@ class Model:
         return self._model.predict_generator(*args, **kwargs)
 
     def fit_train(self, **kwargs):
-        keys = ['epochs', 'verbose', 'callbacks', 'class_weight',
-                'max_queue_size', 'workers',
-                'use_multiprocessing', 'shuffle', 'initial_epoch']
-        params = self._get_train_params(keys, **kwargs)
+        params = self._get_train_params(self._fit_param_keys, **kwargs)
         train_data_gen = self._data_reader.train_generator
         train_steps_per_epoch = train_data_gen.total_batch
 
@@ -121,9 +128,7 @@ class Model:
                                   **params)
 
     def evaluate_train(self, **kwargs):
-        keys = ['callbacks', 'max_queue_size',
-                'workers', 'use_multiprocessing', 'verbose']
-        params = self._get_train_params(keys, **kwargs)
+        params = self._get_train_params(self._evaluate_param_keys, **kwargs)
         data_gen = self._data_reader.train_generator
         steps_per_epoch = data_gen.total_batch
 
@@ -131,10 +136,26 @@ class Model:
                                        steps=steps_per_epoch,
                                        **params)
 
+    def evaluate_val(self, **kwargs):
+        params = self._get_train_params(self._evaluate_param_keys, **kwargs)
+        data_gen = self._data_reader.val_generator
+        steps_per_epoch = data_gen.total_batch
+
+        return self.evaluate_generator(data_gen.generate(),
+                                       steps=steps_per_epoch,
+                                       **params)
+
+    def predict_val(self, **kwargs):
+        params = self._get_train_params(self._predict_param_keys, **kwargs)
+        data_gen = self._data_reader.val_generator
+        steps_per_epoch = data_gen.total_batch
+
+        return self.predict_generator(data_gen.generate(),
+                                      steps=steps_per_epoch,
+                                      **params)
+
     def evaluate_test(self, **kwargs):
-        keys = ['callbacks', 'max_queue_size',
-                'workers', 'use_multiprocessing', 'verbose']
-        params = self._get_train_params(keys, **kwargs)
+        params = self._get_train_params(self._evaluate_param_keys, **kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
 
@@ -143,9 +164,7 @@ class Model:
                                        **params)
 
     def predict_test(self, **kwargs):
-        keys = ['callbacks', 'max_queue_size',
-                'workers', 'use_multiprocessing', 'verbose']
-        params = self._get_train_params(keys, **kwargs)
+        params = self._get_train_params(self._predict_param_keys, **kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
 

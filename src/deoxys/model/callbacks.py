@@ -31,7 +31,8 @@ class DeoxysModelCallback(Callback):  # noqa: F405
 
 class EvaluationCheckpoint(DeoxysModelCallback):
     """
-    Evaluate test after every epoch
+    Evaluate test after some epochs. Only use when cross validation
+    to avoid data leakage.
     """
 
     def __init__(self, filename=None, period=1,
@@ -68,8 +69,10 @@ class EvaluationCheckpoint(DeoxysModelCallback):
         self.epochs_since_last_save += 1
 
         if self.epochs_since_last_save >= self.period:
+
+            print('\nEvaluating test set...')
             self.epochs_since_last_save = 0
-            score = self.deoxys_model.evaluate_test()
+            score = self.deoxys_model.evaluate_test(verbose=1)
 
             def handle_value(k):
                 is_zero_dim_ndarray = isinstance(k, np.ndarray) and k.ndim == 0
@@ -132,8 +135,10 @@ class PredictionCheckpoint(DeoxysModelCallback):
         if self.epochs_since_last_save >= self.period:
             self.epochs_since_last_save = 0
 
+            print('\nPredicting validation data...')
+
             # Predict all data
-            predicted = self.deoxys_model.predict_test()
+            predicted = self.deoxys_model.predict_val(verbose=1)
 
             # Get file name
             filepath = self.filepath.format(epoch=epoch + 1, **logs)
@@ -144,21 +149,21 @@ class PredictionCheckpoint(DeoxysModelCallback):
             hf.close()
 
             if self.use_original:
-                original_data = self.deoxys_model.data_reader.original_test
+                original_data = self.deoxys_model.data_reader.original_val
 
                 for key, val in original_data.items():
                     hf = h5py.File(filepath, 'a')
                     hf.create_dataset(key, data=val)
                     hf.close()
             else:
-                # Create data from test_generator
+                # Create data from val_generator
                 x = None
                 y = None
 
-                test_gen = self.deoxys_model.data_reader.test_generator
-                data_gen = test_gen.generate()
+                val_gen = self.deoxys_model.data_reader.val_generator
+                data_gen = val_gen.generate()
 
-                for _ in range(test_gen.total_batch):
+                for _ in range(val_gen.total_batch):
                     next_x, next_y = next(data_gen)
                     if x is None:
                         x = next_x
@@ -208,7 +213,7 @@ class DeoxysModelCheckpoint(DeoxysModelCallback,
                         if self.save_weights_only:
                             self.model.save_weights(filepath, overwrite=True)
                         else:
-                            self.model.save(filepath, overwrite=True)
+                            self.deoxys_model.save(filepath, overwrite=True)
                     else:
                         if self.verbose > 0:
                             print('\nEpoch %05d: %s did not improve from '
@@ -222,6 +227,101 @@ class DeoxysModelCheckpoint(DeoxysModelCallback,
                     self.model.save_weights(filepath, overwrite=True)
                 else:
                     self.deoxys_model.save(filepath, overwrite=True)
+
+
+class BestModelCheckpoint(DeoxysModelCallback):
+    def __init__(self, filepath, monitors='val_loss', verbose=0,
+                 modes='auto'):
+        """
+        [In development]
+        Save best model based on list a monitors (metrics and loss)
+
+        :param filepath: Path to directory containing the best model
+        :type filepath: str
+        :param monitors: the metrics or loss to find best model,
+        defaults to 'val_loss'
+        :type monitors: str, or list, optional
+        :param verbose: [description], defaults to 0
+        :type verbose: int, optional
+        :param modes: [description], defaults to 'auto'
+        :type modes: str, optional
+        """
+        super().__init__()
+        self.monitors = [monitors] if type(monitors) == str else list(monitors)
+        self.verbose = verbose
+        self.filepath = filepath
+        monitor_modes = [modes] if type(modes) == str else list(modes)
+
+        if len(self.monitors) != len(monitor_modes):
+            warnings.warn('Monitors and modes should have the same '
+                          'number of elements, fallback missings to auto')
+            if len(self.monitors) >= len(monitor_modes):
+                monitor_modes = monitor_modes[:len(self.monitors)]
+            else:
+                monitor_modes = np.concatenate(
+                    (monitor_modes, ['auto' for _ in range(
+                        len(self.monitors) - len(monitor_modes))]))
+
+        self.monitor_ops = []
+        self.bests = []
+        for mode, monitor in zip(self.monitors, monitor_modes):
+            if mode not in ['auto', 'min', 'max']:
+                warnings.warn('ModelCheckpoint mode %s is unknown, '
+                              'fallback to auto mode.' % (mode),
+                              RuntimeWarning)
+                mode = 'auto'
+
+            if mode == 'min':
+                self.monitor_ops.append(np.less)
+                self.bests.append(np.Inf)
+            elif mode == 'max':
+                self.monitor_ops.append(np.greater)
+                self.bests.append(-np.Inf)
+            else:
+                if 'acc' in monitor or \
+                        monitor.startswith('fmeasure') or \
+                        'fbeta' in monitor:
+                    self.monitor_ops.append(np.greater)
+                    self.bests.append(-np.Inf)
+                else:
+                    self.monitor_ops(np.less)
+                    self.bests.append(np.Inf)
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        filepath = self.filepath.format(epoch=epoch + 1, **logs)
+
+        current = logs.get(self.monitor)
+        if current is None:
+            warnings.warn('Can save best model '
+                          ' only with % s available, '
+                          'skipping.' % (self.monitor), RuntimeWarning)
+        else:
+            if self.monitor_op(current, self.best):
+                if self.verbose > 0:
+                    print('\nEpoch %05d: %s improved from '
+                          '%0.5f to %0.5f,'
+                          ' saving model to %s'
+                          % (epoch + 1, self.monitor, self.best,
+                             current, filepath))
+                self.best = current
+                if self.save_weights_only:
+                    self.model.save_weights(filepath, overwrite=True)
+                else:
+                    self.deoxys_model.save(filepath, overwrite=True)
+            else:
+                if self.verbose > 0:
+                    print('\nEpoch %05d: %s did not improve from '
+                          '%0.5f' %
+                          (epoch + 1, self.monitor, self.best))
+                else:
+                    if self.verbose > 0:
+                        print('\nEpoch %05d: saving model to %s' %
+                              (epoch + 1, filepath))
+                    if self.save_weights_only:
+                        self.model.save_weights(filepath, overwrite=True)
+                    else:
+                        self.deoxys_model.save(filepath, overwrite=True)
 
 
 class Callbacks(metaclass=Singleton):

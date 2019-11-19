@@ -11,14 +11,14 @@ import h5py
 from tensorflow.keras.callbacks import CSVLogger
 from ..model.callbacks import DeoxysModelCheckpoint, EvaluationCheckpoint, \
     PredictionCheckpoint
-from ..model import model_from_full_config, model_from_config
-from ..utils import plot_log_performance_from_csv, \
-    plot_evaluation_performance_from_csv, mask_prediction
+from ..model import model_from_full_config, model_from_config, load_model
+from ..utils import plot_log_performance_from_csv, mask_prediction
 
 
 class Experiment:
     MODEL_PATH = '/model'
     MODEL_NAME = '/model.{epoch:03d}.h5'
+    BEST_MODEL_PATH = '/best'
     PREDICTION_PATH = '/prediction'
     PREDICTION_NAME = '/prediction.{epoch:03d}.h5'
     LOG_FILE = '/logs.csv'
@@ -26,7 +26,9 @@ class Experiment:
     PERFORMANCE_PATH = '/performance'
     PREDICTED_IMAGE_PATH = '/images'
 
-    def __init__(self):
+    def __init__(self,
+                 best_model_monitors='val_loss',
+                 best_model_modes='auto',):
         self.model = None
 
         self.architecture = None
@@ -35,6 +37,12 @@ class Experiment:
         self.train_params = None
         self.data_reader = None
         self.weights_file = None
+
+        self.best_model_monitors = best_model_monitors
+        self.best_model_modes = best_model_modes
+
+        self.best_models = {}
+        self.best_saved_model = {}
 
     def from_full_config(self, file, weights_file=None, **kwargs):
         self.model = model_from_full_config(file,
@@ -53,10 +61,13 @@ class Experiment:
 
         return self
 
+    def from_file(self, filename):
+        self.model = load_model(filename)
+
+        return self
+
     def run_experiment(self, train_history_log=True,
                        model_checkpoint_period=0,
-                       model_checkpoint_monitor='val_loss',
-                       eval_checkpoint_period=0,
                        prediction_checkpoint_period=0,
                        save_origin_images=False,
                        plot_performance=False,
@@ -65,56 +76,53 @@ class Experiment:
                        truth_image_name='y',
                        predicted_image_title_name='Image {index:05d}',
                        log_base_path='logs',
+                       verbose=1,
                        epochs=None, initial_epoch=None
                        ):
-
-        if not os.path.exists(log_base_path):
-            os.makedirs(log_base_path)
-
-        kwargs = {}
-
-        if epochs:
-            kwargs['epochs'] = epochs
-        if initial_epoch:
-            kwargs['initial_epoch'] = initial_epoch
-
-        callbacks = []
-        if train_history_log:
-            callback = self._create_logger(log_base_path)
-            callbacks.append(callback)
-
-        if model_checkpoint_period > 0:
-            if not os.path.exists(log_base_path + self.MODEL_PATH):
-                os.makedirs(log_base_path + self.MODEL_PATH)
-
-            callback = self._create_model_checkpoint(
-                log_base_path,
-                period=model_checkpoint_period,
-                monitor=model_checkpoint_monitor)
-            callbacks.append(callback)
-
-        if eval_checkpoint_period > 0:
-            callback = self._create_evaluation_logger(
-                log_base_path,
-                period=model_checkpoint_period)
-
-            callbacks.append(callback)
-
-        if prediction_checkpoint_period > 0:
-            if not os.path.exists(log_base_path + self.PREDICTION_PATH):
-                os.makedirs(log_base_path + self.PREDICTION_PATH)
-
-            callback = self._create_prediction_checkpoint(
-                log_base_path,
-                prediction_checkpoint_period,
-                use_original=save_origin_images
-            )
-            callbacks.append(callback)
-
-        kwargs['callbacks'] = callbacks
-
         if self._check_run():
-            train_history = self.model.fit_train(**kwargs)
+            if not os.path.exists(log_base_path):
+                os.makedirs(log_base_path)
+
+            kwargs = {}
+
+            csv_logger_append = False
+
+            if epochs:
+                kwargs['epochs'] = epochs
+            if initial_epoch:
+                kwargs['initial_epoch'] = initial_epoch
+                if initial_epoch > 0:
+                    csv_logger_append = True
+
+            callbacks = []
+            if train_history_log:
+                callback = self._create_logger(log_base_path,
+                                               append=csv_logger_append)
+                callbacks.append(callback)
+
+            if model_checkpoint_period > 0:
+                if not os.path.exists(log_base_path + self.MODEL_PATH):
+                    os.makedirs(log_base_path + self.MODEL_PATH)
+
+                callback = self._create_model_checkpoint(
+                    log_base_path,
+                    period=model_checkpoint_period)
+                callbacks.append(callback)
+
+            if prediction_checkpoint_period > 0:
+                if not os.path.exists(log_base_path + self.PREDICTION_PATH):
+                    os.makedirs(log_base_path + self.PREDICTION_PATH)
+
+                callback = self._create_prediction_checkpoint(
+                    log_base_path,
+                    prediction_checkpoint_period,
+                    use_original=save_origin_images
+                )
+                callbacks.append(callback)
+
+            kwargs['callbacks'] = callbacks
+
+            self.model.fit_train(**kwargs)
 
             if plot_performance:
                 print('\nPlotting performance metrics...')
@@ -124,11 +132,6 @@ class Experiment:
                 if train_history_log:
                     # plot performance
                     plot_log_performance_from_csv(
-                        filepath=log_base_path + self.LOG_FILE,
-                        output_path=log_base_path + self.PERFORMANCE_PATH)
-
-                if eval_checkpoint_period:
-                    plot_evaluation_performance_from_csv(
                         filepath=log_base_path + self.LOG_FILE,
                         output_path=log_base_path + self.PERFORMANCE_PATH)
 
@@ -156,19 +159,14 @@ class Experiment:
                             truth_image_name=truth_image_name,
                             title=predicted_image_title_name
                         )
-
-            return train_history
+            return self
 
     def _create_logger(self, base_path, append=False):
         return CSVLogger(filename=base_path + self.LOG_FILE, append=append)
 
-    def _create_evaluation_logger(self, base_path, period, append=False):
-        return EvaluationCheckpoint(filename=base_path + self.EVAL_LOG_FILE,
-                                    period=period, append=append)
-
-    def _create_model_checkpoint(self, base_path, period, monitor):
+    def _create_model_checkpoint(self, base_path, period):
         return DeoxysModelCheckpoint(
-            monitor=monitor, period=period,
+            period=period,
             filepath=base_path + self.MODEL_PATH + self.MODEL_NAME)
 
     def _create_prediction_checkpoint(self, base_path, period, use_original):
