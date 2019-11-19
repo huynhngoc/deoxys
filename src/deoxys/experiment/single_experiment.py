@@ -117,6 +117,7 @@ class Experiment:
             train_history = self.model.fit_train(**kwargs)
 
             if plot_performance:
+                print('\nPlotting performance metrics...')
                 if not os.path.exists(log_base_path + self.PERFORMANCE_PATH):
                     os.makedirs(log_base_path + self.PERFORMANCE_PATH)
 
@@ -132,6 +133,7 @@ class Experiment:
                         output_path=log_base_path + self.PERFORMANCE_PATH)
 
             if masked_images and prediction_checkpoint_period:
+                print('\nCreating prediction images...')
                 # mask images
                 prediced_image_path = log_base_path + self.PREDICTED_IMAGE_PATH
                 if not os.path.exists(prediced_image_path):

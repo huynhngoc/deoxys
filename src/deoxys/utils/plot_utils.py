@@ -51,14 +51,17 @@ def mask_prediction(output_path, image, true_mask, pred_mask,
                     mask_levels=None, channel=None):
     if not mask_levels:
         mask_levels = 1
+    kwargs = {}
     if not channel:
         if (len(image.shape) == 2
                 or (len(image.shape) == 3 and image.shape[2] == 3)):
             image_data = image
         else:
             image_data = image[..., 0]
+            kwargs['cmap'] = 'gray'
     else:
         image_data = image[..., channel]
+        kwargs['cmap'] = 'gray'
 
     true_mask_data = true_mask
     pred_mask_data = pred_mask
@@ -68,11 +71,11 @@ def mask_prediction(output_path, image, true_mask, pred_mask,
         pred_mask_data = pred_mask[..., 0]
 
     plt.figure()
-    plt.imshow(image_data)
+    plt.imshow(image_data, **kwargs)
     true_con = plt.contour(
-        true_mask_data, 1, levels=mask_levels, color='yellow')
+        true_mask_data, 1, levels=mask_levels, colors='yellow')
     pred_con = plt.contour(
-        pred_mask_data, 1, levels=mask_levels, color='red')
+        pred_mask_data, 1, levels=mask_levels, colors='red')
 
     plt.title(title)
     plt.legend([true_con.collections[0],

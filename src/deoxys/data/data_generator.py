@@ -89,7 +89,7 @@ class HDF5DataGenerator(DataGenerator):
         seg_index = self.seg_index
 
         fold_name = self.folds[0]
-        # The last segment may has less items then seg_size
+        # The last segment may has less items than seg_size
         if seg_index + self.seg_size >= self.fold_len:
             self.x_cur = self.hf[fold_name][self.x_name][seg_index:]
             self.y_cur = self.hf[fold_name][self.y_name][seg_index:]
@@ -103,8 +103,9 @@ class HDF5DataGenerator(DataGenerator):
 
     def generate(self):
         while True:
-            # When all batches of data are yielded, move to next fold
-            if self.index >= self.batch_size:
+            # When all batches of data are yielded, move to next seg
+            if self.index >= self.seg_size or \
+                    self.seg_index + self.index >= self.fold_len:
                 self.next_seg()
 
             # Index may has been reset. Thus, call after next_seg
@@ -112,7 +113,7 @@ class HDF5DataGenerator(DataGenerator):
 
             # The last batch of data may not have less than batch_size items
             if index + self.batch_size >= self.seg_size or \
-                    index + self.batch_size >= self.fold_len:
+                    self.seg_index + index + self.batch_size >= self.fold_len:
                 batch_x = self.x_cur[index:]
                 batch_y = self.y_cur[index:]
             else:
