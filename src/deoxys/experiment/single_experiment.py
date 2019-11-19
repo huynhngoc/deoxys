@@ -12,7 +12,8 @@ from tensorflow.keras.callbacks import CSVLogger
 from ..model.callbacks import DeoxysModelCheckpoint, EvaluationCheckpoint, \
     PredictionCheckpoint
 from ..model import model_from_full_config, model_from_config, load_model
-from ..utils import plot_log_performance_from_csv, mask_prediction
+from ..utils import plot_log_performance_from_csv, mask_prediction, \
+    plot_images_w_predictions
 
 
 class Experiment:
@@ -22,13 +23,13 @@ class Experiment:
     PREDICTION_PATH = '/prediction'
     PREDICTION_NAME = '/prediction.{epoch:03d}.h5'
     LOG_FILE = '/logs.csv'
-    EVAL_LOG_FILE = '/eval_log.csv'
     PERFORMANCE_PATH = '/performance'
     PREDICTED_IMAGE_PATH = '/images'
 
     def __init__(self,
                  best_model_monitors='val_loss',
-                 best_model_modes='auto',):
+                 best_model_modes='auto',
+                 log_base_path='logs'):
         self.model = None
 
         self.architecture = None
@@ -40,6 +41,7 @@ class Experiment:
 
         self.best_model_monitors = best_model_monitors
         self.best_model_modes = best_model_modes
+        self.log_base_path = log_base_path
 
         self.best_models = {}
         self.best_saved_model = {}
@@ -70,15 +72,11 @@ class Experiment:
                        model_checkpoint_period=0,
                        prediction_checkpoint_period=0,
                        save_origin_images=False,
-                       plot_performance=False,
-                       masked_images=None,
-                       base_image_name='x',
-                       truth_image_name='y',
-                       predicted_image_title_name='Image {index:05d}',
-                       log_base_path='logs',
                        verbose=1,
                        epochs=None, initial_epoch=None
                        ):
+        log_base_path = self.log_base_path
+
         if self._check_run():
             if not os.path.exists(log_base_path):
                 os.makedirs(log_base_path)
@@ -95,6 +93,7 @@ class Experiment:
                     csv_logger_append = True
 
             callbacks = []
+
             if train_history_log:
                 callback = self._create_logger(log_base_path,
                                                append=csv_logger_append)
@@ -124,42 +123,72 @@ class Experiment:
 
             self.model.fit_train(**kwargs)
 
-            if plot_performance:
-                print('\nPlotting performance metrics...')
-                if not os.path.exists(log_base_path + self.PERFORMANCE_PATH):
-                    os.makedirs(log_base_path + self.PERFORMANCE_PATH)
-
-                if train_history_log:
-                    # plot performance
-                    plot_log_performance_from_csv(
-                        filepath=log_base_path + self.LOG_FILE,
-                        output_path=log_base_path + self.PERFORMANCE_PATH)
-
-            if masked_images and prediction_checkpoint_period:
-                print('\nCreating prediction images...')
-                # mask images
-                prediced_image_path = log_base_path + self.PREDICTED_IMAGE_PATH
-                if not os.path.exists(prediced_image_path):
-                    os.makedirs(prediced_image_path)
-
-                for filename in os.listdir(
-                        log_base_path + self.PREDICTION_PATH):
-                    if filename.endswith(".h5") or filename.endswith(".hdf5"):
-                        # Create a folder for storing result in that period
-                        images_path = prediced_image_path + '/' + filename
-                        if not os.path.exists(images_path):
-                            os.makedirs(images_path)
-
-                        self._plot_predicted_images(
-                            data_path=log_base_path + self.PREDICTION_PATH
-                            + '/' + filename,
-                            out_path=images_path,
-                            images=masked_images,
-                            base_image_name=base_image_name,
-                            truth_image_name=truth_image_name,
-                            title=predicted_image_title_name
-                        )
             return self
+
+    def plot_performance(self):
+        log_base_path = self.log_base_path
+
+        if not os.path.exists(log_base_path + self.PERFORMANCE_PATH):
+            os.makedirs(log_base_path + self.PERFORMANCE_PATH)
+
+        if os.path.exists(log_base_path + self.LOG_FILE):
+            print('\nPlotting performance metrics...')
+
+            plot_log_performance_from_csv(
+                filepath=log_base_path + self.LOG_FILE,
+                output_path=log_base_path + self.PERFORMANCE_PATH)
+        else:
+            raise Warning('No log files for plotting performance')
+
+        return self
+
+    def plot_prediction(self, masked_images,
+                        contour=True,
+                        base_image_name='x',
+                        truth_image_name='y',
+                        predicted_image_title_name='Image {index:05d}',
+                        img_name='{index:05d}.png'):
+        log_base_path = self.log_base_path
+
+        if os.path.exists(log_base_path + self.PREDICTION_PATH):
+            print('\nCreating prediction images...')
+            # mask images
+            prediced_image_path = log_base_path + self.PREDICTED_IMAGE_PATH
+            if not os.path.exists(prediced_image_path):
+                os.makedirs(prediced_image_path)
+
+            for filename in os.listdir(
+                    log_base_path + self.PREDICTION_PATH):
+                if filename.endswith(".h5") or filename.endswith(".hdf5"):
+                    # Create a folder for storing result in that period
+                    images_path = prediced_image_path + '/' + filename
+                    if not os.path.exists(images_path):
+                        os.makedirs(images_path)
+
+                    self._plot_predicted_images(
+                        data_path=log_base_path + self.PREDICTION_PATH
+                        + '/' + filename,
+                        out_path=images_path,
+                        images=masked_images,
+                        base_image_name=base_image_name,
+                        truth_image_name=truth_image_name,
+                        title=predicted_image_title_name,
+                        contour=contour,
+                        name=img_name)
+
+        return self
+
+    def run_lambda(self, lambda_fn, **kwargs):
+        """
+        Custom action between experiments
+
+        :param lambda_fn: [description]
+        :type lambda_fn: [type]
+        :return: [description]
+        :rtype: [type]
+        """
+        lambda_fn(self, **kwargs)
+        return self
 
     def _create_logger(self, base_path, append=False):
         return CSVLogger(filename=base_path + self.LOG_FILE, append=append)
@@ -175,6 +204,7 @@ class Experiment:
             period=period, use_original=use_original)
 
     def _plot_predicted_images(self, data_path, out_path, images,
+                               contour=True,
                                base_image_name='x',
                                truth_image_name='y',
                                title='Image {index:05d}',
@@ -184,11 +214,19 @@ class Experiment:
         for index in images:
             kwargs = {key: hf[key][index] for key in keys}
             img_name = out_path + '/' + name.format(index=index, **kwargs)
-            mask_prediction(img_name,
-                            image=kwargs[base_image_name],
-                            true_mask=kwargs[truth_image_name],
-                            pred_mask=kwargs['predicted'],
-                            title=title.format(index=index, **kwargs))
+            if contour:
+                mask_prediction(img_name,
+                                image=kwargs[base_image_name],
+                                true_mask=kwargs[truth_image_name],
+                                pred_mask=kwargs['predicted'],
+                                title=title.format(index=index, **kwargs))
+            else:
+                plot_images_w_predictions(
+                    img_name,
+                    image=kwargs[base_image_name],
+                    true_mask=kwargs[truth_image_name],
+                    pred_mask=kwargs['predicted'],
+                    title=title.format(index=index, **kwargs))
 
     def _check_run(self):
         if self.model:

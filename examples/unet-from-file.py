@@ -1,3 +1,9 @@
+"""
+Example of loading a model from config and weights.
+The full config of the model is in 'examples/json/unet-sample-config.json',
+and 'model2.h5' contains the weights of the trained model.
+"""
+
 from deoxys.model import load_model, model_from_full_config
 from deoxys.utils import read_file, write_file
 

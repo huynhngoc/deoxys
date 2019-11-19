@@ -25,9 +25,6 @@
         "epochs": 5,
         "callbacks": [
             {
-                "class_name": "ProgbarLogger"
-            },
-            {
                 "class_name": "CSVLogger",
                 "config": {
                     "filename": "../../mnist_log.csv"

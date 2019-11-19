@@ -84,6 +84,43 @@ def mask_prediction(output_path, image, true_mask, pred_mask,
     plt.close('all')
 
 
+def plot_images_w_predictions(output_path, image, true_mask, pred_mask,
+                              title='Predicted',
+                              mask_levels=None, channel=None):
+    if not mask_levels:
+        mask_levels = 1
+    kwargs = {}
+    if not channel:
+        if (len(image.shape) == 2
+                or (len(image.shape) == 3 and image.shape[2] == 3)):
+            image_data = image
+        else:
+            image_data = image[..., 0]
+            kwargs['cmap'] = 'gray'
+    else:
+        image_data = image[..., channel]
+        kwargs['cmap'] = 'gray'
+
+    true_mask_data = true_mask
+    pred_mask_data = pred_mask
+
+    if len(true_mask_data.shape) == 3:
+        true_mask_data = true_mask[..., 0]
+        pred_mask_data = pred_mask[..., 0]
+
+    fig, (img_ax, true_ax, pred_ax) = plt.subplots(1, 3)
+    img_ax.imshow(image_data, **kwargs)
+    img_ax.set_title('Images')
+    true_ax.imshow(true_mask_data)
+    true_ax.set_title('True Mask')
+    pred_ax.imshow(pred_mask_data)
+    pred_ax.set_title('Predicted Mask')
+
+    plt.suptitle(title)
+    plt.savefig(output_path)
+    plt.close('all')
+
+
 def _plot_data(dataframe, name, columns, filename):
     ax = dataframe[columns].plot()
     epoch_num = dataframe.shape[0]

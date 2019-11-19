@@ -1,3 +1,8 @@
+"""
+Example of creating an unet architecture with a pre-created data
+
+"""
+
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from deoxys.model import model_from_full_config
