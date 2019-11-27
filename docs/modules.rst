@@ -1,16 +1,12 @@
-Welcome to deoxys's documentation!
+Modules
 ======================================
 
 .. toctree::
    :maxdepth: 4
    :caption: Contents:
 
-   readme
-   installation
-   usage
-   modules
-   contributing
-   history
+   model
+   data
 
 Indices and tables
 ==================

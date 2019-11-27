@@ -26,20 +26,3 @@ if __name__ == '__main__':
     ).plot_performance().plot_prediction(
         masked_images=[i for i in range(42)]
     )
-
-# "callbacks": [
-#     {
-#         "class_name": "CSVLogger",
-#         "config": {
-#             "filename": "../../unet_log.csv"
-#         }
-#     },
-#     {
-#         "class_name": "ModelCheckpoint",
-#         "config": {
-#             "monitor": "val_loss",
-#             "filepath": "../../unet.{epoch:02d}-{binary_fbeta[0]:.5f}.h5",
-#             "period": 1
-#         }
-#     }
-# ]

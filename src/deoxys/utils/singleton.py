@@ -6,6 +6,15 @@ __version__ = "0.0.1"
 
 
 class Singleton(type):
+    """
+    A meta class to create a singleton in this project.
+
+    Example:
+    ```
+    class SingletonClassName(metaclass=Singleton):
+        # attributes and method here
+    ```
+    """
     _instances = {}
 
     def __call__(cls, *args, **kwargs):

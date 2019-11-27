@@ -40,35 +40,3 @@ if __name__ == '__main__':
         img_name='Prediction_{index:02d}.png',
         contour=False
     )
-
-
-# "callbacks": [
-#             {
-#                 "class_name": "CSVLogger",
-#                 "config": {
-#                     "filename": "../../oxford.csv"
-#                 }
-#             },
-#             {
-#                 "class_name": "DeoxysModelCheckpoint",
-#                 "config": {
-#                     "monitor": "val_loss",
-#                     "filepath": "../../oxford.{epoch:02d}-{accuracy:.5f}.h5",
-#                     "period": 1
-#                 }
-#             },
-#             {
-#                 "class_name": "EvaluationCheckpoint",
-#                 "config": {
-#                     "filename": "../../oxford_test.csv",
-#                     "period": 1
-#                 }
-#             },
-#             {
-#                 "class_name": "PredictionCheckpoint",
-#                 "config": {
-#                     "filepath": "../../oxford_prediction.{epoch:02d}.h5",
-#                     "use_original": false
-#                 }
-#             }
-#         ]
