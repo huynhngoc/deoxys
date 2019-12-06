@@ -13,9 +13,12 @@
 ((* block header *))
     ((( super() )))
 
-    \usepackage[authoryear,round]{natbib}
+    \usepackage[numbers]{natbib}
     \date{Nov 21th 2019}
     % insert other LaTeX packages you may need here
+    \clearcaptionsetup{}
+    \DeclareCaptionFormat{plain}{#1#2#3\par}
+    \captionsetup{format=plain, aboveskip=10pt}
 ((* endblock header *))
 
 ((* block abstract *))
@@ -35,6 +38,7 @@
 
 ((* block docclass *))
     \documentclass[10pt,twocolumn,twoside]{article}
+    \usepackage{graphicx}
     \usepackage{fancyhdr}
     \pagestyle{fancy}
     \fancyhf{}
@@ -56,6 +60,6 @@
 
 ((* block bibliography *))
 \cite{*}
-\bibliographystyle{plainnat}
+\bibliographystyle{newapa}
 \bibliography{dat390_report}
 ((* endblock bibliography *))
