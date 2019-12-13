@@ -7,13 +7,14 @@ __version__ = "0.0.1"
 
 import os
 import h5py
+import numpy as np
+import warnings
 
 from tensorflow.keras.callbacks import CSVLogger
-from ..model.callbacks import DeoxysModelCheckpoint, EvaluationCheckpoint, \
-    PredictionCheckpoint
+from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint
 from ..model import model_from_full_config, model_from_config, load_model
 from ..utils import plot_log_performance_from_csv, mask_prediction, \
-    plot_images_w_predictions
+    plot_images_w_predictions, read_csv
 
 
 class Experiment:
@@ -25,11 +26,14 @@ class Experiment:
     LOG_FILE = '/logs.csv'
     PERFORMANCE_PATH = '/performance'
     PREDICTED_IMAGE_PATH = '/images'
+    TEST_OUTPUT_PATH = '/test'
+    PREDICT_TEST_NAME = '/prediction_test.h5'
 
     def __init__(self,
+                 log_base_path='logs',
                  best_model_monitors='val_loss',
-                 best_model_modes='auto',
-                 log_base_path='logs'):
+                 best_model_modes='auto'):
+
         self.model = None
 
         self.architecture = None
@@ -39,12 +43,29 @@ class Experiment:
         self.data_reader = None
         self.weights_file = None
 
-        self.best_model_monitors = best_model_monitors
-        self.best_model_modes = best_model_modes
         self.log_base_path = log_base_path
 
-        self.best_models = {}
-        self.best_saved_model = {}
+        self.best_model_monitors = best_model_monitors if type(
+            best_model_monitors) == list else [best_model_monitors]
+        self.best_model_modes = best_model_modes if type(
+            best_model_modes) == list else \
+            [best_model_modes] * len(best_model_monitors)
+
+        for i, (monitor, mode) in enumerate(zip(self.best_model_monitors,
+                                                self.best_model_modes)):
+            if mode not in ['auto', 'min', 'max']:
+                warnings.warn('ModelCheckpoint mode %s is unknown, '
+                              'fallback to auto mode.' % (mode),
+                              RuntimeWarning)
+                mode = 'auto'
+
+            if mode == 'auto':
+                if 'acc' in monitor or \
+                        monitor.startswith('fmeasure') or \
+                        'fbeta' in monitor:
+                    self.best_model_modes[i] = 'max'
+                else:
+                    self.best_model_modes[i] = 'min'
 
     def from_full_config(self, file, weights_file=None, **kwargs):
         self.model = model_from_full_config(file,
@@ -67,6 +88,34 @@ class Experiment:
         self.model = load_model(filename)
 
         return self
+
+    def best_model(self):
+        res = {}
+        logger_path = self.log_base_path + self.LOG_FILE
+        if os.path.isfile(logger_path):
+            df = read_csv(logger_path, index_col='epoch',
+                          usecols=['epoch'] + self.best_model_monitors)
+            min_df = df.min()
+            min_epoch = df.idxmin()
+            max_df = df.max()
+            max_epoch = df.idxmax()
+            for monitor, mode in zip(self.best_model_monitors,
+                                     self.best_model_modes):
+                if mode == 'min':
+                    val = min_df[monitor]
+                    epoch = min_epoch[monitor]
+                else:
+                    val = max_df[monitor]
+                    epoch = max_epoch[monitor]
+                res[monitor] = {
+                    'best': {
+                        'val': val,
+                        'epoch': epoch + 1
+                    }}
+        else:
+            warnings.warn('No log files to check for best model')
+
+        return res
 
     def run_experiment(self, train_history_log=True,
                        model_checkpoint_period=0,
@@ -175,6 +224,78 @@ class Experiment:
                         title=predicted_image_title_name,
                         contour=contour,
                         name=img_name)
+
+        return self
+
+    def run_test(self, use_best_model=False,
+                 masked_images=None,
+                 use_original_image=False,
+                 contour=True,
+                 base_image_name='x',
+                 truth_image_name='y',
+                 image_name='{index:05d}.png',
+                 image_title_name='Image {index:05d}'):
+
+        log_base_path = self.log_base_path
+
+        test_path = log_base_path + self.TEST_OUTPUT_PATH
+
+        if not os.path.exists(test_path):
+            os.makedirs(test_path)
+
+        if use_best_model:
+            raise NotImplementedError
+        else:
+            score = self.model.evaluate_test(verbose=1)
+            print(score)
+
+            predicted = self.model.predict_test(verbose=1)
+
+            # Create the h5 file
+            filepath = test_path + self.PREDICT_TEST_NAME
+            hf = h5py.File(filepath, 'w')
+            hf.create_dataset('predicted', data=predicted)
+            hf.close()
+
+            if use_original_image:
+                original_data = self.model.data_reader.original_test
+
+                for key, val in original_data.items():
+                    hf = h5py.File(filepath, 'a')
+                    hf.create_dataset(key, data=val)
+                    hf.close()
+            else:
+                # Create data from test_generator
+                x = None
+                y = None
+
+                test_gen = self.model.data_reader.test_generator
+                data_gen = test_gen.generate()
+
+                for _ in range(test_gen.total_batch):
+                    next_x, next_y = next(data_gen)
+                    if x is None:
+                        x = next_x
+                        y = next_y
+                    else:
+                        x = np.concatenate((x, next_x))
+                        y = np.concatenate((y, next_y))
+
+                hf = h5py.File(filepath, 'a')
+                hf.create_dataset('x', data=x)
+                hf.create_dataset('y', data=y)
+                hf.close()
+
+            if masked_images:
+                self._plot_predicted_images(
+                    data_path=filepath,
+                    out_path=test_path,
+                    images=masked_images,
+                    base_image_name=base_image_name,
+                    truth_image_name=truth_image_name,
+                    title=image_title_name,
+                    contour=contour,
+                    name=image_name)
 
         return self
 

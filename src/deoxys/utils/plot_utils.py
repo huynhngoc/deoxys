@@ -1,16 +1,32 @@
+# -*- coding: utf-8 -*-
+
+__author__ = "Ngoc Huynh Bao"
+__email__ = "ngoc.huynh.bao@nmbu.no"
+__version__ = "0.0.1"
+
+
+"""
+This file contains multiple helper function for plotting diagram and images
+using matplotlib
+"""
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
+from .data_utils import read_csv
 
 
 def plot_log_performance_from_csv(filepath, output_path):
-    # Load data to file
-    df = pd.read_csv(filepath, index_col='epoch')
+    """
+    Plot and save multiple performance figure using a log file generated from
+    tensorflow.keras.callbacks.CSVLogger
 
-    # Convert str-like array into float numbers
-    object_keys = [key for key, dtype in df.dtypes.items()
-                   if dtype == 'object']
-    for key in object_keys:
-        df[key] = df[key].map(_arraystr2float, na_action='ignore')
+    :param filepath: filename of the log file
+    :type filepath: str
+    :param output_path: path to the folder for saving plotted diagram
+    :type output_path: str
+    """
+    df = read_csv(filepath, index_col='epoch')
 
     # Plot all data
     _plot_data(df, 'All parameters', df.columns, output_path + '/all.png')
@@ -33,13 +49,7 @@ def plot_log_performance_from_csv(filepath, output_path):
 
 def plot_evaluation_performance_from_csv(filepath, output_path):
     # Load data to file
-    df = pd.read_csv(filepath, index_col='epoch')
-
-    # Convert str-like array into float numbers
-    object_keys = [key for key, dtype in df.dtypes.items()
-                   if dtype == 'object']
-    for key in object_keys:
-        df[key] = df[key].map(_arraystr2float, na_action='ignore')
+    df = read_csv(filepath, index_col='epoch')
 
     # Plot evaluation
     _plot_data(df, 'Evaluation Performance', df.columns,
@@ -49,6 +59,27 @@ def plot_evaluation_performance_from_csv(filepath, output_path):
 def mask_prediction(output_path, image, true_mask, pred_mask,
                     title='Predicted',
                     mask_levels=None, channel=None):
+    """
+    Generate and save predicted images with true mask and predicted mask as
+    contouring lines
+
+    :param output_path: path to folder for saving the output images
+    :type output_path: str
+    :param image: a collection of original 2D image data
+    :type image: numpy array / collection
+    :param true_mask: a collection of true mask data
+    :type true_mask: numpy array / collection
+    :param pred_mask: a collection of predicted mask data
+    :type pred_mask: numpy array / collection
+    :param title: title of the diagram, defaults to 'Predicted'
+    :type title: str, optional
+    :param mask_levels: mask_levels when contouring the images,
+    defaults to None
+    :type mask_levels: int, or list of int or float, optional
+    :param channel: if the original image has multiple channels, this indicates
+    which channel to plot the images, defaults to None
+    :type channel: int, optional
+    """
     if not mask_levels:
         mask_levels = 1
     kwargs = {}
@@ -86,9 +117,25 @@ def mask_prediction(output_path, image, true_mask, pred_mask,
 
 def plot_images_w_predictions(output_path, image, true_mask, pred_mask,
                               title='Predicted',
-                              mask_levels=None, channel=None):
-    if not mask_levels:
-        mask_levels = 1
+                              channel=None):
+    """
+    Generate and save predicted images with true mask and predicted mask as
+    separate images
+
+    :param output_path: path to folder for saving the output images
+    :type output_path: str
+    :param image: a collection of original 2D image data
+    :type image: numpy array / collection
+    :param true_mask: a collection of true mask data
+    :type true_mask: numpy array / collection
+    :param pred_mask: a collection of predicted mask data
+    :type pred_mask: numpy array / collection
+    :param title: title of the diagram, defaults to 'Predicted'
+    :type title: str, optional
+    :param channel: if the original image has multiple channels, this indicates
+    which channel to plot the images, defaults to None
+    :type channel: int, optional
+    """
     kwargs = {}
     if not channel:
         if (len(image.shape) == 2
@@ -132,17 +179,3 @@ def _plot_data(dataframe, name, columns, filename):
             dataframe.index) if i % tick_distance == 0])
     ax.set_title(name)
     plt.savefig(filename)
-
-
-def _arraystr2float(val):
-    if '"[' in val and ']"' in val:
-        array = val[2: -2].split(',')
-        if len(array) == 1:
-            try:
-                return float(array[0])
-            except Exception:
-                return array[0]
-        else:
-            return array
-    else:
-        return val
