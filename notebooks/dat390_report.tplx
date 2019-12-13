@@ -23,7 +23,14 @@
 
 ((* block abstract *))
    \abstract{
-   This report provides the results of creating a keras-based framework for ...
+   This is the report for the project in DAT390 course in NMBU.
+   This report provides the results of the development of keras-based framework for automatic tumour delineation.
+   It contains the Software Requirment Specification, as well as the Design Document
+   for the resulting framework. A resulted framework has been successfully developed
+   with the minimum requirement to run an experiment for creating a convolution neural network.
+   The neural network created from the experiment can automatically delineate cancer tumour
+   from medical images. The delineation can be used as an external opinion to help radiologists in
+   the process of radiotherapy for cancer treatment.
    \newline \newline
    }
 ((* endblock abstract *))
@@ -59,7 +66,6 @@
 ((* endblock markdowncell *))
 
 ((* block bibliography *))
-\cite{*}
 \bibliographystyle{newapa}
 \bibliography{dat390_report}
 ((* endblock bibliography *))
