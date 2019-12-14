@@ -5,27 +5,26 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-import tensorflow as tf
+from tensorflow.keras import backend as K
 from tensorflow.keras.losses import Loss, deserialize
 import numpy as np
 from ..utils import Singleton
 
 
 class BinaryFbetaLoss(Loss):
-    def __init__(self, reduction='auto', name="loss_function", beta=1):
+    def __init__(self, reduction='auto', name="binary_fbeta", beta=1):
+        super().__init__(reduction, name)
         self.beta = beta
-        self.name = name
-        self.reduction = reduction
 
     def call(self, target, prediction):
         size = len(prediction.get_shape().as_list())
         reduce_ax = list(range(1, size))
         eps = 1e-8
 
-        true_positive = tf.reduce_sum(prediction * target, axis=reduce_ax)
-        target_positive = tf.reduce_sum(tf.square(target), axis=reduce_ax)
-        predicted_positive = tf.reduce_sum(
-            tf.square(prediction), axis=reduce_ax)
+        true_positive = K.sum(prediction * target, axis=reduce_ax)
+        target_positive = K.sum(K.square(target), axis=reduce_ax)
+        predicted_positive = K.sum(
+            K.square(prediction), axis=reduce_ax)
 
         fb_numerator = (1 + self.beta ** 2) * true_positive + eps
         fb_denominator = (
