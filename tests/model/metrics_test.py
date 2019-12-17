@@ -6,8 +6,10 @@ __version__ = "0.0.1"
 
 
 import pytest
+import numpy as np
+from tensorflow.keras import backend as K
 from tensorflow.keras.metrics import Metric
-from deoxys.model.metrics import Metrics
+from deoxys.model.metrics import Metrics, BinaryFbeta
 from deoxys.customize import register_metric, \
     unregister_metric, custom_metric
 from deoxys.utils import Singleton
@@ -66,3 +68,73 @@ def test_decorator():
         pass
 
     assert Metrics()._metrics["TestMetric2"] is TestMetric2
+
+
+def test_binary_fbeta_metric():
+    true = [
+        [
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0]
+        ],
+        [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0]
+        ],
+        [
+            [1, 1, 1],
+            [0, 1, 0],
+            [1, 1, 1]
+        ],
+        [
+            [1, 0, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+        ]
+    ]
+
+    pred = [
+        [
+            [0, 0, 0],
+            [0, 1, 0],
+            [0, 1, 0]
+        ],
+        [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 0, 0]
+        ],
+        [
+            [1, 1, 1],
+            [0, 0, 1],
+            [1, 1, 1]
+        ],
+        [
+            [1, 1, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+        ]
+    ]
+
+    true = K.constant(true)
+    pred = K.constant(pred)
+    tp = 17
+    fp = 2
+    fn = 3
+
+    eps = 1e-8
+
+    def fscore(beta, tp, fp, fn):
+        numerator = (1 + beta**2) * tp + eps
+        denominator = (1 + beta**2) * tp + beta**2 * fn + fp + eps
+
+        return numerator / denominator
+
+    beta = 1
+    metric = BinaryFbeta(beta=beta)
+    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, tp, fp, fn))
+
+    beta = 2
+    metric = BinaryFbeta(beta=beta)
+    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, tp, fp, fn))

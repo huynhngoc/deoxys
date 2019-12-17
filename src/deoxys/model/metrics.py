@@ -14,6 +14,10 @@ from ..utils import Singleton
 
 
 class BinaryFbeta(_ConfusionMatrixConditionCount):
+    """
+    Calculate the micro f1 score in the set of data
+    """
+
     def __init__(self,
                  thresholds=None,
                  name=None,
@@ -40,7 +44,7 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
             'false_negatives',
             shape=(num_thresholds,),
             initializer='zeros')
-        self.beta = 1
+        self.beta = beta
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         # https://github.com/tensorflow/tensorflow/issues/30711

@@ -131,8 +131,10 @@ def test_binary_fbeta_loss():
 
         return numerator / denominator
 
-    loss = BinaryFbetaLoss()
-    assert np.allclose(loss.call(true, pred), (1 - fscore(1, tp, fp, fn)))
+    beta = 1
+    loss = BinaryFbetaLoss(beta=beta)
+    assert np.allclose(loss.call(true, pred), (1 - fscore(beta, tp, fp, fn)))
 
-    loss = BinaryFbetaLoss(beta=2)
-    assert np.allclose(loss.call(true, pred), (1 - fscore(2, tp, fp, fn)))
+    beta = 2
+    loss = BinaryFbetaLoss(beta=beta)
+    assert np.allclose(loss.call(true, pred), (1 - fscore(beta, tp, fp, fn)))
