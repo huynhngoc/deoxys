@@ -10,6 +10,26 @@ from ..utils import deep_copy
 
 
 def load_train_params(train_params):
+    """
+    Create training parameters from configuration
+
+    :param train_params: dictionary of training parameters configuration
+    (epochs, callbacks)
+    ```
+    {
+        "epoch": 10,
+        "callbacks": [
+            "CSVLogger",
+            {
+                "class_name": "ModelCheckpoint"
+            }
+        ]
+    }
+    ```
+    :type train_params: dict
+    :return: dictionary of training parameters objects
+    :rtype: dict
+    """
     if not train_params:
         return {}
     params = deep_copy(train_params)

@@ -12,6 +12,35 @@ from ..utils import deep_copy
 
 
 def load_params(model_params):
+    """
+    Create model objects from configurations
+
+    :param model_params: dictionary of model objects (optimizer, loss, metrics)
+
+    Example:
+    ```
+    {
+        "loss": {
+            "class_name": "BinaryFbetaLoss"
+        },
+        "optimizer": {
+            "class_name": "adam",
+            "config": {
+                "learning_rate": 0.0001
+            }
+        },
+        "metrics": [
+            {
+                "class_name": "BinaryFbeta"
+            },
+            "accuracy"
+        ]
+    }
+    ```
+    :type model_params: dict
+    :return: [description]
+    :rtype: dict
+    """
     if not model_params:
         return {}
     params = deep_copy(model_params)

@@ -11,6 +11,36 @@ from ..utils import deep_copy
 
 
 def load_data(dataset_params):
+    """
+    Create an data reader instance from a config object.
+    Example:
+    {
+        "class_name": "HDF5Reader",
+        "config": {
+            "filename": "../../dataset.h5",
+            "batch_size": 16,
+            "x_name": "input",
+            "y_name": "target",
+            "batch_cache": 4,
+            "train_folds": [0, 1],
+            "val_folds": [2],
+            "test_folds": [3, 4],
+            "preprocessors": {
+                "class_name": "WindowingPreprocessor",
+                "config": {
+                    "window_center": 1094,
+                    "window_width": 200,
+                    "channel": 0
+                }
+            }
+        }
+    }
+
+    :param dataset_params: the configuration of the data reader
+    :type dataset_params: dict
+    :return: the data reader instance
+    :rtype: deoxys.data.DataReader
+    """
     if not dataset_params:
         return {}
     params = deep_copy(dataset_params)

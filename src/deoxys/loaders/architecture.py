@@ -14,10 +14,53 @@ from ..utils import deep_copy
 
 
 class BaseModelLoader:
+    """
+    The base class of all model loader. A model loader will create a
+    neuralnetwork model with a predefined architecture.
+    For example, UnetModelLoader creates a neural network with Unet structure.
+
+    :raises NotImplementedError: `load` method needs to be implemented in
+    children classes
+    """
     def load():
         raise NotImplementedError()
 
     def __init__(self, architecture, input_params):
+        """
+        Initialize a model loader.
+
+        :param architecture: configuration for the network architecture
+        Example:
+        ```
+        {
+            "type": "Sequential",
+            "layers": [
+                {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                {
+                "class_name": "Dense",
+                "config": {
+                    "units": 2,
+                    "activation": "sigmoid"
+                },
+            ]
+        }
+        ```
+        :type architecture: dict
+        :param input_params: configuration for the input layer
+        ```
+        {
+            "shape": [128, 128, 3]
+        }
+        ```
+        :type input_params: dict
+        """
         if 'layers' in architecture:
             self._layers = deep_copy(architecture['layers'])
 
@@ -25,23 +68,16 @@ class BaseModelLoader:
 
 
 class SequentialModelLoader(BaseModelLoader):
-    """[summary]
-
-        {
-          "class_name": "Conv2D",
-          "config": {
-            "filters": 3,
-            "kernel_size":[3, 3]
-          }
-        }
-
-    :param BaseLoader: [description]
-    :type BaseLoader: [type]
-    :return: [description]
-    :rtype: [type]
+    """
+    Create a sequential network from list of layers
     """
 
     def load(self):
+        """
+        :return: A neural network of sequential layers
+        from the configured layer list.
+        :rtype: tensorflow.keras.models.Model
+        """
         layers = [Input(**self._input_params)]
 
         for i, layer in enumerate(self._layers):
@@ -51,7 +87,223 @@ class SequentialModelLoader(BaseModelLoader):
 
 
 class UnetModelLoader(BaseModelLoader):
+    """
+    Create a unet neural network from layers
+
+    :raises NotImplementedError: volumn adjustment in skip connection
+    doesn't support for 3D unet
+    """
+
     def load(self):
+        """
+        Load the unet neural network.
+        Example of Configuration for `layers`:
+        ```
+        [
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_1",
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "MaxPooling2D"
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_2",
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            ...
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_5",
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "MaxPooling2D"
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 128,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 128,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_T_1",
+                "class_name": "Conv2DTranspose",
+                "config": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "strides": [
+                        2,
+                        2
+                    ],
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                "inputs": [
+                    "conv_T_1",
+                    "conv_5"
+                ]
+            },
+            ...
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 16,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_T_4",
+                "class_name": "Conv2DTranspose",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "strides": [
+                        2,
+                        2
+                    ],
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                "inputs": [
+                    "conv_T_4",
+                    "conv_2"
+                ]
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_T_5",
+                "class_name": "Conv2DTranspose",
+                "config": {
+                    "filters": 2,
+                    "kernel_size": 3,
+                    "strides": [
+                        2,
+                        2
+                    ],
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                "inputs": [
+                    "conv_T_5",
+                    "conv_1"
+                ]
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 1,
+                    "kernel_size": 1,
+                    "activation": "sigmoid"
+                }
+            }
+        ]
+        ```
+
+        :raises NotImplementedError: volumn adjustment in skip connection
+        doesn't support
+        :return: A neural network with unet structure
+        :rtype: tensorflow.keras.models.Model
+        """
         layers = [Input(**self._input_params)]
         saved_input = {}
 
