@@ -14,6 +14,12 @@ class DataGenerator:
 
     @property
     def total_batch(self):
+        """
+        Total number of batches to iterate all data
+
+        : return: Total number of batches to iterate all data
+        : rtype: int
+        """
         return 0
 
     def generate(self):
@@ -24,8 +30,41 @@ class HDF5DataGenerator(DataGenerator):
     def __init__(self, h5file, batch_size=32, batch_cache=10,
                  preprocessors=None,
                  x_name='x', y_name='y', folds=None):
-        if not (folds and h5file):
+        if not folds or not h5file:
             raise ValueError("h5file or folds is empty")
+
+        # Checking for existence of folds and dataset
+        group_names = h5file.keys()
+        dataset_names = []
+        str_folds = [str(fold) for fold in folds]
+        for fold in str_folds:
+            if fold not in group_names:
+                raise RuntimeError(
+                    'HDF5 file: Fold name "{0}" is not in this h5 file'
+                    .format(fold))
+            if dataset_names:
+                if h5file[fold].keys() != dataset_names:
+                    raise RuntimeError(
+                        'HDF5 file: All folds should have the same structure')
+            else:
+                dataset_names = h5file[fold].keys()
+                if x_name not in dataset_names or y_name not in dataset_names:
+                    raise RuntimeError(
+                        'HDF5 file: {0} or {1} is not in the file'
+                        .format(x_name, y_name))
+
+        # Checking for valida preprocessor
+        if preprocessors:
+            if type(preprocessors) == list:
+                for pp in preprocessors:
+                    if not callable(getattr(pp, 'transform', None)):
+                        raise ValueError(
+                            'Preprocessor should have a "transform" method')
+            else:
+                if not callable(getattr(preprocessors, 'transform', None)):
+                    raise ValueError(
+                        'Preprocessor should have a "transform" method')
+
         self.hf = h5file
         self.batch_size = batch_size
         self.seg_size = batch_size * batch_cache
@@ -33,7 +72,7 @@ class HDF5DataGenerator(DataGenerator):
         self.x_name = x_name
         self.y_name = y_name
 
-        self.folds = list(folds)
+        self.folds = str_folds
 
         # Cache first segment for first fold
         self.index = 0
@@ -51,6 +90,14 @@ class HDF5DataGenerator(DataGenerator):
 
     @property
     def total_batch(self):
+        """
+        Total number of batches to iterate all data.
+        It will be used as the number of steps per epochs when training or
+        validating data in a model.
+
+        : return: Total number of batches to iterate all data
+        : rtype: int
+        """
         if self._total_batch is None:
             total_batch = 0
             fold_names = self.folds
@@ -102,6 +149,12 @@ class HDF5DataGenerator(DataGenerator):
                 self.y_name][seg_index:next_seg_index]
 
     def generate(self):
+        """
+        Create a generator that generate a batch of data
+
+        :yield: batch of (input, target)
+        :rtype: tuple of 2 arrays
+        """
         while True:
             # When all batches of data are yielded, move to next seg
             if self.index >= self.seg_size or \

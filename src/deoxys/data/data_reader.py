@@ -154,9 +154,14 @@ class HDF5Reader(DataReader):
             self.val_folds = val_folds
 
         self._original_test = None
+        self._original_val = None
 
     @property
     def train_generator(self):
+        """
+        :return: A DataGenerator for generating batches of data for training
+        :rtype: deoxys.data.DataGenerator
+        """
         return HDF5DataGenerator(
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
@@ -165,6 +170,10 @@ class HDF5Reader(DataReader):
 
     @property
     def test_generator(self):
+        """
+        :return: A DataGenerator for generating batches of data for testing
+        :rtype: deoxys.data.DataGenerator
+        """
         return HDF5DataGenerator(
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
@@ -173,6 +182,10 @@ class HDF5Reader(DataReader):
 
     @property
     def val_generator(self):
+        """
+        :return: A DataGenerator for generating batches of data for validation
+        :rtype: deoxys.data.DataGenerator
+        """
         return HDF5DataGenerator(
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
             preprocessors=self.preprocessors,
@@ -191,10 +204,10 @@ class HDF5Reader(DataReader):
                 for fold in self.test_folds:
                     new_data = self.hf[fold][key][:]
 
-                    if data:
-                        data = np.concatenate((data, new_data))
-                    else:
+                    if data is None:
                         data = new_data
+                    else:
+                        data = np.concatenate((data, new_data))
                 self._original_test[key] = data
 
         return self._original_test
@@ -211,10 +224,10 @@ class HDF5Reader(DataReader):
                 for fold in self.val_folds:
                     new_data = self.hf[fold][key][:]
 
-                    if data:
-                        data = np.concatenate((data, new_data))
-                    else:
+                    if data is None:
                         data = new_data
+                    else:
+                        data = np.concatenate((data, new_data))
                 self._original_val[key] = data
 
         return self._original_val
@@ -235,7 +248,7 @@ class KerasImageDataGenerator:
 
 class DataReaders(metaclass=Singleton):
     """
-    A singleton that contains all the registered customized preprocessors
+    A singleton that contains all the registered customized DataReaders
     """
 
     def __init__(self):
