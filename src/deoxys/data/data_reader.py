@@ -233,19 +233,6 @@ class HDF5Reader(DataReader):
         return self._original_val
 
 
-class KerasImageDataGenerator:
-    def __init__(self, img_datagen, x_train, y_train, x_test, y_test):
-        if type(img_datagen) is not ImageDataGenerator:
-            raise ValueError("This data reader requires an instance from "
-                             "from tensorflow.keras.preprocessing.image."
-                             "ImageDataGenerator")
-        self.img_datagen = img_datagen
-        self.x_train = x_train
-        self.x_test = x_test
-        self.y_train = y_train
-        self.y_test = y_test
-
-
 class DataReaders(metaclass=Singleton):
     """
     A singleton that contains all the registered customized DataReaders
@@ -253,8 +240,7 @@ class DataReaders(metaclass=Singleton):
 
     def __init__(self):
         self._dataReaders = {
-            'HDF5Reader': HDF5Reader,
-            'KerasImageDataGenerator': KerasImageDataGenerator
+            'HDF5Reader': HDF5Reader
         }
 
     def register(self, key, preprocessor):

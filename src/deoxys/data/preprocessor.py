@@ -59,6 +59,7 @@ class WindowingPreprocessor(BasePreprocessor):
 
 class KerasImagePreprocessorX(BasePreprocessor):
     def __init__(self,
+                 shuffle=True,
                  featurewise_center=False,
                  samplewise_center=False,
                  featurewise_std_normalization=False,
@@ -72,6 +73,8 @@ class KerasImagePreprocessorX(BasePreprocessor):
                  scale_down=None,
                  preprocessing_function=None, data_format='channels_last',
                  interpolation_order=1, dtype='float32'):
+
+        self.shuffle = shuffle
 
         if scale_down and (rescale is None):
             rescale = 1 / scale_down
@@ -94,11 +97,13 @@ class KerasImagePreprocessorX(BasePreprocessor):
             data_format=data_format, dtype=dtype)
 
     def transform(self, x, y):
-        return next(self.preprocessor.flow(x, batch_size=x.shape[0])), y
+        return next(self.preprocessor.flow(x, batch_size=x.shape[0],
+                                           shuffle=self.shuffle)), y
 
 
 class KerasImagePreprocessorY(BasePreprocessor):
     def __init__(self,
+                 shuffle=True,
                  featurewise_center=False,
                  samplewise_center=False,
                  featurewise_std_normalization=False,
@@ -112,6 +117,7 @@ class KerasImagePreprocessorY(BasePreprocessor):
                  scale_down=None,
                  preprocessing_function=None, data_format='channels_last',
                  dtype='float32'):
+        self.shuffle = shuffle
 
         if scale_down and (rescale is None):
             rescale = 1 / scale_down
@@ -135,7 +141,8 @@ class KerasImagePreprocessorY(BasePreprocessor):
             dtype=dtype)
 
     def transform(self, x, y):
-        return x, next(self.preprocessor.flow(y, batch_size=x.shape[0]))
+        return x, next(self.preprocessor.flow(y, batch_size=x.shape[0],
+                                              shuffle=self.shuffle))
 
 
 class Preprocessors(metaclass=Singleton):

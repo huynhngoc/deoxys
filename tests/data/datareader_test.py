@@ -9,9 +9,10 @@ import pytest
 import h5py
 import os
 import numpy as np
-from deoxys.data import DataReaders, DataReader, HDF5Reader
+from deoxys.data import DataReaders, DataReader, HDF5Reader, \
+    datareader_from_config, BasePreprocessor
 from deoxys.customize import register_datareader, \
-    unregister_datareader, custom_datareader
+    unregister_datareader, custom_datareader, custom_preprocessor
 from deoxys.utils import Singleton
 
 
@@ -207,6 +208,37 @@ def test_hdf5_dr_constructor():
     dr.val_generator
 
 
+def test_invalid_dr_from_config():
+    with pytest.raises(ValueError):
+        datareader_from_config({
+            'config': {}
+        })
+
+
+def test_hdf5_dr_from_config():
+    config = {
+        'filename': VALID_H5_FILE,
+        'x_name': 'input',
+        'y_name': 'target',
+        'train_folds': [0, 1, 2],
+        'val_folds': [3],
+        'test_folds': [4, 5]
+    }
+
+    dr = datareader_from_config({
+        'class_name': 'HDF5Reader',
+        'config': config
+    })
+
+    assert dr.train_folds == ['fold_0', 'fold_1', 'fold_2']
+    assert dr.val_folds == ['fold_3']
+    assert dr.test_folds == ['fold_4', 'fold_5']
+
+    dr.train_generator
+    dr.test_generator
+    dr.val_generator
+
+
 def test_hdf5_dr_constructor_no_prefix():
     dr = HDF5Reader(VALID_H5_FILE_M, batch_size=8,
                     x_name='input', y_name='target', fold_prefix=None)
@@ -293,6 +325,82 @@ def test_hdf5_dr_generator():
 
     expected_train_input = np.reshape(np.arange(400 * 25), (400, 5, 5))
     expected_train_target = np.array([1, 2, 3, 4, 5] * 80)
+
+    total_batch = dr.train_generator.total_batch
+    data_gen = dr.train_generator.generate()
+    end = 0
+
+    for i, (input_data, target) in enumerate(data_gen):
+        if i >= total_batch:
+            break
+
+        start = end
+        end = start + batch_size
+
+        if end % 100 < batch_size:
+            end -= end % 100
+
+        print(start, end, expected_train_target)
+        print(target)
+
+        assert np.all(expected_train_target[start:end] == target)
+        assert np.all(expected_train_input[start:end] == input_data)
+
+
+def test_hdf5_dr_generator_preprocessor():
+    batch_size = 8
+
+    @custom_preprocessor
+    class PlusOnePreprocessor(BasePreprocessor):
+        def transform(x, y):
+            return x + 1, y + 1
+
+    dr = HDF5Reader(VALID_H5_FILE, batch_size=batch_size,
+                    x_name='input', y_name='target',
+                    train_folds=[0, 1, 2, 3], val_folds=[4],
+                    test_folds=[5, 6],
+                    preprocessors=PlusOnePreprocessor)
+
+    expected_train_input = np.reshape(np.arange(1, 400 * 25 + 1), (400, 5, 5))
+    expected_train_target = np.array([2, 3, 4, 5, 6] * 80)
+
+    total_batch = dr.train_generator.total_batch
+    data_gen = dr.train_generator.generate()
+    end = 0
+
+    for i, (input_data, target) in enumerate(data_gen):
+        if i >= total_batch:
+            break
+
+        start = end
+        end = start + batch_size
+
+        if end % 100 < batch_size:
+            end -= end % 100
+
+        print(start, end, expected_train_target)
+        print(target)
+
+        assert np.all(expected_train_target[start:end] == target)
+        assert np.all(expected_train_input[start:end] == input_data)
+
+
+def test_hdf5_dr_generator_multipreprocessors():
+    batch_size = 8
+
+    @custom_preprocessor
+    class PlusOnePreprocessor(BasePreprocessor):
+        def transform(x, y):
+            return x + 1, y + 1
+
+    dr = HDF5Reader(VALID_H5_FILE, batch_size=batch_size,
+                    x_name='input', y_name='target',
+                    train_folds=[0, 1, 2, 3], val_folds=[4],
+                    test_folds=[5, 6],
+                    preprocessors=[PlusOnePreprocessor, PlusOnePreprocessor])
+
+    expected_train_input = np.reshape(np.arange(2, 400 * 25 + 2), (400, 5, 5))
+    expected_train_target = np.array([3, 4, 5, 6, 7] * 80)
 
     total_batch = dr.train_generator.total_batch
     data_gen = dr.train_generator.generate()
