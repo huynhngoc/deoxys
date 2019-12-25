@@ -315,15 +315,19 @@ class UnetModelLoader(BaseModelLoader):
                 size_factors = None
                 for input_name in layer['inputs']:
                     if size_factors:
-                        if len(size_factors) == 2:
-                            next_input = image.resize(
-                                saved_input[input_name],
-                                size_factors,
-                                # preserve_aspect_ratio=True,
-                                method='bilinear')
+                        if size_factors == saved_input[
+                                input_name].get_shape().as_list()[1:-1]:
+                            next_input = saved_input[input_name]
                         else:
-                            raise NotImplementedError(
-                                "Resize 3D tensor not implemented")
+                            if len(size_factors) == 2:
+                                next_input = image.resize(
+                                    saved_input[input_name],
+                                    size_factors,
+                                    # preserve_aspect_ratio=True,
+                                    method='bilinear')
+                            else:
+                                raise NotImplementedError(
+                                    "Resize 3D tensor not implemented")
                         inputs.append(next_input)
 
                     else:

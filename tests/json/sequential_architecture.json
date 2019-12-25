@@ -1,0 +1,29 @@
+{
+    "type": "Sequential",
+    "layers": [
+        {
+            "class_name": "Flatten",
+            "config": {}
+        },
+        {
+            "class_name": "Dense",
+            "config": {
+                "units": 128,
+                "activation": "relu"
+            }
+        },
+        {
+            "class_name": "Dropout",
+            "config": {
+                "rate": 0.2
+            }
+        },
+        {
+            "class_name": "Dense",
+            "config": {
+                "units": 10,
+                "activation": "softmax"
+            }
+        }
+    ]
+}
