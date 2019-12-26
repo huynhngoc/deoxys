@@ -243,19 +243,19 @@ class DataReaders(metaclass=Singleton):
             'HDF5Reader': HDF5Reader
         }
 
-    def register(self, key, preprocessor):
-        if not issubclass(preprocessor, DataReader):
+    def register(self, key, dr):
+        if not issubclass(dr, DataReader):
             raise ValueError(
-                "The customized preprocessor has to be a subclass"
+                "The customized data reader has to be a subclass"
                 + " of deoxys.data.DataReader"
             )
 
         if key in self._dataReaders:
             raise KeyError(
-                "Duplicated key, please use another key for this preprocessor"
+                "Duplicated key, please use another key for this data reader"
             )
         else:
-            self._dataReaders[key] = preprocessor
+            self._dataReaders[key] = dr
 
     def unregister(self, key):
         if key in self._dataReaders:
@@ -266,24 +266,24 @@ class DataReaders(metaclass=Singleton):
         return self._dataReaders
 
 
-def register_datareader(key, preprocessor):
+def register_datareader(key, dr):
     """
-    Register the customized preprocessor.
+    Register the customized data reader.
     If the key name is already registered, it will raise a KeyError exception
 
-    :param key: the unique key-name of the preprocessor
+    :param key: the unique key-name of the data reader
     :type key: str
-    :param preprocessor: the customized preprocessor class
-    :type preprocessor: deoxys.data.DataReader
+    :param dr: the customized data reader class
+    :type dr: deoxys.data.DataReader
     """
-    DataReaders().register(key, preprocessor)
+    DataReaders().register(key, dr)
 
 
 def unregister_datareader(key):
     """
-    Remove the registered preprocessor with the key-name
+    Remove the registered data reader with the key-name
 
-    :param key: the key-name of the preprocessor to be removed
+    :param key: the key-name of the data reader to be removed
     :type key: str
     """
     DataReaders().unregister(key)
@@ -295,9 +295,9 @@ def _deserialize(config, custom_objects={}):
 
 def datareader_from_config(config):
     if 'class_name' not in config:
-        raise ValueError('class_name is needed to define preprocessor')
+        raise ValueError('class_name is needed to define data reader')
 
     if 'config' not in config:
-        # auto add empty config for preprocessor with only class_name
+        # auto add empty config for data reader with only class_name
         config['config'] = {}
     return _deserialize(config, custom_objects=DataReaders().data_readers)

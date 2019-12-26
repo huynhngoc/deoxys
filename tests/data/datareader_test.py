@@ -352,14 +352,14 @@ def test_hdf5_dr_generator_preprocessor():
 
     @custom_preprocessor
     class PlusOnePreprocessor(BasePreprocessor):
-        def transform(x, y):
+        def transform(self, x, y):
             return x + 1, y + 1
 
     dr = HDF5Reader(VALID_H5_FILE, batch_size=batch_size,
                     x_name='input', y_name='target',
                     train_folds=[0, 1, 2, 3], val_folds=[4],
                     test_folds=[5, 6],
-                    preprocessors=PlusOnePreprocessor)
+                    preprocessors=PlusOnePreprocessor())
 
     expected_train_input = np.reshape(np.arange(1, 400 * 25 + 1), (400, 5, 5))
     expected_train_target = np.array([2, 3, 4, 5, 6] * 80)
