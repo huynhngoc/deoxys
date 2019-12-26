@@ -1,0 +1,19 @@
+{
+    "loss": {
+        "class_name": "BinaryFbetaLoss"
+    },
+    "optimizer": {
+        "class_name": "adam",
+        "config": {
+            "learning_rate": 0.0001
+        }
+    },
+    "metrics": [
+        {
+            "class_name": "BinaryFbeta"
+        },
+        "TruePositives",
+        "FalsePositives",
+        "FalseNegatives"
+    ]
+}
