@@ -1,0 +1,20 @@
+{
+    "epochs": 5,
+    "callbacks": [
+        {
+            "class_name": "CSVLogger",
+            "config": {
+                "filename": "../../mnist_log.csv"
+            }
+        },
+        {
+            "class_name": "ModelCheckpoint",
+            "config": {
+                "monitor": "val_loss",
+                "filepath": "../../mnist.{epoch:02d}-{val_loss:.2f}.h5",
+                "period": 1
+            }
+        },
+        "TerminateOnNaN"
+    ]
+}

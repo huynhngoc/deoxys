@@ -6,9 +6,6 @@ __version__ = "0.0.1"
 
 
 import pytest
-import h5py
-import os
-import numpy as np
 from tensorflow.keras.optimizers import Adam
 from deoxys.loaders import load_params
 from deoxys.model.losses import BinaryFbetaLoss
