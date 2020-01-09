@@ -5,12 +5,65 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
+import tensorflow.keras.backend as K
 from tensorflow.keras.metrics import Metric, deserialize
 from tensorflow.python.keras.metrics import _ConfusionMatrixConditionCount
 from tensorflow.python.keras.utils.metrics_utils \
     import update_confusion_matrix_variables, parse_init_thresholds, \
     ConfusionMatrix
 from ..utils import Singleton
+
+
+class Fbeta(Metric):
+    def __init__(self, threshold=None, name=None, dtype=None, beta=1):
+        super().__init__(name=name, dtype=dtype)
+
+        self.threshold = threshold
+        self.beta = beta
+
+        self.total = self.add_weight(
+            'total', initializer='zeros')
+        self.count = self.add_weight(
+            'count', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        size = len(y_pred.get_shape().as_list())
+        reduce_ax = list(range(1, size))
+        eps = 1e-8
+
+        true_positive = K.sum(y_pred * y_true, axis=reduce_ax)
+        target_positive = K.sum(K.square(y_true), axis=reduce_ax)
+        predicted_positive = K.sum(
+            K.square(y_pred), axis=reduce_ax)
+
+        fb_numerator = (1 + self.beta ** 2) * true_positive + eps
+        fb_denominator = (
+            (self.beta ** 2) * target_positive + predicted_positive + eps
+        )
+        if sample_weight:
+            weight = K.cast(sample_weight, self.dtype)
+            K.update_add(
+                self.total,
+                K.sum(weight * fb_numerator / fb_denominator))
+        else:
+            K.update_add(self.total, K.sum(fb_numerator / fb_denominator))
+
+        K.update_add(self.count, K.sum(
+            weight) if sample_weight else y_pred.get_shape()[0])
+
+    def result(self):
+        if self.count == 0:
+            return 0
+
+        print(self.total / self.count)
+
+        return self.total / self.count
+
+    def get_config(self):
+        config = {'threshold': self.threshold,
+                  'beta': self.beta}
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
 
 class BinaryFbeta(_ConfusionMatrixConditionCount):
