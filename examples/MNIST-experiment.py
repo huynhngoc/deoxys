@@ -6,5 +6,5 @@ if __name__ == '__main__':
 
     config = read_file('examples/json/sequential-config.json')
 
-    Experiment().from_full_config(
+    Experiment(log_base_path='../../mnist/logs').from_full_config(
         config).run_experiment()

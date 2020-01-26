@@ -41,3 +41,6 @@ tox
 ```
 
 * TODO
+
+To run on CPU
+`set CUDA_VISIBLE_DEVICES=-1`

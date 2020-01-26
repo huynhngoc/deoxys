@@ -48,14 +48,13 @@ class Fbeta(Metric):
         else:
             K.update_add(self.total, K.sum(fb_numerator / fb_denominator))
 
-        K.update_add(self.count, K.sum(
-            weight) if sample_weight else y_pred.get_shape()[0])
+        count = K.sum(weight) if sample_weight else y_pred.get_shape()[0]
+
+        K.update_add(self.count, count or 0)
 
     def result(self):
-        if self.count == 0:
+        if K.get_value(self.count) == 0:
             return 0
-
-        print(self.total / self.count)
 
         return self.total / self.count
 
@@ -140,7 +139,8 @@ class Metrics(metaclass=Singleton):
 
     def __init__(self):
         self._metrics = {
-            'BinaryFbeta': BinaryFbeta
+            'BinaryFbeta': BinaryFbeta,
+            'Fbeta': Fbeta
         }
 
     def register(self, key, metric):
