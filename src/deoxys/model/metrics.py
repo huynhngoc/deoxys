@@ -50,7 +50,7 @@ class Fbeta(Metric):
 
         count = K.sum(weight) if sample_weight else y_pred.get_shape()[0]
 
-        K.update_add(self.count, count or 0)
+        K.update_add(self.count, 0 if count is None else count)
 
     def result(self):
         if K.get_value(self.count) == 0:
