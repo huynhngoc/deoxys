@@ -11,7 +11,8 @@ import numpy as np
 import warnings
 
 from tensorflow.keras.callbacks import CSVLogger
-from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint
+from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint, \
+    DBLogger
 from ..model import model_from_full_config, model_from_config, load_model
 from ..utils import plot_log_performance_from_csv, mask_prediction, \
     plot_images_w_predictions, read_csv
@@ -356,3 +357,154 @@ class Experiment:
                     return True
         raise RuntimeError("Cannot run experiment with incomplete model")
         return False
+
+
+class ExperimentDB(Experiment):
+    TABLE_NAME = 'sessions'
+    LOGS_TABLE_NAME = 'perf_logs'
+    MODELS_TABLE_NAME = 'models'
+    EXPERIMENTS_TABLE_NAME = 'experiments'
+
+    def __init__(self, dbclient, experiment, session_id=None,
+                 log_base_path='logs',
+                 best_model_monitors='val_loss',
+                 best_model_modes='auto'):
+        """
+        An experiment logging performance to a database
+
+        :param dbclient: the database client
+        :type dbclient: deoxys.database.DBClient
+        :param experiment: experiment id
+        :type experiment: str, int, or ObjectID depending of the dbclient
+        :param log_base_path: base path to log files, defaults to 'logs'
+        :type log_base_path: str, optional
+        :param best_model_monitors: defaults to 'val_loss'
+        :type best_model_monitors: str, optional
+        :param best_model_modes: defaults to 'auto'
+        :type best_model_modes: str, optional
+        """
+        super().__init__(log_base_path, best_model_monitors, best_model_modes)
+
+        self.dbclient = dbclient
+        self.experiment = experiment
+
+        if session_id:
+            last_model = self.dbclient.find_max(self.MODELS_TABLE_NAME, {
+                'session': session_id}, 'epoch')
+            self.curr_epoch = last_model['epoch']
+            self.session = dbclient.find_by_id(self.TABLE_NAME, session_id)
+
+            self._update_epoch(last_model['epoch'])
+
+            self.from_file(last_model['location'])
+        else:
+            insert_res = dbclient.insert(self.TABLE_NAME, {
+                'experiment': experiment,
+                'curr_epoch': 0,
+                'status': 'created'
+            }, time_logs=True)
+
+            self.session = self.dbclient.find_by_id(
+                self.TABLE_NAME, insert_res.inserted_id)
+
+            self.curr_epoch = 0
+
+            experiment_obj = self.dbclient.find_by_id(
+                self.EXPERIMENTS_TABLE_NAME, experiment)
+
+            if 'config' in experiment_obj:
+                self.from_full_config(experiment_obj['config'])
+            elif 'file_location' in experiment_obj:
+                self.from_file(experiment_obj['file_location'])
+
+        self.log_base_path = os.path.join(
+            log_base_path, str(self.session['_id']))
+
+    def run_experiment(self, train_history_log=True,
+                       model_checkpoint_period=0,
+                       prediction_checkpoint_period=0,
+                       save_origin_images=False,
+                       verbose=1,
+                       epochs=None
+                       ):
+        log_base_path = self.log_base_path
+
+        if self._check_run():
+            if not os.path.exists(log_base_path):
+                os.makedirs(log_base_path)
+
+            kwargs = {}
+
+            if epochs:
+                kwargs['epochs'] = epochs + self.curr_epoch
+
+            kwargs['initial_epoch'] = self.curr_epoch
+
+            callbacks = []
+
+            if train_history_log:
+                callback = self._create_logger(log_base_path,
+                                               append=self.curr_epoch > 0)
+                callbacks.append(callback)
+
+                callback = self._create_db_logger()
+                callbacks.append(callback)
+
+            if model_checkpoint_period > 0:
+                if not os.path.exists(log_base_path + self.MODEL_PATH):
+                    os.makedirs(log_base_path + self.MODEL_PATH)
+
+                callback = self._create_model_checkpoint(
+                    log_base_path,
+                    period=model_checkpoint_period)
+                callbacks.append(callback)
+
+            if prediction_checkpoint_period > 0:
+                if not os.path.exists(log_base_path + self.PREDICTION_PATH):
+                    os.makedirs(log_base_path + self.PREDICTION_PATH)
+
+                callback = self._create_prediction_checkpoint(
+                    log_base_path,
+                    prediction_checkpoint_period,
+                    use_original=save_origin_images
+                )
+                callbacks.append(callback)
+
+            kwargs['callbacks'] = callbacks
+
+            self._update_status('training')
+
+            self.model.fit_train(**kwargs)
+
+            self.curr_epoch += epochs
+            self._update_status('finished')
+            self._update_epoch(self.curr_epoch)
+
+            return self
+
+    def _create_db_logger(self):
+        return DBLogger(self.dbclient, self.session['_id'])
+
+    def _update_epoch(self, new_epoch):
+        self.dbclient.update_by_id(
+            self.TABLE_NAME, self.session['_id'],
+            {'epoch': new_epoch}, time_logs=True)
+
+    def _update_status(self, new_status):
+        self.dbclient.update_by_id(
+            self.TABLE_NAME, self.session['_id'],
+            {'status': new_status}, time_logs=True)
+
+    def _create_model_checkpoint(self, base_path, period):
+        return DeoxysModelCheckpoint(
+            period=period,
+            filepath=base_path + self.MODEL_PATH + self.MODEL_NAME,
+            dbclient=self.dbclient,
+            session=self.session['_id'])
+
+    def _create_prediction_checkpoint(self, base_path, period, use_original):
+        return PredictionCheckpoint(
+            filepath=base_path + self.PREDICTION_PATH + self.PREDICTION_NAME,
+            period=period, use_original=use_original,
+            dbclient=self.dbclient,
+            session=self.session['_id'])
