@@ -5,8 +5,4 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from . import model
-from . import data
-from . import preprocessing
-from . import customize
-from . import database
+from .dbclient import *

@@ -114,17 +114,78 @@ class EvaluationCheckpoint(DeoxysModelCallback):
             self.csv_file.flush()
 
 
+class DBLogger(Callback):  # noqa: F405
+    TABLE_NAME = 'perf_logs'
+
+    def __init__(self, dbclient, session):
+        """
+        Log performance to database
+
+        :param dbclient: the database client that stores all data
+        :type dbclient: deoxys.database.DBClient
+        :param session: session id
+        :type session: str, int, or ObjectId, depending of the provider
+                       of DBClient
+        """
+        self.dbclient = dbclient
+        self.session = session
+
+        self.keys = None
+
+        super().__init__()
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+
+        def handle_value(k):
+            is_zero_dim_ndarray = isinstance(k, np.ndarray) and k.ndim == 0
+            if isinstance(k, str):
+                return k
+            elif isinstance(k, Iterable) and not is_zero_dim_ndarray:
+                if k.ndim == 1:
+                    if isinstance(k[0], np.generic):
+                        return np.asscalar(k[0])
+                    else:
+                        return k[0]
+                else:
+                    return '"[%s]"' % (', '.join(map(str, k)))
+            else:
+                if isinstance(k, np.generic):
+                    return np.asscalar(k)
+                else:
+                    return k
+
+        if self.keys is None:
+            self.keys = sorted(logs.keys())
+
+        if self.model.stop_training:
+            # We set NA so that it won't fail in this last epoch.
+            logs = dict([(k, logs[k] if k in logs else 'NA')
+                         for k in self.keys])
+
+        identifier = {'session': self.session, 'epoch': epoch + 1}
+        perf_log = OrderedDict(identifier)
+        perf_log.update((key, handle_value(logs[key])) for key in self.keys)
+
+        self.dbclient.update_insert(self.TABLE_NAME, identifier, perf_log)
+
+
 class PredictionCheckpoint(DeoxysModelCallback):
     """
     Predict test in every number of epochs
     """
+    TABLE_NAME = 'predictions'
 
-    def __init__(self, filepath=None, period=1, use_original=False):
+    def __init__(self, filepath=None, period=1, use_original=False,
+                 dbclient=None, session=None):
         self.period = period
         self.epochs_since_last_save = 0
 
         self.filepath = filepath
         self.use_original = use_original
+
+        self.dbclient = dbclient
+        self.session = session
 
         super().__init__()
 
@@ -177,17 +238,30 @@ class PredictionCheckpoint(DeoxysModelCallback):
                 hf.create_dataset('y', data=y)
                 hf.close()
 
+            if self.dbclient:
+                item = OrderedDict(
+                    {'session': self.session, 'epoch': epoch + 1})
+                item.update({'location': os.path.abspath(filepath)})
+
+                self.dbclient.insert(self.TABLE_NAME, item)
+
 
 class DeoxysModelCheckpoint(DeoxysModelCallback,
                             ModelCheckpoint):  # noqa: F405
+    TABLE_NAME = 'models'
+
     def __init__(self, filepath, monitor='val_loss', verbose=0,
                  save_best_only=False, save_weights_only=False,
-                 mode='auto', period=1):
+                 mode='auto', period=1,
+                 dbclient=None, session=None):
         super().__init__(filepath=filepath,
                          monitor=monitor, verbose=verbose,
                          save_best_only=save_best_only,
                          save_weights_only=save_weights_only,
                          mode=mode, period=period)
+
+        self.dbclient = dbclient
+        self.session = session
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
@@ -195,6 +269,7 @@ class DeoxysModelCheckpoint(DeoxysModelCallback,
         if self.epochs_since_last_save >= self.period:
             self.epochs_since_last_save = 0
             filepath = self.filepath.format(epoch=epoch + 1, **logs)
+            abs_path = os.path.abspath(filepath)
             if self.save_best_only:
                 current = logs.get(self.monitor)
                 if current is None:
@@ -214,6 +289,14 @@ class DeoxysModelCheckpoint(DeoxysModelCallback,
                             self.model.save_weights(filepath, overwrite=True)
                         else:
                             self.deoxys_model.save(filepath, overwrite=True)
+
+                        if self.dbclient:
+                            item = OrderedDict(
+                                {'session': self.session, 'epoch': epoch + 1})
+                            item.update(
+                                {'location': abs_path})
+
+                            self.dbclient.insert(self.TABLE_NAME, item)
                     else:
                         if self.verbose > 0:
                             print('\nEpoch %05d: %s did not improve from '
@@ -227,6 +310,12 @@ class DeoxysModelCheckpoint(DeoxysModelCallback,
                     self.model.save_weights(filepath, overwrite=True)
                 else:
                     self.deoxys_model.save(filepath, overwrite=True)
+
+                if self.dbclient:
+                    item = OrderedDict(
+                        {'session': self.session, 'epoch': epoch + 1})
+                    item.update({'location': abs_path})
+                    self.dbclient.insert(self.TABLE_NAME, item)
 
 
 class BestModelCheckpoint(DeoxysModelCallback):
