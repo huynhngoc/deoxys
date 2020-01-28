@@ -317,7 +317,7 @@ class DeoxysModelCheckpoint(DeoxysModelCallback,
                     item = OrderedDict(
                         {HDF5Attr.SESSION_ID: self.session,
                          HDF5Attr.EPOCH: epoch + 1})
-                    item.update({'location': abs_path})
+                    item.update({HDF5Attr.FILE_LOCATION: abs_path})
                     self.dbclient.insert(Tables.MODELS, item)
 
 

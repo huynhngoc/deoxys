@@ -19,7 +19,7 @@ from bson.objectid import ObjectId
 if __name__ == '__main__':
 
     experiment_id = ObjectId('5e2e0fd8db58a9f1a10dfe44')
-    print(type(experiment_id))
+
     dbclient = MongoDBClient('deoxys', 'localhost', 27017)
 
     exp = ExperimentDB(
@@ -31,7 +31,7 @@ if __name__ == '__main__':
         train_history_log=True,
         model_checkpoint_period=2,
         prediction_checkpoint_period=2,
-        epochs=30
+        epochs=10
     ).plot_performance().plot_prediction(
         masked_images=[i for i in range(10)],
     ).plot_prediction(
