@@ -57,6 +57,9 @@ class DBClient(metaclass=Singleton):
     def to_pandas(self, val, *args, **kwargs):
         pass
 
+    def get_id(self, db_obj):
+        pass
+
 
 class MongoDBClient(DBClient, metaclass=Singleton):
     def __init__(self, db_name, *args, **kwargs):
@@ -186,7 +189,10 @@ class MongoDBClient(DBClient, metaclass=Singleton):
         df = pd.DataFrame(list(val))
 
         # Delete _id
-        if id:
+        if not id:
             del df['_id']
 
         return df
+
+    def get_id(self, db_obj):
+        return db_obj['_id']

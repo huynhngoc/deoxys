@@ -16,6 +16,8 @@ from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint, \
 from ..model import model_from_full_config, model_from_config, load_model
 from ..utils import plot_log_performance_from_csv, mask_prediction, \
     plot_images_w_predictions, read_csv
+from ..database import Tables, ExperimentAttr, HDF5Attr, SessionAttr, \
+    SessionStatus
 
 
 class Experiment:
@@ -360,12 +362,8 @@ class Experiment:
 
 
 class ExperimentDB(Experiment):
-    TABLE_NAME = 'sessions'
-    LOGS_TABLE_NAME = 'perf_logs'
-    MODELS_TABLE_NAME = 'models'
-    EXPERIMENTS_TABLE_NAME = 'experiments'
 
-    def __init__(self, dbclient, experiment, session_id=None,
+    def __init__(self, dbclient, experiment_id=None, session_id=None,
                  log_base_path='logs',
                  best_model_monitors='val_loss',
                  best_model_modes='auto'):
@@ -386,39 +384,41 @@ class ExperimentDB(Experiment):
         super().__init__(log_base_path, best_model_monitors, best_model_modes)
 
         self.dbclient = dbclient
-        self.experiment = experiment
+
+        if experiment_id is None and session_id is None:
+            raise ValueError('"session_id" or "experiment_id" must be set')
 
         if session_id:
-            last_model = self.dbclient.find_max(self.MODELS_TABLE_NAME, {
-                'session': session_id}, 'epoch')
-            self.curr_epoch = last_model['epoch']
-            self.session = dbclient.find_by_id(self.TABLE_NAME, session_id)
+            last_model = self.dbclient.find_max(Tables.MODELS, {
+                HDF5Attr.SESSION_ID: session_id}, HDF5Attr.EPOCH)
+            self.curr_epoch = last_model[HDF5Attr.EPOCH]
+            self.session = dbclient.find_by_id(Tables.SESSIONS, session_id)
 
-            self._update_epoch(last_model['epoch'])
+            self._update_epoch(last_model[HDF5Attr.EPOCH])
 
-            self.from_file(last_model['location'])
+            self.from_file(last_model[HDF5Attr.FILE_LOCATION])
         else:
-            insert_res = dbclient.insert(self.TABLE_NAME, {
-                'experiment': experiment,
-                'curr_epoch': 0,
-                'status': 'created'
+            insert_res = dbclient.insert(Tables.SESSIONS, {
+                SessionAttr.EXPERIMENT_ID: experiment_id,
+                SessionAttr.CURRENT_EPOCH: 0,
+                SessionAttr.STATUS: 'created'
             }, time_logs=True)
 
             self.session = self.dbclient.find_by_id(
-                self.TABLE_NAME, insert_res.inserted_id)
+                Tables.SESSIONS, insert_res.inserted_id)
 
             self.curr_epoch = 0
 
             experiment_obj = self.dbclient.find_by_id(
-                self.EXPERIMENTS_TABLE_NAME, experiment)
+                Tables.EXPERIMENTS, experiment_id)
 
-            if 'config' in experiment_obj:
-                self.from_full_config(experiment_obj['config'])
-            elif 'file_location' in experiment_obj:
-                self.from_file(experiment_obj['file_location'])
+            if ExperimentAttr.CONFIG in experiment_obj:
+                self.from_full_config(experiment_obj[ExperimentAttr.CONFIG])
+            elif ExperimentAttr.SAVED_MODEL_LOC in experiment_obj:
+                self.from_file(experiment_obj[ExperimentAttr.SAVED_MODEL_LOC])
 
         self.log_base_path = os.path.join(
-            log_base_path, str(self.session['_id']))
+            log_base_path, str(self.dbclient.get_id(self.session)))
 
     def run_experiment(self, train_history_log=True,
                        model_checkpoint_period=0,
@@ -472,39 +472,42 @@ class ExperimentDB(Experiment):
 
             kwargs['callbacks'] = callbacks
 
-            self._update_status('training')
+            self._update_status(SessionStatus.TRAINING)
 
-            self.model.fit_train(**kwargs)
+            try:
+                self.model.fit_train(**kwargs)
 
-            self.curr_epoch += epochs
-            self._update_status('finished')
-            self._update_epoch(self.curr_epoch)
+                self.curr_epoch += epochs
+                self._update_status(SessionStatus.FINISHED)
+                self._update_epoch(self.curr_epoch)
+            except Exception:
+                self._update_status(SessionStatus.FAILED)
 
             return self
 
     def _create_db_logger(self):
-        return DBLogger(self.dbclient, self.session['_id'])
+        return DBLogger(self.dbclient, self.dbclient.get_id(self.session))
 
     def _update_epoch(self, new_epoch):
         self.dbclient.update_by_id(
-            self.TABLE_NAME, self.session['_id'],
-            {'epoch': new_epoch}, time_logs=True)
+            Tables.SESSIONS, self.dbclient.get_id(self.session),
+            {SessionAttr.CURRENT_EPOCH: new_epoch}, time_logs=True)
 
     def _update_status(self, new_status):
         self.dbclient.update_by_id(
-            self.TABLE_NAME, self.session['_id'],
-            {'status': new_status}, time_logs=True)
+            Tables.SESSIONS, self.dbclient.get_id(self.session),
+            {SessionAttr.STATUS: new_status}, time_logs=True)
 
     def _create_model_checkpoint(self, base_path, period):
         return DeoxysModelCheckpoint(
             period=period,
             filepath=base_path + self.MODEL_PATH + self.MODEL_NAME,
             dbclient=self.dbclient,
-            session=self.session['_id'])
+            session=self.dbclient.get_id(self.session))
 
     def _create_prediction_checkpoint(self, base_path, period, use_original):
         return PredictionCheckpoint(
             filepath=base_path + self.PREDICTION_PATH + self.PREDICTION_NAME,
             period=period, use_original=use_original,
             dbclient=self.dbclient,
-            session=self.session['_id'])
+            session=self.dbclient.get_id(self.session))
