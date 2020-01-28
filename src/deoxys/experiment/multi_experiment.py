@@ -39,7 +39,7 @@ class MultiExperimentDB:
         :rtype: [type]
         """
         sessions = self.dbclient.find_by_col(
-            Tables.EXPERIMENTS, SessionAttr.EXPERIMENT_ID, experiment_id)
+            Tables.SESSIONS, SessionAttr.EXPERIMENT_ID, experiment_id)
 
         return self.dbclient.to_pandas(sessions)
 
@@ -314,6 +314,32 @@ class MultiExperimentDB:
             inserted_ids.append(
                 self.new_multi_experiments_from_components(*args))
         return inserted_ids
+
+    def rename_experiment(self, experiment_id, new_name):
+        """
+        Rename an experiment by id
+
+        :param experiment_id: [description]
+        :type experiment_id: [type]
+        :param new_name: [description]
+        :type new_name: [type]
+        """
+        return self.dbclient.update_by_id(Tables.EXPERIMENTS, experiment_id, {
+            ExperimentAttr.NAME: new_name
+        })
+
+    def update_experiment_description(self, experiment_id, description):
+        """
+        Rename an experiment by id
+
+        :param experiment_id: [description]
+        :type experiment_id: [type]
+        :param new_name: [description]
+        :type new_name: [type]
+        """
+        return self.dbclient.update_by_id(Tables.EXPERIMENTS, experiment_id, {
+            ExperimentAttr.DESC: description
+        })
 
     def new_architecture_config(self, name, config, description=''):
         """

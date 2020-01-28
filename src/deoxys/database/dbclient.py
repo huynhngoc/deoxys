@@ -178,12 +178,21 @@ class MongoDBClient(DBClient, metaclass=Singleton):
     def find_max(self, table_name, query, col_name):
         table = self.db[table_name]
 
-        return table.find(query).sort({col_name: -1}).limit(1)
+        res = table.find(query).sort(col_name, -1).limit(1)
+        if res.count() > 0:
+            return res[0]
+        else:
+            return None
 
     def find_min(self, table_name, query, col_name):
         table = self.db[table_name]
 
-        return table.find(query).sort({col_name: 1}).limit(1)
+        res = table.find(query).sort(col_name, 1).limit(1)[0]
+
+        if res.count() > 0:
+            return res[0]
+        else:
+            return None
 
     def to_pandas(self, val, id=True):
         df = pd.DataFrame(list(val))

@@ -42,7 +42,7 @@ class SessionAttr:
 class HDF5Attr:
     SESSION_ID = 'session'
     EPOCH = 'epoch'
-    FILE_LOCATION = 'file_location'
+    FILE_LOCATION = 'location'
 
 
 class ExperimentAttr:
