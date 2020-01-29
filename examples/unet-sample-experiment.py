@@ -15,14 +15,14 @@ if __name__ == '__main__':
     config = read_file('examples/json/unet-sample-config.json')
 
     Experiment(
-        log_base_path='../../hn_perf/logs'
+        log_base_path='../../hn_perf_gpu/logs'
     ).from_full_config(
         config
     ).run_experiment(
         train_history_log=True,
         model_checkpoint_period=1,
         prediction_checkpoint_period=1,
-        epochs=3
+        epochs=5
     ).plot_performance().plot_prediction(
         masked_images=[i for i in range(42)]
     )

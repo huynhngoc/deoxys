@@ -19,46 +19,46 @@ class DBClient(metaclass=Singleton):
         pass
 
     def create_table(self, table_name, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def drop_table(self, table_name, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def insert(self, table_name, items, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def delete(self, table_name, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def update(self, table_name, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def update_insert(self, table_name, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def find(self, table_name, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def find_all(self, table_name, cols=None):
-        pass
+        raise NotImplementedError
 
     def find_by_col(self, table_name, col_name, val):
-        pass
+        raise NotImplementedError
 
     def find_by_id(self, table_name, id):
-        pass
+        raise NotImplementedError
 
     def find_max(self, table_name, query, col_name):
-        pass
+        raise NotImplementedError
 
     def find_min(self, table_name, query, col_name):
-        pass
+        raise NotImplementedError
 
     def to_pandas(self, val, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def get_id(self, db_obj):
-        pass
+        raise NotImplementedError
 
 
 class MongoDBClient(DBClient, metaclass=Singleton):
