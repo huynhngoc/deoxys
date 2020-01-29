@@ -1,0 +1,9 @@
+class App {
+    constructor() {
+
+    }
+
+    start() {
+
+    }
+}

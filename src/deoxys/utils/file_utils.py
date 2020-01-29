@@ -22,3 +22,16 @@ def write_file(content, filename):
     """
     with open(filename, "w", encoding="utf-8") as f:
         f.write(content)
+
+
+def write_byte(content, filename):
+    """
+    Write bytes to a file
+
+    :param content: content of the file
+    :type content: bytes
+    :param filename: file name
+    :type filename: str
+    """
+    with open(filename, "wb") as f:
+        f.write(content)
