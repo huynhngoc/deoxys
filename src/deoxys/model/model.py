@@ -46,6 +46,7 @@ class Model:
         self._train_params = train_params
         self._compiled = pre_compiled
         self._data_reader = data_reader
+        self._layers = None
 
         self.config = config or {}
 
@@ -93,6 +94,9 @@ class Model:
         """
         Train model
         """
+        # Reset layer map as weight will change after training
+        self._layers = None
+
         self._model.fit(*args, **kwargs)
 
     def predict(self, *args, **kwargs):
@@ -105,6 +109,8 @@ class Model:
         return self._model.evaluate(*args, **kwargs)
 
     def fit_generator(self, *args, **kwargs):
+        # Reset layer map as weight will change after training
+        self._layers = None
         return self._model.fit_generator(*args, **kwargs)
 
     def evaluate_generator(self, *args, **kwargs):
@@ -114,6 +120,9 @@ class Model:
         return self._model.predict_generator(*args, **kwargs)
 
     def fit_train(self, **kwargs):
+        # Reset layer map as weight will change after training
+        self._layers = None
+
         params = self._get_train_params(self._fit_param_keys, **kwargs)
         train_data_gen = self._data_reader.train_generator
         train_steps_per_epoch = train_data_gen.total_batch
@@ -183,6 +192,55 @@ class Model:
     @property
     def data_reader(self):
         return self._data_reader
+
+    @property
+    def layers(self):
+        if self._layers is None:
+            self._layers = {layer.name: layer for layer in self.model.layers}
+
+        return self._layers
+
+    @property
+    def node_graph(self):
+        """
+        Node graph from nodes in model, ignoring resize and concatenate nodes
+        """
+        layers = self.layers
+
+        connection = []
+
+        def previous_layers(name):
+            if 'resize' in name:
+                prev = layers[name].inbound_nodes[0].get_config()[
+                    'inbound_layers']
+                return previous_layers(prev)
+            return name
+
+        model = self.model
+
+        for layer in model.layers:
+            if 'resize' in layer.name or 'concatenate' in layer.name:
+                continue
+            inbound_nodes = layer.inbound_nodes
+            for node in inbound_nodes:
+                inbound_layers = node.get_config()['inbound_layers']
+
+                if type(inbound_layers) == str:
+                    if 'concatenate' in inbound_layers:
+                        concat_layer = layers[inbound_layers]
+
+                        nodes = concat_layer.inbound_nodes[0].get_config()[
+                            'inbound_layers']
+                        for n in nodes:
+                            connection.append({
+                                'from': previous_layers(n),
+                                'to': layer.name})
+                    else:
+                        connection.append({
+                            'from': layers[inbound_layers].name,
+                            'to': layer.name
+                        })
+        return connection
 
     def _get_train_params(self, keys, **kwargs):
         params = {}
