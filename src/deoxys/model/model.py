@@ -8,7 +8,7 @@ __version__ = "0.0.1"
 from tensorflow.keras.models import \
     model_from_config as keras_model_from_config, \
     model_from_json as keras_model_from_json, \
-    load_model as keras_load_model
+    load_model as keras_load_model, Model as KerasModel
 
 import json
 import h5py
@@ -210,9 +210,15 @@ class Model:
         connection = []
 
         def previous_layers(name):
+            # Keep looking for the previous layer of resize layers
             if 'resize' in name:
-                prev = layers[name].inbound_nodes[0].get_config()[
+                prevs = layers[name].inbound_nodes[0].get_config()[
                     'inbound_layers']
+                if type(prevs) == str:
+                    prev = prevs
+                else:
+                    # in case there are multiple layers, take the 1st one
+                    prev = prevs[0]
                 return previous_layers(prev)
             return name
 
@@ -241,6 +247,13 @@ class Model:
                             'to': layer.name
                         })
         return connection
+
+    def activation_map(self, layer_name):
+        return KerasModel(inputs=self.model.inputs,
+                          outputs=self.layers['layer_name'].output)
+
+    def activation_map_for_image(self, layer_name, images):
+        return self.activation_map(layer_name).predict(images)
 
     def _get_train_params(self, keys, **kwargs):
         params = {}
