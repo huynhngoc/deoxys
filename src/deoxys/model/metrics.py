@@ -15,7 +15,7 @@ from ..utils import Singleton
 
 
 class Fbeta(Metric):
-    def __init__(self, threshold=None, name=None, dtype=None, beta=1):
+    def __init__(self, threshold=None, name='Fbeta', dtype=None, beta=1):
         super().__init__(name=name, dtype=dtype)
 
         self.threshold = threshold
@@ -72,7 +72,7 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
 
     def __init__(self,
                  thresholds=None,
-                 name=None,
+                 name='BinaryFbeta',
                  dtype=None, beta=1):
         super(Metric, self).__init__(name=name, dtype=dtype)
 
