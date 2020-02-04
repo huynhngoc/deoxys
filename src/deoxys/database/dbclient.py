@@ -11,6 +11,7 @@ from bson.objectid import ObjectId
 from collections import OrderedDict
 from datetime import datetime
 from time import time
+import json
 import pandas as pd
 
 
@@ -59,6 +60,21 @@ class DBClient(metaclass=Singleton):
 
     def get_id(self, db_obj):
         raise NotImplementedError
+
+    def df_to_json(self, df):
+        cols = df.columns
+
+        data = []
+        for item in df.values:
+            item_dict = {}
+            for i in range(len(cols)):
+                try:
+                    json.dumps(item[i])
+                    item_dict[cols[i]] = item[i]
+                except Exception:
+                    item_dict[cols[i]] = str(item[i])
+            data.append(item_dict)
+        return data
 
 
 class MongoDBClient(DBClient, metaclass=Singleton):
@@ -168,12 +184,43 @@ class MongoDBClient(DBClient, metaclass=Singleton):
     def find_by_col(self, table_name, col_name, val):
         table = self.db[table_name]
 
+        if type(val) == list:
+            expresssions = [{col_name: v} for v in val]
+            return table.find({
+                '$or': expresssions
+            })
+
         return table.find({col_name: val})
 
-    def find_by_id(self, table_name, id):
+    def find_by_id(self, table_name, id, custom_id=False):
         table = self.db[table_name]
 
-        return table.find_one({'_id': id})
+        if type(id) == list:
+            expresssions = [{'_id': self._serialize_id(id_) for id_ in id}]
+            return table.find({
+                '$or': expresssions
+            })
+        else:
+            return table.find_one({'_id': self._serialize_id(id)})
+
+    def _serialize_id(self, id, custom_id=False):
+        if custom_id:
+            return id
+        if type(id) == str:
+            return ObjectId(id)
+        return id
+
+    def to_fk(self, val):
+        def str_to_id(v):
+            if type(v) == str:
+                return ObjectId(v)
+            return v
+        if type(val) == list:
+            return [str_to_id(v) for v in val]
+        if type(val) == str:
+            return str_to_id(val)
+        else:
+            return val
 
     def find_max(self, table_name, query, col_name):
         table = self.db[table_name]

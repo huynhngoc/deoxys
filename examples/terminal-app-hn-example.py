@@ -2,6 +2,7 @@ from deoxys.database import MongoDBClient
 from deoxys.experiment import MultiExperimentDB
 from deoxys.utils import read_file
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def number_picker(message):
@@ -32,7 +33,8 @@ def run_new_session(me, exp_id):
         try:
             epoch = number_picker('Number of epochs: ')
             path = input('Path to logs: ')
-            me.run_new_session(exp_id, epochs=epoch,
+            me.run_new_session(exp_id, epochs=epoch, model_checkpoint_period=1,
+                               #    prediction_checkpoint_period=1,
                                log_base_path=path)
             print('Finished running the session.')
 
@@ -53,7 +55,10 @@ def continue_session(me, session_id):
             epoch = number_picker('Number of epochs: ')
             path = input('Path to logs: ')
             me.continue_session(
-                session_id, epoch, log_base_path=path)
+                session_id, epoch, log_base_path=path,
+                model_checkpoint_period=1,
+                # prediction_checkpoint_period=1
+            )
             print('Finished running the session.')
 
             return True
@@ -67,7 +72,11 @@ def continue_session(me, session_id):
 
 
 def show_performance_session(me, session_id):
-    print('Not yet supported.')
+    # print('Not yet supported.')
+    ax = me.session_performance(session_id)
+    ax.set_title('All metrics')
+    plt.show()
+
     return True
 
 
@@ -140,7 +149,11 @@ def list_sessions(me, exp_id):
 
 
 def show_performance(me, exp_id):
-    print('Not yet supported')
+    # print('Not yet supported')
+
+    ax = me.experiment_performance(exp_id)
+    ax.set_title('All metrics')
+    plt.show()
 
     return True
 
