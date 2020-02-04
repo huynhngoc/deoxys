@@ -6,8 +6,11 @@ __version__ = "0.0.1"
 
 
 from ..database import Tables, SessionStatus, SessionAttr, ExperimentAttr, \
-    RefAttr, ConfigRef
+    RefAttr, ConfigRef, LogAttr
 from itertools import product
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 from . import ExperimentDB
 
 
@@ -39,7 +42,8 @@ class MultiExperimentDB:
         :rtype: [type]
         """
         sessions = self.dbclient.find_by_col(
-            Tables.SESSIONS, SessionAttr.EXPERIMENT_ID, experiment_id)
+            Tables.SESSIONS, SessionAttr.EXPERIMENT_ID,
+            self.dbclient.to_fk(experiment_id))
 
         return self.dbclient.to_pandas(sessions)
 
@@ -170,6 +174,50 @@ class MultiExperimentDB:
                 pass
 
         return return_exps
+
+    def session_performance(self, session_id, metrics=None,
+                            ax=None, shading='std'):
+        perf = self.dbclient.to_pandas(
+            self.dbclient.find_by_col(
+                Tables.LOGS, LogAttr.SESSION_ID,
+                self.dbclient.to_fk(session_id)))
+
+        not_include = ['_id', LogAttr.SESSION_ID, LogAttr.EPOCH]
+        metric_list = metrics or [
+            col for col in perf.columns if col not in not_include]
+        perf = perf.groupby(LogAttr.EPOCH).agg({
+            metric: ['mean', lambda val: np.mean(
+                val) - np.std(val), lambda val: np.mean(val) + np.std(val)]
+            for metric in metric_list
+        })
+
+        postfixes = ['', '_nev', '_pos']
+        perf.columns = ['{}{}'.format(metric, postfix)
+                        for metric in metric_list for postfix in postfixes]
+
+        if type(session_id) == list:
+            # plot mean data instead
+            pass
+        if ax is None:
+            ax = plt.axes()
+        epochs = perf.index
+        for metric in metric_list:
+            ax.plot(epochs, perf[metric], label=metric)
+            ax.fill_between(epochs, perf[metric + '_nev'],
+                            perf[metric + '_pos'], alpha=0.2)
+
+        ax.legend()
+        return ax
+
+    def experiment_performance(self, experiment_id, metrics=None, ax=None,
+                               shading='std'):
+        sessions = self.dbclient.to_pandas(
+            self.dbclient.find_by_col(
+                Tables.SESSIONS, SessionAttr.EXPERIMENT_ID,
+                self.dbclient.to_fk(experiment_id)))
+
+        return self.session_performance(
+            list(sessions['_id'].values), metrics, ax, shading)
 
     def new_experiment_from_full_config(self, name, config, description=''):
         """
@@ -420,6 +468,9 @@ class MultiExperimentDB:
         """
         return self._new_ref_config(
             ConfigRef.MODEL_PARAMS, name, config, description)
+
+    def json_data(self, val):
+        return self.dbclient.df_to_json(val)
 
     def _new_ref_config(self, table, name, config, descripiton=''):
         new_obj = {

@@ -206,7 +206,7 @@ class PredictionCheckpoint(DeoxysModelCallback):
 
             # Create the h5 file
             hf = h5py.File(filepath, 'w')
-            hf.create_dataset('predicted', data=predicted)
+            hf.create_dataset('predicted', data=predicted, compression="gzip")
             hf.close()
 
             if self.use_original:
@@ -214,7 +214,7 @@ class PredictionCheckpoint(DeoxysModelCallback):
 
                 for key, val in original_data.items():
                     hf = h5py.File(filepath, 'a')
-                    hf.create_dataset(key, data=val)
+                    hf.create_dataset(key, data=val, compression="gzip")
                     hf.close()
             else:
                 # Create data from val_generator
@@ -234,8 +234,8 @@ class PredictionCheckpoint(DeoxysModelCallback):
                         y = np.concatenate((y, next_y))
 
                 hf = h5py.File(filepath, 'a')
-                hf.create_dataset('x', data=x)
-                hf.create_dataset('y', data=y)
+                hf.create_dataset('x', data=x, compression="gzip")
+                hf.create_dataset('y', data=y, compression="gzip")
                 hf.close()
 
             if self.dbclient:

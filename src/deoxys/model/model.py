@@ -238,22 +238,28 @@ class Model:
                         nodes = concat_layer.inbound_nodes[0].get_config()[
                             'inbound_layers']
                         for n in nodes:
+                            options = {}
+                            prev_layer = previous_layers(n)
+                            if 'transpose' not in prev_layer:
+                                options.update({'length': 300})
                             connection.append({
-                                'from': previous_layers(n),
-                                'to': layer.name})
+                                'from': prev_layer,
+                                'to': layer.name,
+                                **options
+                            })
                     else:
                         connection.append({
                             'from': layers[inbound_layers].name,
-                            'to': layer.name
+                            'to': layer.name,
                         })
         return connection
 
     def activation_map(self, layer_name):
         return KerasModel(inputs=self.model.inputs,
-                          outputs=self.layers['layer_name'].output)
+                          outputs=self.layers[layer_name].output)
 
     def activation_map_for_image(self, layer_name, images):
-        return self.activation_map(layer_name).predict(images)
+        return self.activation_map(layer_name).predict(images, verbose=1)
 
     def _get_train_params(self, keys, **kwargs):
         params = {}
