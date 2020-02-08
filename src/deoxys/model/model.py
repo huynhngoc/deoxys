@@ -53,9 +53,15 @@ class Model:
         if model_params:
             if 'optimizer' in model_params:
                 self._model.compile(**model_params)
-                self._compiled = True
+
                 if weights_file:
+                    # This initializes the variables used by the optimizers,
+                    # as well as any stateful metric variables
+                    self._model.train_on_batch(
+                        *next(self.data_reader.train_generator.generate()))
+
                     self._model.load_weights(weights_file)
+                self._compiled = True
             else:
                 raise ValueError('optimizer is a required parameter in '
                                  'model_params.')
