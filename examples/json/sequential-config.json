@@ -3,10 +3,10 @@
         "class_name": "HDF5Reader",
         "config": {
             "filename": "../../mnist.h5",
-            "batch_size": 100,
+            "batch_size": 128,
             "x_name": "x",
             "y_name": "y",
-            "batch_cache": 10,
+            "batch_cache": 100,
             "preprocessors": [
                 {
                     "class_name": "SingleChannelPreprocessor",
@@ -18,11 +18,18 @@
                         "scale_down": 255
                     }
                 }
+            ],
+            "train_folds": [
+                0,
+                1
+            ],
+            "val_folds": [
+                2
             ]
         }
     },
     "train_params": {
-        "epochs": 5,
+        "epochs": 12,
         "callbacks": [
             {
                 "class_name": "CSVLogger",
@@ -34,7 +41,7 @@
                 "class_name": "ModelCheckpoint",
                 "config": {
                     "monitor": "val_loss",
-                    "filepath": "../../mnist.{epoch:02d}-{val_loss:.2f}.h5",
+                    "filepath": "../../mnist/mnist.{epoch:02d}-{val_loss:.2f}.h5",
                     "period": 1
                 }
             }
@@ -50,7 +57,7 @@
     "model_params": {
         "loss": "sparse_categorical_crossentropy",
         "optimizer": {
-            "class_name": "adam"
+            "class_name": "Adadelta"
         },
         "metrics": [
             "accuracy"
@@ -59,6 +66,31 @@
     "architecture": {
         "type": "Sequential",
         "layers": [
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "activation": "relu"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "activation": "relu"
+                }
+            },
+            {
+                "class_name": "MaxPooling2D"
+            },
+            {
+                "class_name": "Dropout",
+                "config": {
+                    "rate": 0.25
+                }
+            },
             {
                 "class_name": "Flatten"
             },
@@ -72,7 +104,7 @@
             {
                 "class_name": "Dropout",
                 "config": {
-                    "rate": 0.2
+                    "rate": 0.5
                 }
             },
             {

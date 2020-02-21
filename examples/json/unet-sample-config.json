@@ -53,9 +53,9 @@
             {
                 "class_name": "BinaryFbeta"
             },
-            "TruePositives",
-            "FalsePositives",
-            "FalseNegatives"
+            {
+                "class_name": "Fbeta"
+            }
         ]
     },
     "architecture": {

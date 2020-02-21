@@ -83,6 +83,15 @@ class HDF5DataGenerator(DataGenerator):
         self.x_cur = self.hf[first_fold_name][self.x_name][:self.seg_size]
         self.y_cur = self.hf[first_fold_name][self.y_name][:self.seg_size]
 
+        if self.preprocessors:
+            if type(self.preprocessors) == list:
+                for preprocessor in self.preprocessors:
+                    self.x_cur, self.y_cur = preprocessor.transform(
+                        self.x_cur, self.y_cur)
+            else:
+                self.x_cur, self.y_cur = self.preprocessors.transform(
+                    self.x_cur, self.y_cur)
+
         # Get the total length of the first fold
         self.fold_len = len(self.hf[first_fold_name][self.y_name])
 
@@ -148,6 +157,16 @@ class HDF5DataGenerator(DataGenerator):
             self.y_cur = self.hf[fold_name][
                 self.y_name][seg_index:next_seg_index]
 
+        # Apply preprocessor
+        if self.preprocessors:
+            if type(self.preprocessors) == list:
+                for preprocessor in self.preprocessors:
+                    self.x_cur, self.y_cur = preprocessor.transform(
+                        self.x_cur, self.y_cur)
+            else:
+                self.x_cur, self.y_cur = self.preprocessors.transform(
+                    self.x_cur, self.y_cur)
+
     def generate(self):
         """
         Create a generator that generate a batch of data
@@ -173,16 +192,6 @@ class HDF5DataGenerator(DataGenerator):
                 # Take the next batch
                 batch_x = self.x_cur[index:(index + self.batch_size)]
                 batch_y = self.y_cur[index:(index + self.batch_size)]
-
-            # Apply preprocessor
-            if self.preprocessors:
-                if type(self.preprocessors) == list:
-                    for preprocessor in self.preprocessors:
-                        batch_x, batch_y = preprocessor.transform(
-                            batch_x, batch_y)
-                else:
-                    batch_x, batch_y = self.preprocessors.transform(
-                        batch_x, batch_y)
 
             self.index += self.batch_size
             yield batch_x, batch_y
