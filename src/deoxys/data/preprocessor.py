@@ -59,7 +59,7 @@ class WindowingPreprocessor(BasePreprocessor):
 
 class KerasImagePreprocessorX(BasePreprocessor):
     def __init__(self,
-                 shuffle=True,
+                 shuffle=False,
                  featurewise_center=False,
                  samplewise_center=False,
                  featurewise_std_normalization=False,

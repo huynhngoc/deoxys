@@ -2,7 +2,7 @@
     "dataset_params": {
         "class_name": "HDF5Reader",
         "config": {
-            "filename": "../../oxford_pet_data.h5",
+            "filename": "../../oxford_pet_data_new.h5",
             "batch_size": 64,
             "x_name": "x",
             "y_name": "y",
@@ -45,7 +45,10 @@
             {
                 "class_name": "BinaryFbeta"
             },
-            "accuracy"
+            "accuracy",
+            {
+                "class_name": "Fbeta"
+            }
         ]
     },
     "architecture": {
