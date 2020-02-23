@@ -6,7 +6,7 @@ __version__ = "0.0.1"
 
 
 import pytest
-from tensorflow.keras.optimizers import Optimizer
+from deoxys.keras.optimizers import Optimizer
 from deoxys.model.optimizers import Optimizers
 from deoxys.customize import register_optimizer, \
     unregister_optimizer, custom_optimizer
