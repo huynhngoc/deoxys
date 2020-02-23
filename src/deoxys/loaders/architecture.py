@@ -5,8 +5,8 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from tensorflow.keras.models import Model as KerasModel
-from tensorflow.keras.layers import Input, concatenate
+from deoxys.keras.models import Model as KerasModel, mode as keras_mode
+from deoxys.keras.layers import Input, concatenate, Lambda
 from tensorflow import image
 import tensorflow as tf
 
@@ -315,17 +315,34 @@ class UnetModelLoader(BaseModelLoader):
                 inputs = []
                 size_factors = None
                 for input_name in layer['inputs']:
+                    if keras_mode.upper() == 'ALONE':
+                        # keras issue: convtranspose layer output shape are
+                        # (None, None, None, filters)
+                        if saved_input[
+                                input_name].get_shape() != saved_input[
+                                    input_name]._keras_shape:
+                            saved_input[input_name].set_shape(
+                                saved_input[input_name]._keras_shape)
                     if size_factors:
                         if size_factors == saved_input[
                                 input_name].get_shape().as_list()[1:-1]:
                             next_input = saved_input[input_name]
                         else:
                             if len(size_factors) == 2:
-                                next_input = image.resize(
-                                    saved_input[input_name],
-                                    size_factors,
-                                    # preserve_aspect_ratio=True,
-                                    method='bilinear')
+                                if keras_mode.upper() == 'ALONE':
+                                    next_input = Lambda(
+                                        lambda input_tensor: image.resize(
+                                            input_tensor,
+                                            size_factors,
+                                            # preserve_aspect_ratio=True,
+                                            method='bilinear')
+                                    )(saved_input[input_name])
+                                else:
+                                    next_input = image.resize(
+                                        saved_input[input_name],
+                                        size_factors,
+                                        # preserve_aspect_ratio=True,
+                                        method='bilinear')
                             else:
                                 raise NotImplementedError(
                                     "Resize 3D tensor not implemented")
@@ -641,7 +658,7 @@ class Vnet(BaseModelLoader):
                 saved_input[layer['name']] = next_layer
 
             layers.append(next_layer)
-
+        print(layers[0], layers[-1])
         return KerasModel(inputs=layers[0], outputs=layers[-1])
 
 

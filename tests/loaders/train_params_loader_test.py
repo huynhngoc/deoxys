@@ -6,7 +6,7 @@ __version__ = "0.0.1"
 
 
 import pytest
-from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint, \
+from deoxys.keras.callbacks import CSVLogger, ModelCheckpoint, \
     TerminateOnNaN
 from deoxys.loaders import load_train_params
 from deoxys.utils import read_file, load_json_config

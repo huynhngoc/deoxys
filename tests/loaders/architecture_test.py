@@ -6,8 +6,8 @@ __version__ = "0.0.1"
 
 
 import pytest
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Flatten, Dropout, \
+from deoxys.keras.models import Model
+from deoxys.keras.layers import Input, Dense, Flatten, Dropout, \
     BatchNormalization, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate
 from deoxys.loaders.architecture import BaseModelLoader, ModelLoaderFactory, \
     SequentialModelLoader, UnetModelLoader, DenseModelLoader, \

@@ -5,13 +5,24 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
+from ..utils import Singleton
 import tensorflow.keras.backend as K
 from deoxys.keras.metrics import Metric, deserialize
-from tensorflow.python.keras.metrics import _ConfusionMatrixConditionCount
-from tensorflow.python.keras.utils.metrics_utils \
-    import update_confusion_matrix_variables, parse_init_thresholds, \
-    ConfusionMatrix
-from ..utils import Singleton
+import os
+
+mode = 'TENSORFLOW'
+if 'KERAS_MODE' in os.environ:
+    mode = os.environ.get('KERAS_MODE')
+if mode.upper() == 'ALONE':
+    from keras.metrics import _ConfusionMatrixConditionCount
+    from keras.utils.metrics_utils \
+        import update_confusion_matrix_variables, parse_init_thresholds, \
+        ConfusionMatrix
+elif mode.upper() == 'TENSORFLOW':
+    from tensorflow.python.keras.metrics import _ConfusionMatrixConditionCount
+    from tensorflow.python.keras.utils.metrics_utils \
+        import update_confusion_matrix_variables, parse_init_thresholds, \
+        ConfusionMatrix
 
 
 class Fbeta(Metric):

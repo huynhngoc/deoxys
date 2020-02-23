@@ -5,6 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
+from . import keras
 from . import model
 from . import data
 from . import preprocessing

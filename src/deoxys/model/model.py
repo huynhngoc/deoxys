@@ -440,7 +440,7 @@ def model_from_full_config(model_config, **kwargs):
 
 def model_from_config(architecture, input_params,
                       model_params=None, train_params=None,
-                      dataset_params=None, **kwargs):
+                      dataset_params=None, weights_file=None, **kwargs):
     architecture, input_params, model_params, train_params = load_json_config(
         architecture, input_params, model_params, train_params)
 
@@ -467,7 +467,8 @@ def model_from_config(architecture, input_params,
         data_generator = load_data(dataset_params)
 
     return Model(loaded_model, loaded_params, train_params,
-                 data_generator, config=config, **kwargs)
+                 data_generator, config=config, weights_file=weights_file,
+                 **kwargs)
 
 
 def model_from_keras_config(config, **kwarg):

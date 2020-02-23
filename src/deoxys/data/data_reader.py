@@ -7,7 +7,7 @@ __version__ = "0.0.1"
 
 import h5py
 import numpy as np
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from deoxys.keras.preprocessing import ImageDataGenerator
 from .data_generator import DataGenerator, HDF5DataGenerator
 from ..utils import Singleton
 

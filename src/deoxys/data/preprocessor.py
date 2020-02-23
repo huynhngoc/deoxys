@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from deoxys.keras.preprocessing import ImageDataGenerator
 from ..utils import Singleton
 
 

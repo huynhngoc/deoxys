@@ -10,7 +10,7 @@ import h5py
 import numpy as np
 import warnings
 
-from tensorflow.keras.callbacks import CSVLogger
+from deoxys.keras.callbacks import CSVLogger
 from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint, \
     DBLogger
 from ..model import model_from_full_config, model_from_config, load_model
