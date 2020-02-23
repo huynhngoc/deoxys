@@ -6,14 +6,18 @@ __version__ = "0.0.1"
 
 
 from deoxys.keras import backend as K
-from deoxys.keras.losses import Loss, deserialize
+from deoxys.keras.losses import Loss, deserialize, mode as keras_mode
 import numpy as np
 from ..utils import Singleton
 
 
 class BinaryFbetaLoss(Loss):
     def __init__(self, reduction='auto', name="binary_fbeta", beta=1):
-        super().__init__(reduction, name)
+        if keras_mode.upper() == 'TENSORFLOW':
+            super().__init__(reduction, name)
+        else:
+            # use Keras default reduction
+            super().__init__('sum_over_batch_size', name)
         self.beta = beta
 
     def call(self, target, prediction):

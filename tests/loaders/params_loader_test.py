@@ -6,7 +6,7 @@ __version__ = "0.0.1"
 
 
 import pytest
-from tensorflow.keras.optimizers import Adam
+from deoxys.keras.optimizers import Adam
 from deoxys.loaders import load_params
 from deoxys.model.losses import BinaryFbetaLoss
 from deoxys.model.metrics import BinaryFbeta
