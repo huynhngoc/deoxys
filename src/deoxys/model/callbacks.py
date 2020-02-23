@@ -5,8 +5,8 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from tensorflow.keras.utils import deserialize_keras_object
-from tensorflow.keras.callbacks import *
+from deoxys.keras.utils import deserialize_keras_object
+from deoxys.keras.callbacks import *
 
 import warnings
 import numpy as np

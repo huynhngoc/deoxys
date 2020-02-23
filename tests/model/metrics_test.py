@@ -7,8 +7,8 @@ __version__ = "0.0.1"
 
 import pytest
 import numpy as np
-from tensorflow.keras import backend as K
-from tensorflow.keras.metrics import Metric
+from deoxys.keras import backend as K
+from deoxys.keras.metrics import Metric
 from deoxys.model.metrics import Metrics, BinaryFbeta, Fbeta
 from deoxys.customize import register_metric, \
     unregister_metric, custom_metric

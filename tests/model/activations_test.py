@@ -6,7 +6,7 @@ __version__ = "0.0.1"
 
 
 import pytest
-from tensorflow.keras.layers import Activation
+from deoxys.keras.layers import Activation
 from deoxys.model.activations import Activations
 from deoxys.customize import register_activation, \
     unregister_activation, custom_activation

@@ -7,8 +7,8 @@ __version__ = "0.0.1"
 
 import pytest
 import numpy as np
-from tensorflow.keras import backend as K
-from tensorflow.keras.losses import Loss
+from deoxys.keras import backend as K
+from deoxys.keras.losses import Loss
 from deoxys.model.losses import Losses, BinaryFbetaLoss
 from deoxys.customize import register_loss, \
     unregister_loss, custom_loss

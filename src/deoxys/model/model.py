@@ -5,13 +5,18 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from tensorflow.keras.models import \
+from deoxys.keras.models import \
     model_from_config as keras_model_from_config, \
     model_from_json as keras_model_from_json, \
     load_model as keras_load_model, Model as KerasModel
 
+import tensorflow.keras.backend as K
+
+import tensorflow as tf
+
 import json
 import h5py
+import numpy as np
 
 from ..loaders import load_architecture, load_params, \
     load_data, load_train_params
@@ -267,6 +272,124 @@ class Model:
     def activation_map_for_image(self, layer_name, images):
         return self.activation_map(layer_name).predict(images, verbose=1)
 
+    def gradient_map(self, layer_name, img=None, step_size=1, epochs=20,
+                     filter_index=0, loss_fn=None):
+        """
+        Return the gradient between the input value and the output at
+        a specific node
+
+        :param layer_name: name of the node
+        :type layer_name: str
+        :param img: list of input images, defaults to None. If None, a random
+        image with noises will be used
+        :type img: [list], optional
+        :param step_size: Size of the step when performing gradient descent,
+        defaults to 1
+        :type step_size: int, optional
+        :param epochs: Number of epochs for gradient descent, defaults to 20
+        :type epochs: int, optional
+        :param filter_index: index of the filter to get the gradient, can be
+        any number between 0 and (size of the filters - 1), defaults to 0
+        :type filter_index: int, or list, optional
+        :return: list of gradient images
+        :rtype: list
+        """
+        if type(filter_index) == int:
+            list_index = [filter_index]
+        else:
+            list_index = filter_index
+
+        input_shape = [1] + (self.model.input.shape)[1:]
+        if img is None:
+            input_img_data = np.random.random(input_shape)
+        else:
+            input_img_data = img
+
+        input_img_data = [tf.Variable(
+            tf.cast(input_img_data, tf.float32)) for _ in list_index]
+
+        activation_model = self.activation_map(layer_name)
+
+        for _ in range(epochs):
+            print('epoch', _, '/', epochs)
+
+            for i, filter_index in enumerate(list_index):
+                print('filter', i, flush=True)
+                with tf.GradientTape() as tape:
+                    outputs = activation_model(input_img_data[i])
+                    if loss_fn is None:
+                        loss_value = tf.reduce_mean(
+                            outputs[..., filter_index])
+                    else:
+                        loss_value = loss_fn(outputs)
+
+                grads = tape.gradient(loss_value, input_img_data[i])
+
+                normalized_grads = grads / \
+                    (tf.sqrt(tf.reduce_mean(tf.square(grads))) + 1e-5)
+
+                input_img_data[i].assign_add(normalized_grads * step_size)
+
+        if len(input_img_data) > 1:
+            return [K.get_value(input_img) for input_img in input_img_data]
+
+        return K.get_value(input_img_data[0])
+
+    def backprop(self, layer_name, images, mode='max', output_index=0):
+        img_tensor = tf.Variable(tf.cast(images, tf.float32))
+        activation_map = self.activation_map(layer_name)
+        with tf.GradientTape() as tape:
+            tape.watch(img_tensor)
+            output = activation_map(img_tensor)
+            if mode == 'max':
+                loss = K.max(output, axis=3)
+            elif mode == 'one':
+                loss = output[..., output_index]
+            else:
+                loss = output
+
+        grads = K.get_value(tape.gradient(loss, img_tensor))
+
+        return grads
+
+    def _gradient_backprop(self, gradient_name, layer_name,
+                           images, mode, output_index):
+        weights = self.model.get_weights()
+        with tf.Graph().as_default() as g:
+            with g.gradient_override_map({'Relu': gradient_name}):
+                new_model = tf.keras.models.clone_model(self.model)
+                new_model.set_weights(weights)
+                if mode == 'max':
+                    output = K.max(new_model.get_layer(
+                        layer_name).output, axis=3)
+                elif mode == 'one':
+                    output = new_model.get_layer(
+                        layer_name).output[..., output_index]
+                else:
+                    output = new_model.get_layer(
+                        layer_name).output
+
+                grads = K.gradients(output, new_model.input)[0]
+
+                fn = K.function(new_model.input, grads)
+
+                grad_output = fn(images)
+
+            del new_model
+        del g
+
+        return grad_output
+
+    def deconv(self, layer_name, images, mode='max',
+               output_index=0):
+        return self._gradient_backprop('DeconvNet', layer_name,
+                                       images, mode, output_index)
+
+    def guided_backprop(self, layer_name, images, mode='max',
+                        output_index=0):
+        return self._gradient_backprop('GuidedBackProp', layer_name,
+                                       images, mode, output_index)
+
     def _get_train_params(self, keys, **kwargs):
         params = {}
 
@@ -371,6 +494,12 @@ def load_model(filename, **kwargs):
                                            **Losses().losses,
                                            **Metrics().metrics}),
                       pre_compiled=True, **kwargs)
+
+        with h5py.File(filename) as hf:
+            if 'deoxys_config' in hf.attrs.keys():
+                config = hf.attrs['deoxys_config']
+                model._data_reader = load_data(config['dataset_params'])
+
     except Exception:
         hf = h5py.File(filename, 'r')
         if 'deoxys_config' in hf.attrs.keys():
@@ -380,3 +509,21 @@ def load_model(filename, **kwargs):
         model = model_from_full_config(config, weights_file=filename)
 
     return model
+
+
+@tf.RegisterGradient("GuidedBackProp")
+def _GuidedBackProp(op, grad):
+    dtype = op.inputs[0].dtype
+    return grad * tf.cast(grad > 0., dtype) * tf.cast(op.inputs[0] > 0., dtype)
+
+
+@tf.RegisterGradient("DeconvNet")
+def _DeconvNet(op, grad):
+    dtype = op.inputs[0].dtype
+    return grad * tf.cast(grad > 0., dtype)
+
+
+@tf.RegisterGradient("BackProp")
+def _BackProp(op, grad):
+    dtype = op.inputs[0].dtype
+    return grad * tf.cast(op.inputs[0] > 0., dtype)

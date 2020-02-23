@@ -5,8 +5,8 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from tensorflow.keras import backend as K
-from tensorflow.keras.losses import Loss, deserialize
+from deoxys.keras import backend as K
+from deoxys.keras.losses import Loss, deserialize
 import numpy as np
 from ..utils import Singleton
 
