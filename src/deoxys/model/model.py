@@ -10,13 +10,14 @@ from deoxys.keras.models import \
     model_from_json as keras_model_from_json, \
     load_model as keras_load_model, Model as KerasModel
 
-import tensorflow.keras.backend as K
+import deoxys.keras.backend as K
 
 import tensorflow as tf
 
 import json
 import h5py
 import numpy as np
+from itertools import product
 
 from ..loaders import load_architecture, load_params, \
     load_data, load_train_params
@@ -314,7 +315,7 @@ class Model:
             print('epoch', _, '/', epochs)
 
             for i, filter_index in enumerate(list_index):
-                print('filter', i, flush=True)
+                print('filter', filter_index)
                 with tf.GradientTape() as tape:
                     outputs = activation_model(input_img_data[i])
                     if loss_fn is None:
@@ -414,7 +415,7 @@ class Model:
         return params
 
 
-def model_from_full_config(model_config, **kwargs):
+def model_from_full_config(model_config, weights_file=None, **kwargs):
     """
     Return the model from the full config
 
@@ -435,6 +436,7 @@ def model_from_full_config(model_config, **kwargs):
         config['model_params'] if 'model_params' in config else None,
         config['train_params'] if 'train_params' in config else None,
         config['dataset_params'] if 'dataset_params' in config else None,
+        weights_file=weights_file,
         **kwargs)
 
 
