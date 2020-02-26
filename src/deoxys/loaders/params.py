@@ -55,5 +55,9 @@ def load_params(model_params):
             for i, metric in enumerate(val):
                 if type(metric) == dict:
                     params[key][i] = metric_from_config(metric)
-
+                elif metric in ['TruePositives', 'FalsePositives',
+                                'TrueNegatives', 'FalseNegatives']:
+                    params[key][i] = metric_from_config(
+                        {'class_name': metric, 'config': {'name': metric}}
+                    )
     return params

@@ -6,19 +6,15 @@ __version__ = "0.0.1"
 
 
 from ..utils import Singleton
-import tensorflow.keras.backend as K
-from deoxys.keras.metrics import Metric, deserialize
-import os
+import deoxys.keras.backend as K
+from deoxys.keras.metrics import Metric, deserialize, mode as keras_mode
 
-mode = 'TENSORFLOW'
-if 'KERAS_MODE' in os.environ:
-    mode = os.environ.get('KERAS_MODE')
-if mode.upper() == 'ALONE':
+if keras_mode.upper() == 'ALONE':
     from keras.metrics import _ConfusionMatrixConditionCount
     from keras.utils.metrics_utils \
         import update_confusion_matrix_variables, parse_init_thresholds, \
         ConfusionMatrix
-elif mode.upper() == 'TENSORFLOW':
+elif keras_mode.upper() == 'TENSORFLOW':
     from tensorflow.python.keras.metrics import _ConfusionMatrixConditionCount
     from tensorflow.python.keras.utils.metrics_utils \
         import update_confusion_matrix_variables, parse_init_thresholds, \
@@ -42,8 +38,6 @@ class Fbeta(Metric):
         reduce_ax = list(range(1, size))
         eps = 1e-8
 
-        # y_pred_ = K.cast(y_pred >= self.threshold, 'float32')
-
         true_positive = K.sum(y_pred * y_true, axis=reduce_ax)
         target_positive = K.sum(K.square(y_true), axis=reduce_ax)
         predicted_positive = K.sum(
@@ -55,20 +49,22 @@ class Fbeta(Metric):
         )
         if sample_weight:
             weight = K.cast(sample_weight, self.dtype)
-            K.update_add(
+            total_ops = K.update_add(
                 self.total,
                 K.sum(weight * fb_numerator / fb_denominator))
         else:
-            K.update_add(self.total, K.sum(fb_numerator / fb_denominator))
+            total_ops = K.update_add(
+                self.total, K.sum(fb_numerator / fb_denominator))
 
-        count = K.sum(weight) if sample_weight else y_pred.get_shape()[0]
+        count = K.sum(weight) if sample_weight else K.cast(
+            K.shape(y_pred)[0], y_pred.dtype)
 
-        K.update_add(self.count, 0 if count is None else count)
+        count_ops = K.update_add(self.count, count)
+
+        if keras_mode.upper() == 'ALONE':
+            return [total_ops, count_ops]
 
     def result(self):
-        if K.get_value(self.count) == 0:
-            return 0
-
         return self.total / self.count
 
     def get_config(self):
@@ -113,8 +109,8 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         # https://github.com/tensorflow/tensorflow/issues/30711
-        # Remove return statement
-        update_confusion_matrix_variables(
+        # Remove return statement in case tensorflow.keras
+        update = update_confusion_matrix_variables(
             {ConfusionMatrix.TRUE_POSITIVES: self.true_positives,
              ConfusionMatrix.TRUE_NEGATIVES: self.true_negatives,
              ConfusionMatrix.FALSE_POSITIVES: self.false_positives,
@@ -123,6 +119,9 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
             y_pred,
             thresholds=self.thresholds,
             sample_weight=sample_weight)
+
+        if keras_mode.upper() == 'ALONE':
+            return update
 
     def result(self):
         res = []
@@ -213,4 +212,5 @@ def metric_from_config(config):
         return deserialize(
             config,
             custom_objects=Metrics().metrics)
+
     return deserialize(config, custom_objects=Metrics().metrics)
