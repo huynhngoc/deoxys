@@ -26,7 +26,21 @@
         }
     },
     "train_params": {
-        "epochs": 5
+        "epochs": 5,
+        "callbacks": [
+            {
+                "class_name": "TensorBoard",
+                "config": {
+                    "log_dir": "..\\..\\oxford_perf\\ts_graph",
+                    "update_freq": "batch"
+                },
+                "**NOTE**": [
+                    "Use this callback to use tensorboard to monitor your training",
+                    "For window user, use \\ to separate the path",
+                    "Remember to start the tensorboard in the same folder"
+                ]
+            }
+        ]
     },
     "input_params": {
         "shape": [
