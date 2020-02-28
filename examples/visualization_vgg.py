@@ -1,10 +1,17 @@
 from deoxys.model import load_model, Model
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.keras.applications import vgg16
-from tensorflow.keras.applications.vgg16 import preprocess_input, \
-    decode_predictions
-from tensorflow.keras.preprocessing import image
+from deoxys.utils import is_keras_standalone
+if is_keras_standalone():
+    from keras.applications import vgg16
+    from keras.applications.vgg16 import preprocess_input, \
+        decode_predictions
+    from keras.preprocessing import image
+else:
+    from tensorflow.keras.applications import vgg16
+    from tensorflow.keras.applications.vgg16 import preprocess_input, \
+        decode_predictions
+    from tensorflow.keras.preprocessing import image
 
 
 def deprocess_image(x):

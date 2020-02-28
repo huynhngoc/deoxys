@@ -5,16 +5,16 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from ..utils import Singleton
-import deoxys.keras.backend as K
-from deoxys.keras.metrics import Metric, deserialize, mode as keras_mode
+from ..utils import Singleton, is_keras_standalone
+from ..keras import backend as K
+from ..keras.metrics import Metric, deserialize
 
-if keras_mode.upper() == 'ALONE':
+if is_keras_standalone():
     from keras.metrics import _ConfusionMatrixConditionCount
     from keras.utils.metrics_utils \
         import update_confusion_matrix_variables, parse_init_thresholds, \
         ConfusionMatrix
-elif keras_mode.upper() == 'TENSORFLOW':
+else:
     from tensorflow.python.keras.metrics import _ConfusionMatrixConditionCount
     from tensorflow.python.keras.utils.metrics_utils \
         import update_confusion_matrix_variables, parse_init_thresholds, \
@@ -61,7 +61,7 @@ class Fbeta(Metric):
 
         count_ops = K.update_add(self.count, count)
 
-        if keras_mode.upper() == 'ALONE':
+        if is_keras_standalone():
             return [total_ops, count_ops]
 
     def result(self):
@@ -120,7 +120,7 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
             thresholds=self.thresholds,
             sample_weight=sample_weight)
 
-        if keras_mode.upper() == 'ALONE':
+        if is_keras_standalone():
             return update
 
     def result(self):

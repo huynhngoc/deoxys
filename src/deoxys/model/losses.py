@@ -4,20 +4,21 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
-
-from deoxys.keras import backend as K
-from deoxys.keras.losses import Loss, deserialize, mode as keras_mode
 import numpy as np
-from ..utils import Singleton
+
+from ..keras import backend as K
+from ..keras.losses import Loss, deserialize
+from ..utils import Singleton, is_keras_standalone
 
 
 class BinaryFbetaLoss(Loss):
     def __init__(self, reduction='auto', name="binary_fbeta", beta=1):
-        if keras_mode.upper() == 'TENSORFLOW':
-            super().__init__(reduction, name)
-        else:
+        if is_keras_standalone():
             # use Keras default reduction
             super().__init__('sum_over_batch_size', name)
+        else:
+            super().__init__(reduction, name)
+
         self.beta = beta
 
     def call(self, target, prediction):

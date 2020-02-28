@@ -1,9 +1,6 @@
-import os
+from ..utils import is_keras_standalone
 
-mode = 'TENSORFLOW'
-if 'KERAS_MODE' in os.environ:
-    mode = os.environ.get('KERAS_MODE')
-if mode.upper() == 'ALONE':
+if is_keras_standalone():
     from keras.preprocessing.image import *
-elif mode.upper() == 'TENSORFLOW':
+else:
     from tensorflow.keras.preprocessing.image import *

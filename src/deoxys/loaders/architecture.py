@@ -5,8 +5,9 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from deoxys.keras.models import Model as KerasModel, mode as keras_mode
-from deoxys.keras.layers import Input, concatenate, Lambda
+from ..keras.models import Model as KerasModel
+from ..keras.layers import Input, concatenate, Lambda
+from ..utils import is_keras_standalone
 from tensorflow import image
 import tensorflow as tf
 
@@ -315,7 +316,7 @@ class UnetModelLoader(BaseModelLoader):
                 inputs = []
                 size_factors = None
                 for input_name in layer['inputs']:
-                    if keras_mode.upper() == 'ALONE':
+                    if is_keras_standalone():
                         # keras issue: convtranspose layer output shape are
                         # (None, None, None, filters)
                         if saved_input[
@@ -323,25 +324,33 @@ class UnetModelLoader(BaseModelLoader):
                                     input_name]._keras_shape:
                             saved_input[input_name].set_shape(
                                 saved_input[input_name]._keras_shape)
+
                     if size_factors:
                         if size_factors == saved_input[
                                 input_name].get_shape().as_list()[1:-1]:
                             next_input = saved_input[input_name]
                         else:
                             if len(size_factors) == 2:
-                                if keras_mode.upper() == 'ALONE':
-                                    next_input = Lambda(
-                                        lambda input_tensor: image.resize(
+                                if is_keras_standalone():
+                                    # Create the resize function
+                                    def resize_tensor(
+                                            input_tensor, resize_fn, new_size):
+                                        return resize_fn(
                                             input_tensor,
-                                            size_factors,
-                                            # preserve_aspect_ratio=True,
+                                            new_size,
                                             method='bilinear')
+
+                                    # Put it in the lambda layer
+                                    next_input = Lambda(
+                                        resize_tensor,
+                                        arguments={
+                                            "resize_fn": image.resize,
+                                            "new_size": size_factors}
                                     )(saved_input[input_name])
                                 else:
                                     next_input = image.resize(
                                         saved_input[input_name],
                                         size_factors,
-                                        # preserve_aspect_ratio=True,
                                         method='bilinear')
                             else:
                                 raise NotImplementedError(
@@ -372,10 +381,13 @@ class UnetModelLoader(BaseModelLoader):
 # TODO: refactor this for Afreen
 class Vnet(BaseModelLoader):
     """
-    Create a unet neural network from layers
+    EXPERIMENTAL
+    author: Afreen Mirza
+    email: afreen.mirza@nmbu.no
 
-    :raises NotImplementedError: volumn adjustment in skip connection
-    doesn't support for 3D unet
+    Create a vnet neural network from layers
+
+    :raises NotImplementedError: skip connection are not between 3D images
     """
 
     def resize_by_axis(self, img, dim_1, dim_2, ax):
@@ -399,211 +411,7 @@ class Vnet(BaseModelLoader):
 
     def load(self):
         """
-        Load the unet neural network.
-        Example of Configuration for `layers`:
-        ```
-        [
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 4,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "name": "conv_1",
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 4,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "class_name": "MaxPooling2D"
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 8,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "name": "conv_2",
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 8,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            ...
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 64,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "name": "conv_5",
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 64,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "class_name": "MaxPooling2D"
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 128,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 128,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "name": "conv_T_1",
-                "class_name": "Conv2DTranspose",
-                "config": {
-                    "filters": 32,
-                    "kernel_size": 3,
-                    "strides": [
-                        2,
-                        2
-                    ],
-                    "padding": "same"
-                }
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 64,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                },
-                "inputs": [
-                    "conv_T_1",
-                    "conv_5"
-                ]
-            },
-            ...
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 16,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "name": "conv_T_4",
-                "class_name": "Conv2DTranspose",
-                "config": {
-                    "filters": 4,
-                    "kernel_size": 3,
-                    "strides": [
-                        2,
-                        2
-                    ],
-                    "padding": "same"
-                }
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 8,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                },
-                "inputs": [
-                    "conv_T_4",
-                    "conv_2"
-                ]
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 8,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "name": "conv_T_5",
-                "class_name": "Conv2DTranspose",
-                "config": {
-                    "filters": 2,
-                    "kernel_size": 3,
-                    "strides": [
-                        2,
-                        2
-                    ],
-                    "padding": "same"
-                }
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 4,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                },
-                "inputs": [
-                    "conv_T_5",
-                    "conv_1"
-                ]
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 4,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                }
-            },
-            {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 1,
-                    "kernel_size": 1,
-                    "activation": "sigmoid"
-                }
-            }
-        ]
-        ```
-
-        :raises NotImplementedError: volumn adjustment in skip connection
-        doesn't support
+        Load the unet neural network. Use Conv3d
         :return: A neural network with unet structure
         :rtype: tensorflow.keras.models.Model
         """

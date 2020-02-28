@@ -5,8 +5,8 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 __version__ = "0.0.1"
 
 
-from deoxys.keras.layers import Layer
-from deoxys.keras.models import model_from_config
+from ..keras.layers import Layer
+from ..keras.models import model_from_config
 from ..utils import Singleton
 from .activations import Activations
 

@@ -7,12 +7,18 @@ __version__ = "0.0.1"
 
 import copy
 import json
+import os
+import tensorflow as tf
 
 from .singleton import Singleton
 from .file_utils import *
 from .json_utils import *
 from .plot_utils import *
 from .data_utils import *
+
+
+KERAS_STANDALONE = None
+TENSORFLOW_EAGER_MODE = None
 
 
 def deep_copy(obj):
@@ -23,3 +29,26 @@ def deep_copy(obj):
             pass
 
     return copy.deepcopy(obj)
+
+
+def is_keras_standalone():
+    global KERAS_STANDALONE
+    if KERAS_STANDALONE is None:
+        KERAS_STANDALONE = False
+
+        if 'KERAS_MODE' in os.environ:
+            mode = os.environ.get('KERAS_MODE')
+            if mode.upper() == 'ALONE':
+                KERAS_STANDALONE = True
+            elif mode.upper() == 'TENSORFLOW':
+                KERAS_STANDALONE = True
+    return KERAS_STANDALONE
+
+
+def is_default_tf_eager_mode():
+    global TENSORFLOW_EAGER_MODE
+    if TENSORFLOW_EAGER_MODE is None:
+        TENSORFLOW_EAGER_MODE = (
+            not is_keras_standalone()) and tf.__version__.startswith('2.')
+
+    return TENSORFLOW_EAGER_MODE
