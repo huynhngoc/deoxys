@@ -275,6 +275,15 @@ class Model:
     def activation_map_for_image(self, layer_name, images):
         return self.activation_map(layer_name).predict(images, verbose=1)
 
+    def _get_gradient_loss(self, outputs, filter_index, loss_fn):
+        if loss_fn is None:
+            loss_value = tf.reduce_mean(
+                outputs[..., filter_index])
+        else:
+            loss_value = loss_fn(outputs)
+
+        return loss_value
+
     def gradient_map(self, layer_name, img=None, step_size=1, epochs=20,
                      filter_index=0, loss_fn=None):
         """
@@ -309,7 +318,7 @@ class Model:
             input_img_data = img
 
         input_img_data = [tf.Variable(
-            tf.cast(input_img_data, tf.float32)) for _ in list_index]
+            tf.cast(input_img_data, K.floatx())) for _ in list_index]
 
         activation_model = self.activation_map(layer_name)
 
@@ -322,21 +331,27 @@ class Model:
 
                     with tf.GradientTape() as tape:
                         outputs = activation_model(input_img_data[i])
-                        if loss_fn is None:
-                            loss_value = tf.reduce_mean(
-                                outputs[..., filter_index])
-                        else:
-                            loss_value = loss_fn(outputs)
+
+                        loss_value = self._get_gradient_loss(
+                            outputs, filter_index, loss_fn)
+                        # if loss_fn is None:
+                        #     loss_value = tf.reduce_mean(
+                        #         outputs[..., filter_index])
+                        # else:
+                        #     loss_value = loss_fn(outputs)
 
                     grads = tape.gradient(loss_value, input_img_data[i])
                 else:
                     outputs = activation_model.output
 
-                    if loss_fn is None:
-                        loss_value = tf.reduce_mean(
-                            outputs[..., filter_index])
-                    else:
-                        loss_value = loss_fn(outputs)
+                    loss_value = self._get_gradient_loss(
+                        outputs, filter_index, loss_fn)
+
+                    # if loss_fn is None:
+                    #     loss_value = tf.reduce_mean(
+                    #         outputs[..., filter_index])
+                    # else:
+                    #     loss_value = loss_fn(outputs)
 
                     gradient = K.gradients(loss_value, activation_model.input)
 
@@ -389,7 +404,7 @@ class Model:
             input_img_data = img
 
         input_img_data = [tf.Variable(
-            tf.cast(input_img_data, tf.float32)) for _ in list_index]
+            tf.cast(input_img_data, K.floatx())) for _ in list_index]
 
         activation_model = self.activation_map(layer_name)
 
@@ -488,19 +503,34 @@ class Model:
                 else:
                     yield K.eval(input_img_data[0])
 
+    def _get_backprop_loss(self, output, mode='max', output_index=0):
+        if mode == 'max':
+            loss = K.max(output, axis=-1)
+        elif mode == 'one':
+            loss = output[..., output_index]
+        else:
+            loss = output
+
+        return loss
+
+    def _max_filter_map(self, output):
+        return K.argmax(output, axis=-1)
+
     def _backprop_eagerly(self, layer_name, images, mode='max',
                           output_index=0):
-        img_tensor = tf.Variable(tf.cast(images, tf.floatx))
+        img_tensor = tf.Variable(tf.cast(images, K.floatx()))
         activation_map = self.activation_map(layer_name)
         with tf.GradientTape() as tape:
             tape.watch(img_tensor)
             output = activation_map(img_tensor)
-            if mode == 'max':
-                loss = K.max(output, axis=3)
-            elif mode == 'one':
-                loss = output[..., output_index]
-            else:
-                loss = output
+
+            loss = self._get_backprop_loss(output, mode, output_index)
+            # if mode == 'max':
+            #     loss = K.max(output, axis=3)
+            # elif mode == 'one':
+            #     loss = output[..., output_index]
+            # else:
+            #     loss = output
 
         grads = tape.gradient(loss, img_tensor)
 
@@ -509,12 +539,14 @@ class Model:
     def _backprop_symbolic(self, layer_name, images, mode='max',
                            output_index=0):
         output = self.layers[layer_name].output
-        if mode == 'max':
-            loss = K.max(output, axis=3)
-        elif mode == 'one':
-            loss = output[..., output_index]
-        else:
-            loss = output
+
+        loss = self._get_backprop_loss(output, mode, output_index)
+        # if mode == 'max':
+        #     loss = K.max(output, axis=3)
+        # elif mode == 'one':
+        #     loss = output[..., output_index]
+        # else:
+        #     loss = output
 
         grads = K.gradients(loss, self.model.input)[0]
 
@@ -573,6 +605,10 @@ class Model:
                         output_index=0):
         return self._gradient_backprop('GuidedBackProp', layer_name,
                                        images, mode, output_index)
+
+    def max_filter(self, layer_name, images):
+        return self._max_filter_map(
+            self.activation_map_for_image(layer_name, images))
 
     def _get_train_params(self, keys, **kwargs):
         params = {}

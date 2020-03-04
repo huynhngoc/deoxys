@@ -125,7 +125,7 @@ class Experiment:
                        prediction_checkpoint_period=0,
                        save_origin_images=False,
                        verbose=1,
-                       epochs=None, initial_epoch=None
+                       epochs=None, initial_epoch=None, **custom_kwargs
                        ):
         log_base_path = self.log_base_path
 
@@ -133,7 +133,7 @@ class Experiment:
             if not os.path.exists(log_base_path):
                 os.makedirs(log_base_path)
 
-            kwargs = {}
+            kwargs = custom_kwargs or {}
 
             csv_logger_append = False
 
