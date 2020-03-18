@@ -503,11 +503,171 @@ class Model:
                 else:
                     yield K.eval(input_img_data[0])
 
-    def _get_backprop_loss(self, output, mode='max', output_index=0):
+    def gradient_map_generator_2(self, layer_name, img=None, step_size=1,
+                                 filter_index=0, loss_fn=None):
+        """
+        EXPERIMENTAL
+
+        :param layer_name: [description]
+        :type layer_name: [type]
+        :param img: [description], defaults to None
+        :type img: [type], optional
+        :param step_size: [description], defaults to 1
+        :type step_size: int, optional
+        :param filter_index: [description], defaults to 0
+        :type filter_index: int, optional
+        :param loss_fn: [description], defaults to None
+        :type loss_fn: [type], optional
+        :yield: [description]
+        :rtype: [type]
+        """
+        if type(filter_index) == int:
+            list_index = [filter_index]
+        else:
+            list_index = filter_index
+
+        input_shape = [1] + (self.model.input.shape)[1:]
+        if img is None:
+            input_img_data = np.random.random(input_shape)
+        else:
+            input_img_data = img
+
+        input_img_data = [tf.Variable(
+            tf.cast(input_img_data, K.floatx())) for _ in list_index]
+
+        activation_model = self.activation_map(layer_name)
+
+        e = 0
+        while True:
+            print('epoch:', e)
+            e += 1
+
+            for i, filter_index in enumerate(list_index):
+                print('filter', filter_index)
+                if is_default_tf_eager_mode():
+
+                    with tf.GradientTape() as tape:
+                        outputs = activation_model(input_img_data[i])
+                        if loss_fn is None:
+                            loss_value = tf.reduce_mean(
+                                outputs[..., filter_index])
+                        else:
+                            loss_value = loss_fn(outputs)
+
+                    grads = tape.gradient(loss_value, input_img_data[i])
+                else:
+                    outputs = activation_model.output
+
+                    if loss_fn is None:
+                        loss_value = tf.reduce_mean(
+                            outputs[..., filter_index])
+                    else:
+                        loss_value = loss_fn(outputs)
+
+                    gradient = K.gradients(loss_value, activation_model.input)
+
+                    grads = K.function(activation_model.input,
+                                       gradient)(input_img_data)[0]
+                normalized_grads = grads / \
+                    (tf.sqrt(tf.reduce_mean(tf.square(grads))) + 1e-5)
+
+                input_img_data[i].assign_add(normalized_grads * step_size)
+                # print("std", K.std(input_img_data[i]))
+                print("loss", loss_value)
+
+                def get_modified(horizon, vertical):
+                    modified = np.zeros(
+                        input_shape) - K.get_value(input_img_data[i])
+
+                    for (left, right), (up, down) in product(
+                            horizon, vertical):
+                        modified[:, left:right, up:down, :] = 0
+
+                    return modified
+
+                if K.less(loss_value, K.variable(0.9)) or e < 200:
+                    horizon = [
+                        (45 - e // 5, 55 + e // 5),
+                        (95 - e // 5, 105 + e // 5),
+                        (145 - e // 5, 155 + e // 5),
+                        (195 - e // 5, 205 + e // 5)
+                    ]
+
+                    # vertical =
+                    modified = get_modified(horizon, horizon)
+
+                    input_img_data[i].assign_add(modified)
+
+                # elif K.less(loss_value, K.variable(0.6)):
+                #     horizon = [
+                #         (35 - e // 5, 65 + e // 5),
+                #         (85 - e // 5, 115 + e // 5),
+                #         (135 - e // 5, 165 + e // 5),
+                #         (185 - e // 5, 215 + e // 5)
+                #     ]
+
+                    # vertical = [
+                    #     (35, 65), (85, 115), (135, 165), (185, 215)
+                    # ]
+
+                    # modified = get_modified(horizon, horizon)
+
+                    # input_img_data[i].assign_add(modified)
+
+                # elif K.less(loss_value, K.variables(0.6)):
+                #     modified = np.zeros(
+                #         input_shape) - K.get_value(input_img_data[i])
+                #     # modified[:, l:r, u:d, :]=0
+                #     horizon = [
+                #         (25, 75), (75, 125), (125, 175), (175, 224)
+                #     ]
+
+                #     vertical = [
+                #         (25, 75), (85, 125), (125, 175), (175, 224)
+                #     ]
+
+                #     for (left, right), (up, down) in product(
+                #             horizon, vertical):
+                #         modified[:, left:right, up:down, :] = 0
+                    if e % 5 == 0:
+                        # loss_ = K.get_value(loss_value)
+                        amp = e // 10
+
+                        input_img_data[i].assign_add(
+                            K.random_normal(
+                                shape=K.shape(input_img_data[i]),
+                                mean=0.,
+                                stddev=0.3) * amp)
+
+                # else:
+                #     res = K.get_value(input_img_data[i])
+                #     center = res[:, int(w/4): int(3*w/4),
+                #                  int(h/4): int(3*h/4), :]
+                #     input_img_data[i] = tf.image.resize(
+                #         center, (w, h), method='bilinear')
+
+            if len(input_img_data) > 1:
+                if is_default_tf_eager_mode():
+                    yield [K.get_value(input_img)
+                           for input_img in input_img_data]
+                else:
+                    yield [K.eval(input_img) for input_img in input_img_data]
+            else:
+                if is_default_tf_eager_mode():
+                    yield K.get_value(input_img_data[0])
+                else:
+                    yield K.eval(input_img_data[0])
+
+    def _get_backprop_loss(self, output, mode='max', output_index=0,
+                           loss_fn=None):
         if mode == 'max':
             loss = K.max(output, axis=-1)
         elif mode == 'one':
             loss = output[..., output_index]
+        elif mode == 'all':
+            loss = output
+        elif loss_fn is not None:
+            loss = loss_fn(output)
         else:
             loss = output
 
@@ -517,14 +677,14 @@ class Model:
         return K.argmax(output, axis=-1)
 
     def _backprop_eagerly(self, layer_name, images, mode='max',
-                          output_index=0):
+                          output_index=0, loss_fn=None):
         img_tensor = tf.Variable(tf.cast(images, K.floatx()))
         activation_map = self.activation_map(layer_name)
         with tf.GradientTape() as tape:
             tape.watch(img_tensor)
             output = activation_map(img_tensor)
 
-            loss = self._get_backprop_loss(output, mode, output_index)
+            loss = self._get_backprop_loss(output, mode, output_index, loss_fn)
             # if mode == 'max':
             #     loss = K.max(output, axis=3)
             # elif mode == 'one':
@@ -537,10 +697,10 @@ class Model:
         return K.get_value(grads)
 
     def _backprop_symbolic(self, layer_name, images, mode='max',
-                           output_index=0):
+                           output_index=0, loss_fn=None):
         output = self.layers[layer_name].output
 
-        loss = self._get_backprop_loss(output, mode, output_index)
+        loss = self._get_backprop_loss(output, mode, output_index, loss_fn)
         # if mode == 'max':
         #     loss = K.max(output, axis=3)
         # elif mode == 'one':
@@ -554,17 +714,18 @@ class Model:
 
         return fn(images)
 
-    def backprop(self, layer_name, images, mode='max', output_index=0):
+    def backprop(self, layer_name, images, mode='max', output_index=0,
+                 loss_fn=None):
         if is_default_tf_eager_mode():
             grads = self._backprop_eagerly(
-                layer_name, images, mode, output_index)
+                layer_name, images, mode, output_index, loss_fn)
         else:
             grads = self._backprop_symbolic(
-                layer_name, images, mode, output_index)
+                layer_name, images, mode, output_index, loss_fn)
         return grads
 
     def _gradient_backprop(self, gradient_name, layer_name,
-                           images, mode, output_index):
+                           images, mode, output_index, loss_fn=None):
         # save current weight
         weights = self.model.get_weights()
 
@@ -577,10 +738,15 @@ class Model:
 
                 if mode == 'max':
                     output = K.max(new_model.get_layer(
-                        layer_name).output, axis=3)
+                        layer_name).output, axis=-1)
                 elif mode == 'one':
                     output = new_model.get_layer(
                         layer_name).output[..., output_index]
+                elif mode == 'all':
+                    output = new_model.get_layer(
+                        layer_name).output
+                elif loss_fn is not None:
+                    output = loss_fn(new_model.get_layer(layer_name).output)
                 else:
                     output = new_model.get_layer(
                         layer_name).output
@@ -597,14 +763,14 @@ class Model:
         return grad_output
 
     def deconv(self, layer_name, images, mode='max',
-               output_index=0):
+               output_index=0, loss_fn=None):
         return self._gradient_backprop('DeconvNet', layer_name,
-                                       images, mode, output_index)
+                                       images, mode, output_index, loss_fn)
 
     def guided_backprop(self, layer_name, images, mode='max',
-                        output_index=0):
+                        output_index=0, loss_fn=None):
         return self._gradient_backprop('GuidedBackProp', layer_name,
-                                       images, mode, output_index)
+                                       images, mode, output_index, loss_fn)
 
     def max_filter(self, layer_name, images):
         return self._max_filter_map(

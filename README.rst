@@ -37,10 +37,16 @@ pip install -e .
 
 Run test
 ```
-tox
+tox .
 ```
 
-* TODO
-
-To run on CPU
+Environment setup
+------------------
+To run on CPU only (windows)
 `set CUDA_VISIBLE_DEVICES=-1`
+
+To use keras in tensorflow (`tf.keras`)
+`set KERAS_MODE=TENSORFLOW`
+
+To use keras with multiple backend
+`set KERAS_MODE=ALONE`
