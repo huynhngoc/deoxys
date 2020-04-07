@@ -116,7 +116,7 @@ class VisApp(BaseApp):
 
             print(image.shape)
             print('getting activation map')
-            activation_map = model.activation_map_for_image(layer, image)[0]
+            activation_map = model.activation_map(layer, image)[0]
 
             print('plotting')
             filter_num = activation_map.shape[-1]

@@ -48,6 +48,28 @@ class Model:
     def __init__(self, model, model_params=None, train_params=None,
                  data_reader=None,
                  pre_compiled=False, weights_file=None, config=None):
+        """
+        Create a deoxys model
+
+        :param model: a keras model object
+        :type model: tf.keras.models.Model, keras.models.Model
+        :param model_params: params to compile a keras model, defaults to None
+        :type model_params: dict, optional
+        :param train_params: params for training, evaluate, predict,
+        defaults to None
+        :type train_params: dict, optional
+        :param data_reader: A deoxys data reader, defaults to None
+        :type data_reader: deoxys.data.DataReader, optional
+        :param pre_compiled: True if model has been compiled, defaults to False
+        :type pre_compiled: bool, optional
+        :param weights_file: path to h5 file that contains the weights of the
+        keras model, defaults to None
+        :type weights_file: str, optional
+        :param config: full config to create the model, defaults to None
+        :type config: dict, optional
+        :raises ValueError: raises error if model_params is defined without
+        optimizer
+        """
 
         self._model = model
         self._model_params = model_params
@@ -78,6 +100,11 @@ class Model:
                 loss_weights=None,
                 sample_weight_mode=None, weighted_metrics=None,
                 target_tensors=None, **kwargs):
+        """Compile the model
+
+        :raises Warning: calling this function will recompile the model with
+        new configuration
+        """
         if self._compiled:
             raise Warning(
                 'This will override the previous configuration of the model.')
@@ -115,11 +142,14 @@ class Model:
 
     def predict(self, *args, **kwargs):
         """
-        Predict from model
+        Predict model
         """
         return self._model.predict(*args, **kwargs)
 
     def evaluate(self, *args, **kwargs):
+        """
+        Evaluate model
+        """
         return self._model.evaluate(*args, **kwargs)
 
     def fit_generator(self, *args, **kwargs):
@@ -134,6 +164,9 @@ class Model:
         return self._model.predict_generator(*args, **kwargs)
 
     def fit_train(self, **kwargs):
+        """
+        Train the model with training data
+        """
         # Reset layer map as weight will change after training
         self._layers = None
 
@@ -151,6 +184,9 @@ class Model:
                                   **params)
 
     def evaluate_train(self, **kwargs):
+        """
+        Evaluate the model on the training data
+        """
         params = self._get_train_params(self._evaluate_param_keys, **kwargs)
         data_gen = self._data_reader.train_generator
         steps_per_epoch = data_gen.total_batch
@@ -160,6 +196,9 @@ class Model:
                                        **params)
 
     def evaluate_val(self, **kwargs):
+        """
+        Evaluate model's performance using validation data
+        """
         params = self._get_train_params(self._evaluate_param_keys, **kwargs)
         data_gen = self._data_reader.val_generator
         steps_per_epoch = data_gen.total_batch
@@ -169,6 +208,9 @@ class Model:
                                        **params)
 
     def predict_val(self, **kwargs):
+        """
+        Predict validation data
+        """
         params = self._get_train_params(self._predict_param_keys, **kwargs)
         data_gen = self._data_reader.val_generator
         steps_per_epoch = data_gen.total_batch
@@ -178,6 +220,9 @@ class Model:
                                       **params)
 
     def evaluate_test(self, **kwargs):
+        """
+        Evaluate model performance using test data
+        """
         params = self._get_train_params(self._evaluate_param_keys, **kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
@@ -187,6 +232,9 @@ class Model:
                                        **params)
 
     def predict_test(self, **kwargs):
+        """
+        Predict test data
+        """
         params = self._get_train_params(self._predict_param_keys, **kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
@@ -201,14 +249,26 @@ class Model:
 
     @property
     def model(self):
+        """
+        Return the keras model
+        """
         return self._model
 
     @property
     def data_reader(self):
+        """
+        Get the data reader used in this model
+        """
         return self._data_reader
 
     @property
     def layers(self):
+        """
+        Get the dictionary of layers in the model
+
+        :return: dictionary of layers
+        :rtype: dict
+        """
         if self._layers is None:
             self._layers = {layer.name: layer for layer in self.model.layers}
 
@@ -268,12 +328,28 @@ class Model:
                         })
         return connection
 
-    def activation_map(self, layer_name):
+    def sub_model(self, layer_name):
+        """
+        Create a sub-model with the same inputs, and the outputs of a specific
+        layer in the deoxys model.
+
+        :param layer_name: name of layer
+        :type layer_name: str
+        :return: Model, whose outputs are of the layer_name
+        :rtype: tf.keras.models.Model or keras.models.Model
+        """
         return KerasModel(inputs=self.model.inputs,
                           outputs=self.layers[layer_name].output)
 
-    def activation_map_for_image(self, layer_name, images):
-        return self.activation_map(layer_name).predict(images, verbose=1)
+    def activation_map(self, layer_name, images):
+        """
+        Get activation map of a list of images
+        """
+        model = self.sub_model(layer_name)
+        res = model.predict(images, verbose=1)
+
+        del model
+        return res
 
     def _get_gradient_loss(self, outputs, filter_index, loss_fn):
         if loss_fn is None:
@@ -284,15 +360,17 @@ class Model:
 
         return loss_value
 
-    def gradient_map(self, layer_name, img=None, step_size=1, epochs=20,
-                     filter_index=0, loss_fn=None):
+    def activation_maximization(self, layer_name, img=None,
+                                step_size=1, epochs=20,
+                                filter_index=0, loss_fn=None,
+                                verbose=True):
         """
-        Return the gradient between the input value and the output at
-        a specific node
+        Return the image that maximize the activation output of one or more
+        filters in a specific layer.
 
         :param layer_name: name of the node
         :type layer_name: str
-        :param img: list of input images, defaults to None. If None, a random
+        :param img: list of initial images, defaults to None. If None, a random
         image with noises will be used
         :type img: [list], optional
         :param step_size: Size of the step when performing gradient descent,
@@ -303,7 +381,7 @@ class Model:
         :param filter_index: index of the filter to get the gradient, can be
         any number between 0 and (size of the filters - 1), defaults to 0
         :type filter_index: int, or list, optional
-        :return: list of gradient images
+        :return: list of images that maximize the activation's filters
         :rtype: list
         """
         if type(filter_index) == int:
@@ -320,13 +398,15 @@ class Model:
         input_img_data = [tf.Variable(
             tf.cast(input_img_data, K.floatx())) for _ in list_index]
 
-        activation_model = self.activation_map(layer_name)
+        activation_model = self.sub_model(layer_name)
 
         for _ in range(epochs):
-            print('epoch', _, '/', epochs)
+            if verbose:
+                print('epoch', _, '/', epochs)
 
             for i, filter_index in enumerate(list_index):
-                print('filter', filter_index)
+                if verbose:
+                    print('filter', filter_index)
                 if is_default_tf_eager_mode():
 
                     with tf.GradientTape() as tape:
@@ -334,11 +414,6 @@ class Model:
 
                         loss_value = self._get_gradient_loss(
                             outputs, filter_index, loss_fn)
-                        # if loss_fn is None:
-                        #     loss_value = tf.reduce_mean(
-                        #         outputs[..., filter_index])
-                        # else:
-                        #     loss_value = loss_fn(outputs)
 
                     grads = tape.gradient(loss_value, input_img_data[i])
                 else:
@@ -346,12 +421,6 @@ class Model:
 
                     loss_value = self._get_gradient_loss(
                         outputs, filter_index, loss_fn)
-
-                    # if loss_fn is None:
-                    #     loss_value = tf.reduce_mean(
-                    #         outputs[..., filter_index])
-                    # else:
-                    #     loss_value = loss_fn(outputs)
 
                     gradient = K.gradients(loss_value, activation_model.input)
 
@@ -374,294 +443,14 @@ class Model:
         else:
             return K.eval(input_img_data[0])
 
-    def gradient_map_generator(self, layer_name, img=None, step_size=1,
-                               filter_index=0, loss_fn=None):
-        """
-        EXPERIMENTAL
-
-        :param layer_name: [description]
-        :type layer_name: [type]
-        :param img: [description], defaults to None
-        :type img: [type], optional
-        :param step_size: [description], defaults to 1
-        :type step_size: int, optional
-        :param filter_index: [description], defaults to 0
-        :type filter_index: int, optional
-        :param loss_fn: [description], defaults to None
-        :type loss_fn: [type], optional
-        :yield: [description]
-        :rtype: [type]
-        """
-        if type(filter_index) == int:
-            list_index = [filter_index]
-        else:
-            list_index = filter_index
-
-        input_shape = [1] + (self.model.input.shape)[1:]
-        if img is None:
-            input_img_data = np.random.random(input_shape)
-        else:
-            input_img_data = img
-
-        input_img_data = [tf.Variable(
-            tf.cast(input_img_data, K.floatx())) for _ in list_index]
-
-        activation_model = self.activation_map(layer_name)
-
-        w, h = input_shape[1:3]
-        l, r = int(w / 2 - 5), int(w / 2 + 5)
-        u, d = int(h / 2 - 5), int(h / 2 + 5)
-
-        e = 0
-        while True:
-            print('epoch:', e)
-            e += 1
-            cont = False
-            if l > 0:
-                if e % 3 == 0:
-                    l -= 2  # noqa
-                cont = True
-            if r < w:
-                if e % 3 == 0:
-                    r += 2
-                cont = True
-            if u > 0:
-                if e % 3 == 0:
-                    u -= 2
-                cont = True
-            if d < h:
-                if e % 3 == 0:
-                    d += 2
-                cont = True
-            horizon = [
-                (max(0, l - w // 4), r - w // 4),
-                (l + w // 4, min(w, r + w // 4)),
-                (l, r)
-            ]
-            vertical = [
-                (max(0, u - h // 4), d - h // 4),
-                (u + h // 4, min(h, d + h // 4)),
-                (u, d)
-            ]
-
-            for i, filter_index in enumerate(list_index):
-                print('filter', filter_index)
-                if is_default_tf_eager_mode():
-
-                    with tf.GradientTape() as tape:
-                        outputs = activation_model(input_img_data[i])
-                        if loss_fn is None:
-                            loss_value = tf.reduce_mean(
-                                outputs[..., filter_index])
-                        else:
-                            loss_value = loss_fn(outputs)
-
-                    grads = tape.gradient(loss_value, input_img_data[i])
-                else:
-                    outputs = activation_model.output
-
-                    if loss_fn is None:
-                        loss_value = tf.reduce_mean(
-                            outputs[..., filter_index])
-                    else:
-                        loss_value = loss_fn(outputs)
-
-                    gradient = K.gradients(loss_value, activation_model.input)
-
-                    grads = K.function(activation_model.input,
-                                       gradient)(input_img_data)[0]
-                normalized_grads = grads / \
-                    (tf.sqrt(tf.reduce_mean(tf.square(grads))) + 1e-5)
-
-                input_img_data[i].assign_add(normalized_grads * step_size)
-
-                if cont:
-                    modified = np.random.random(
-                        input_shape) - K.get_value(input_img_data[i])
-                    # modified[:, l:r, u:d, :]=0
-                    for (left, right), (up, down) in product(
-                            horizon, vertical):
-                        modified[:, left:right, up:down, :] = 0
-
-                    input_img_data[i].assign_add(modified)
-                # else:
-                #     res = K.get_value(input_img_data[i])
-                #     center = res[:, int(w/4): int(3*w/4),
-                #                  int(h/4): int(3*h/4), :]
-                #     input_img_data[i] = tf.image.resize(
-                #         center, (w, h), method='bilinear')
-
-            if len(input_img_data) > 1:
-                if is_default_tf_eager_mode():
-                    yield [K.get_value(input_img)
-                           for input_img in input_img_data]
-                else:
-                    yield [K.eval(input_img) for input_img in input_img_data]
-            else:
-                if is_default_tf_eager_mode():
-                    yield K.get_value(input_img_data[0])
-                else:
-                    yield K.eval(input_img_data[0])
-
-    def gradient_map_generator_2(self, layer_name, img=None, step_size=1,
-                                 filter_index=0, loss_fn=None):
-        """
-        EXPERIMENTAL
-
-        :param layer_name: [description]
-        :type layer_name: [type]
-        :param img: [description], defaults to None
-        :type img: [type], optional
-        :param step_size: [description], defaults to 1
-        :type step_size: int, optional
-        :param filter_index: [description], defaults to 0
-        :type filter_index: int, optional
-        :param loss_fn: [description], defaults to None
-        :type loss_fn: [type], optional
-        :yield: [description]
-        :rtype: [type]
-        """
-        if type(filter_index) == int:
-            list_index = [filter_index]
-        else:
-            list_index = filter_index
-
-        input_shape = [1] + (self.model.input.shape)[1:]
-        if img is None:
-            input_img_data = np.random.random(input_shape)
-        else:
-            input_img_data = img
-
-        input_img_data = [tf.Variable(
-            tf.cast(input_img_data, K.floatx())) for _ in list_index]
-
-        activation_model = self.activation_map(layer_name)
-
-        e = 0
-        while True:
-            print('epoch:', e)
-            e += 1
-
-            for i, filter_index in enumerate(list_index):
-                print('filter', filter_index)
-                if is_default_tf_eager_mode():
-
-                    with tf.GradientTape() as tape:
-                        outputs = activation_model(input_img_data[i])
-                        if loss_fn is None:
-                            loss_value = tf.reduce_mean(
-                                outputs[..., filter_index])
-                        else:
-                            loss_value = loss_fn(outputs)
-
-                    grads = tape.gradient(loss_value, input_img_data[i])
-                else:
-                    outputs = activation_model.output
-
-                    if loss_fn is None:
-                        loss_value = tf.reduce_mean(
-                            outputs[..., filter_index])
-                    else:
-                        loss_value = loss_fn(outputs)
-
-                    gradient = K.gradients(loss_value, activation_model.input)
-
-                    grads = K.function(activation_model.input,
-                                       gradient)(input_img_data)[0]
-                normalized_grads = grads / \
-                    (tf.sqrt(tf.reduce_mean(tf.square(grads))) + 1e-5)
-
-                input_img_data[i].assign_add(normalized_grads * step_size)
-                # print("std", K.std(input_img_data[i]))
-                print("loss", loss_value)
-
-                def get_modified(horizon, vertical):
-                    modified = np.zeros(
-                        input_shape) - K.get_value(input_img_data[i])
-
-                    for (left, right), (up, down) in product(
-                            horizon, vertical):
-                        modified[:, left:right, up:down, :] = 0
-
-                    return modified
-
-                if K.less(loss_value, K.variable(0.9)) or e < 200:
-                    horizon = [
-                        (45 - e // 5, 55 + e // 5),
-                        (95 - e // 5, 105 + e // 5),
-                        (145 - e // 5, 155 + e // 5),
-                        (195 - e // 5, 205 + e // 5)
-                    ]
-
-                    # vertical =
-                    modified = get_modified(horizon, horizon)
-
-                    input_img_data[i].assign_add(modified)
-
-                # elif K.less(loss_value, K.variable(0.6)):
-                #     horizon = [
-                #         (35 - e // 5, 65 + e // 5),
-                #         (85 - e // 5, 115 + e // 5),
-                #         (135 - e // 5, 165 + e // 5),
-                #         (185 - e // 5, 215 + e // 5)
-                #     ]
-
-                    # vertical = [
-                    #     (35, 65), (85, 115), (135, 165), (185, 215)
-                    # ]
-
-                    # modified = get_modified(horizon, horizon)
-
-                    # input_img_data[i].assign_add(modified)
-
-                # elif K.less(loss_value, K.variables(0.6)):
-                #     modified = np.zeros(
-                #         input_shape) - K.get_value(input_img_data[i])
-                #     # modified[:, l:r, u:d, :]=0
-                #     horizon = [
-                #         (25, 75), (75, 125), (125, 175), (175, 224)
-                #     ]
-
-                #     vertical = [
-                #         (25, 75), (85, 125), (125, 175), (175, 224)
-                #     ]
-
-                #     for (left, right), (up, down) in product(
-                #             horizon, vertical):
-                #         modified[:, left:right, up:down, :] = 0
-                    if e % 5 == 0:
-                        # loss_ = K.get_value(loss_value)
-                        amp = e // 10
-
-                        input_img_data[i].assign_add(
-                            K.random_normal(
-                                shape=K.shape(input_img_data[i]),
-                                mean=0.,
-                                stddev=0.3) * amp)
-
-                # else:
-                #     res = K.get_value(input_img_data[i])
-                #     center = res[:, int(w/4): int(3*w/4),
-                #                  int(h/4): int(3*h/4), :]
-                #     input_img_data[i] = tf.image.resize(
-                #         center, (w, h), method='bilinear')
-
-            if len(input_img_data) > 1:
-                if is_default_tf_eager_mode():
-                    yield [K.get_value(input_img)
-                           for input_img in input_img_data]
-                else:
-                    yield [K.eval(input_img) for input_img in input_img_data]
-            else:
-                if is_default_tf_eager_mode():
-                    yield K.get_value(input_img_data[0])
-                else:
-                    yield K.eval(input_img_data[0])
-
     def _get_backprop_loss(self, output, mode='max', output_index=0,
                            loss_fn=None):
         if mode == 'max':
             loss = K.max(output, axis=-1)
+        elif mode == 'mean':
+            loss = K.mean(output, axis=-1)
+        elif mode == 'min':
+            loss = K.min(output, axis=-1)
         elif mode == 'one':
             loss = output[..., output_index]
         elif mode == 'all':
@@ -679,18 +468,12 @@ class Model:
     def _backprop_eagerly(self, layer_name, images, mode='max',
                           output_index=0, loss_fn=None):
         img_tensor = tf.Variable(tf.cast(images, K.floatx()))
-        activation_map = self.activation_map(layer_name)
+        activation_model = self.sub_model(layer_name)
         with tf.GradientTape() as tape:
             tape.watch(img_tensor)
-            output = activation_map(img_tensor)
+            output = activation_model(img_tensor)
 
             loss = self._get_backprop_loss(output, mode, output_index, loss_fn)
-            # if mode == 'max':
-            #     loss = K.max(output, axis=3)
-            # elif mode == 'one':
-            #     loss = output[..., output_index]
-            # else:
-            #     loss = output
 
         grads = tape.gradient(loss, img_tensor)
 
@@ -701,12 +484,6 @@ class Model:
         output = self.layers[layer_name].output
 
         loss = self._get_backprop_loss(output, mode, output_index, loss_fn)
-        # if mode == 'max':
-        #     loss = K.max(output, axis=3)
-        # elif mode == 'one':
-        #     loss = output[..., output_index]
-        # else:
-        #     loss = output
 
         grads = K.gradients(loss, self.model.input)[0]
 
@@ -716,6 +493,37 @@ class Model:
 
     def backprop(self, layer_name, images, mode='max', output_index=0,
                  loss_fn=None):
+        """
+        Return saliency map, or backprop, or gradient map of a list of images
+
+        :param layer_name: name of the layer
+        :type layer_name: str
+        :param images: list of images
+        :type images: list
+        :param mode: mode to calculate the loss to use when backpropagation,
+        defaults to 'max', other options are 'mean', 'min', 'one', 'custom',
+        and 'all'.
+
+        'max', 'min', 'mean': calculate the loss by calculating the max, min,
+        or mean over the inner most axis (axis=-1) of the output.
+
+        'one': calculate the loss on one index in the inner most axis (axis=-1)
+        of the output of the layer.
+
+        'all': use the output of the layer as the loss score.
+
+        'custom': use a custom function to calculate the loss score based on
+        the output of the layer.
+
+        :type mode: str, optional
+        :param output_index: use when mode='one', defaults to 0
+        :type output_index: int, optional
+        :param loss_fn: use when mode='custom', the function to calculate the
+        loss score based on the output of the layer, defaults to None
+        :type loss_fn: function, optional
+        :return: resulting images when performing backpropagation.
+        :rtype: numpy.array of images
+        """
         if is_default_tf_eager_mode():
             grads = self._backprop_eagerly(
                 layer_name, images, mode, output_index, loss_fn)
@@ -736,20 +544,24 @@ class Model:
                 # Apply weights
                 new_model.set_weights(weights)
 
-                if mode == 'max':
-                    output = K.max(new_model.get_layer(
-                        layer_name).output, axis=-1)
-                elif mode == 'one':
-                    output = new_model.get_layer(
-                        layer_name).output[..., output_index]
-                elif mode == 'all':
-                    output = new_model.get_layer(
-                        layer_name).output
-                elif loss_fn is not None:
-                    output = loss_fn(new_model.get_layer(layer_name).output)
-                else:
-                    output = new_model.get_layer(
-                        layer_name).output
+                output = self._get_backprop_loss(
+                    new_model.get_layer(layer_name).output,
+                    mode, output_index, loss_fn)
+
+                # if mode == 'max':
+                #     output = K.max(new_model.get_layer(
+                #         layer_name).output, axis=-1)
+                # elif mode == 'one':
+                #     output = new_model.get_layer(
+                #         layer_name).output[..., output_index]
+                # elif mode == 'all':
+                #     output = new_model.get_layer(
+                #         layer_name).output
+                # elif loss_fn is not None:
+                #     output = loss_fn(new_model.get_layer(layer_name).output)
+                # else:
+                #     output = new_model.get_layer(
+                #         layer_name).output
 
                 grads = K.gradients(output, new_model.input)[0]
 
@@ -764,17 +576,64 @@ class Model:
 
     def deconv(self, layer_name, images, mode='max',
                output_index=0, loss_fn=None):
-        return self._gradient_backprop('DeconvNet', layer_name,
-                                       images, mode, output_index, loss_fn)
+        if is_default_tf_eager_mode():
+            return self._gradient_backprop_eager(
+                _DeconvRelu, layer_name,
+                images, mode, output_index, loss_fn
+            )
+        else:
+            return self._gradient_backprop('DeconvNet', layer_name,
+                                           images, mode, output_index, loss_fn)
 
     def guided_backprop(self, layer_name, images, mode='max',
                         output_index=0, loss_fn=None):
-        return self._gradient_backprop('GuidedBackProp', layer_name,
-                                       images, mode, output_index, loss_fn)
+        if is_default_tf_eager_mode():
+            return self._gradient_backprop_eager(
+                _GuidedBackPropRelu, layer_name,
+                images, mode, output_index, loss_fn
+            )
+        else:
+            return self._gradient_backprop('GuidedBackProp', layer_name,
+                                           images, mode, output_index, loss_fn)
+
+    def _gradient_backprop_eager(self, grad_fn, layer_name, images, mode='max',
+                                 output_index=0, loss_fn=None):
+        # save current weight
+        weights = self.model.get_weights()
+
+        new_model = clone_model(self.model)
+        # Apply weights
+        new_model.set_weights(weights)
+
+        for layer in new_model.layers:
+            if 'activation' in layer.get_config():
+                if 'relu' in layer.activation.__name__:
+                    layer.activation = grad_fn
+
+        guided_model = KerasModel(new_model.inputs,
+                                  new_model.get_layer(layer_name).output)
+
+        img_tensor = tf.Variable(tf.cast(images, K.floatx()))
+        with tf.GradientTape() as tape:
+            tape.watch(img_tensor)
+            output = guided_model(img_tensor)
+
+            loss = self._get_backprop_loss(output, mode, output_index, loss_fn)
+
+        grads = tape.gradient(loss, img_tensor)
+
+        del guided_model
+        del new_model
+
+        return K.get_value(grads)
 
     def max_filter(self, layer_name, images):
+        """
+        Return a list of images in which each pixel value is the index of the
+        filter having the max value in the activation map.
+        """
         return self._max_filter_map(
-            self.activation_map_for_image(layer_name, images))
+            self.activation_map(layer_name, images))
 
     def _get_train_params(self, keys, **kwargs):
         params = {}
@@ -915,3 +774,33 @@ def _DeconvNet(op, grad):
 def _BackProp(op, grad):
     dtype = op.inputs[0].dtype
     return grad * tf.cast(op.inputs[0] > 0., dtype)
+
+
+@tf.custom_gradient
+def _GuidedBackPropRelu(x):
+    res = K.relu(x)
+
+    def grad(dy):
+        return dy * tf.cast(dy > 0., x.dtype) * tf.cast(x > 0., x.dtype)
+
+    return res, grad
+
+
+@tf.custom_gradient
+def _DeconvRelu(x):
+    res = K.relu(x)
+
+    def grad(dy):
+        return dy * tf.cast(dy > 0., x.dtype)
+
+    return res, grad
+
+
+@tf.custom_gradient
+def _BackPropRelu(x):
+    res = K.relu(x)
+
+    def grad(dy):
+        return dy * tf.cast(x > 0., x.dtype)
+
+    return res, grad
