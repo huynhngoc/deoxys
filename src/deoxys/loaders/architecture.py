@@ -66,6 +66,11 @@ class BaseModelLoader:
         if 'layers' in architecture:
             self._layers = deep_copy(architecture['layers'])
 
+        if 'outputs' in architecture:
+            self._outputs = deep_copy(architecture['outputs'])
+        else:
+            self._outputs = None
+
         self._input_params = deep_copy(input_params)
 
 
@@ -313,55 +318,61 @@ class UnetModelLoader(BaseModelLoader):
             next_tensor = layer_from_config(layer)
 
             if 'inputs' in layer:
-                inputs = []
-                size_factors = None
-                for input_name in layer['inputs']:
-                    if is_keras_standalone():
-                        # keras issue: convtranspose layer output shape are
-                        # (None, None, None, filters)
-                        if saved_input[
-                                input_name].get_shape() != saved_input[
-                                    input_name]._keras_shape:
-                            saved_input[input_name].set_shape(
-                                saved_input[input_name]._keras_shape)
+                if type(layer['inputs']) == list and len(layer['inputs']) > 1:
+                    inputs = []
+                    size_factors = None
+                    for input_name in layer['inputs']:
+                        if is_keras_standalone():
+                            # keras issue: convtranspose layer output shape are
+                            # (None, None, None, filters)
+                            if saved_input[
+                                    input_name].get_shape() != saved_input[
+                                        input_name]._keras_shape:
+                                saved_input[input_name].set_shape(
+                                    saved_input[input_name]._keras_shape)
 
-                    if size_factors:
-                        if size_factors == saved_input[
-                                input_name].get_shape().as_list()[1:-1]:
-                            next_input = saved_input[input_name]
-                        else:
-                            if len(size_factors) == 2:
-                                if is_keras_standalone():
-                                    # Create the resize function
-                                    def resize_tensor(
-                                            input_tensor, resize_fn, new_size):
-                                        return resize_fn(
-                                            input_tensor,
-                                            new_size,
-                                            method='bilinear')
-
-                                    # Put it in the lambda layer
-                                    next_input = Lambda(
-                                        resize_tensor,
-                                        arguments={
-                                            "resize_fn": image.resize,
-                                            "new_size": size_factors}
-                                    )(saved_input[input_name])
-                                else:
-                                    next_input = image.resize(
-                                        saved_input[input_name],
-                                        size_factors,
-                                        method='bilinear')
+                        if size_factors:
+                            if size_factors == saved_input[
+                                    input_name].get_shape().as_list()[1: -1]:
+                                next_input = saved_input[input_name]
                             else:
-                                raise NotImplementedError(
-                                    "Resize 3D tensor not implemented")
-                        inputs.append(next_input)
+                                if len(size_factors) == 2:
+                                    if is_keras_standalone():
+                                        # Create the resize function
+                                        def resize_tensor(
+                                                input_tensor, resize_fn,
+                                                new_size):
+                                            return resize_fn(
+                                                input_tensor,
+                                                new_size,
+                                                method='bilinear')
 
-                    else:
-                        inputs.append(saved_input[input_name])
-                        size_factors = saved_input[
-                            input_name].get_shape().as_list()[1:-1]
-                connected_input = concatenate(inputs)
+                                        # Put it in the lambda layer
+                                        next_input = Lambda(
+                                            resize_tensor,
+                                            arguments={
+                                                "resize_fn": image.resize,
+                                                "new_size": size_factors}
+                                        )(saved_input[input_name])
+                                    else:
+                                        next_input = image.resize(
+                                            saved_input[input_name],
+                                            size_factors,
+                                            method='bilinear')
+                                else:
+                                    raise NotImplementedError(
+                                        "Resize 3D tensor not implemented")
+                            inputs.append(next_input)
+
+                        else:
+                            inputs.append(saved_input[input_name])
+                            size_factors = saved_input[
+                                input_name].get_shape().as_list()[1:-1]
+                    connected_input = concatenate(inputs)
+                else:
+                    input_name = layer['inputs'] if type(
+                        layer['inputs']) == str else layer['inputs'][0]
+                    connected_input = saved_input[input_name]
             else:
                 connected_input = layers[i]
 
@@ -375,7 +386,12 @@ class UnetModelLoader(BaseModelLoader):
 
             layers.append(next_layer)
 
-        return KerasModel(inputs=layers[0], outputs=layers[-1])
+        if self._outputs is None:
+            return KerasModel(inputs=layers[0], outputs=layers[-1])
+        else:
+            return KerasModel(inputs=layers[0],
+                              outputs=[saved_input[name]
+                                       for name in self._outputs])
 
 
 # TODO: refactor this for Afreen
@@ -423,37 +439,42 @@ class Vnet(BaseModelLoader):
             next_tensor = layer_from_config(layer)
 
             if 'inputs' in layer:
-                inputs = []
-                size_factors = None
-                for input_name in layer['inputs']:
-                    if size_factors:
-                        if size_factors == saved_input[
-                                input_name].get_shape().as_list()[1:-1]:
-                            next_input = saved_input[input_name]
-                        else:
-                            if len(size_factors) == 2:
-                                next_input = image.resize(
-                                    saved_input[input_name],
-                                    size_factors,
-                                    # preserve_aspect_ratio=True,
-                                    method='bilinear')
-                            elif len(size_factors) == 3:
-
-                                next_input = self.resize_along_dim(
-                                    saved_input[input_name],
-                                    size_factors
-                                )
-
+                if type(layer['inputs']) == list and len(layer['inputs']) > 1:
+                    inputs = []
+                    size_factors = None
+                    for input_name in layer['inputs']:
+                        if size_factors:
+                            if size_factors == saved_input[
+                                    input_name].get_shape().as_list()[1:-1]:
+                                next_input = saved_input[input_name]
                             else:
-                                raise NotImplementedError(
-                                    "Image shape is not supported ")
-                        inputs.append(next_input)
+                                if len(size_factors) == 2:
+                                    next_input = image.resize(
+                                        saved_input[input_name],
+                                        size_factors,
+                                        # preserve_aspect_ratio=True,
+                                        method='bilinear')
+                                elif len(size_factors) == 3:
 
-                    else:
-                        inputs.append(saved_input[input_name])
-                        size_factors = saved_input[
-                            input_name].get_shape().as_list()[1:-1]
-                connected_input = concatenate(inputs)
+                                    next_input = self.resize_along_dim(
+                                        saved_input[input_name],
+                                        size_factors
+                                    )
+
+                                else:
+                                    raise NotImplementedError(
+                                        "Image shape is not supported ")
+                            inputs.append(next_input)
+
+                        else:
+                            inputs.append(saved_input[input_name])
+                            size_factors = saved_input[
+                                input_name].get_shape().as_list()[1:-1]
+                    connected_input = concatenate(inputs)
+                else:
+                    input_name = layer['inputs'] if type(
+                        layer['inputs']) == str else layer['inputs'][0]
+                    connected_input = saved_input[input_name]
             else:
                 connected_input = layers[i]
 
@@ -466,8 +487,13 @@ class Vnet(BaseModelLoader):
                 saved_input[layer['name']] = next_layer
 
             layers.append(next_layer)
-        print(layers[0], layers[-1])
-        return KerasModel(inputs=layers[0], outputs=layers[-1])
+
+        if self._outputs is None:
+            return KerasModel(inputs=layers[0], outputs=layers[-1])
+        else:
+            return KerasModel(inputs=layers[0],
+                              outputs=[saved_input[name]
+                                       for name in self._outputs])
 
 
 class DenseModelLoader(BaseModelLoader):
