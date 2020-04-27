@@ -50,7 +50,17 @@ def load_params(model_params):
                 params[key] = optimizer_from_config(val)
         elif key == 'loss':
             if type(val) == dict:
-                params[key] = loss_from_config(val)
+                try:
+                    params[key] = loss_from_config(val)
+                except Exception:
+                    loss_dict = {}
+                    for k, v in val.items():
+                        loss_dict[k] = v if type(
+                            v) == str else loss_from_config(v)
+                    params[key] = loss_from_config
+            if type(val) == list:
+                params[key] = [item if type(
+                    item) == str else loss_from_config(item) for item in val]
         elif key == 'metrics':
             for i, metric in enumerate(val):
                 if type(metric) == dict:
