@@ -41,7 +41,7 @@ def is_keras_standalone():
             if mode.upper() == 'ALONE':
                 KERAS_STANDALONE = True
             elif mode.upper() == 'TENSORFLOW':
-                KERAS_STANDALONE = True
+                KERAS_STANDALONE = False
     return KERAS_STANDALONE
 
 
