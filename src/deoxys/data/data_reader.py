@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 from deoxys.keras.preprocessing import ImageDataGenerator
 from .data_generator import DataGenerator, HDF5DataGenerator
-from ..utils import Singleton
+from ..utils import Singleton, file_finder
 
 
 class DataReader:
@@ -128,6 +128,11 @@ class HDF5Reader(DataReader):
         defaults to 'fold'
         :type fold_prefix: str, optional
         """
+        if file_finder(filename) is None:
+            self.ready = False
+            return
+
+        self.ready = True
 
         self.hf = h5py.File(filename, 'r')
         self.batch_size = batch_size

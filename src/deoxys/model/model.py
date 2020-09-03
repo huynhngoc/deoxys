@@ -167,6 +167,11 @@ class Model:
         """
         Train the model with training data
         """
+        if self._data_reader is None:
+            raise Warning('No DataReader is specified. This action is ignored')
+            return None
+
+
         # Reset layer map as weight will change after training
         self._layers = None
 
@@ -187,6 +192,10 @@ class Model:
         """
         Evaluate the model on the training data
         """
+        if self._data_reader is None:
+            raise Warning('No DataReader is specified. This action is ignored')
+            return None
+
         params = self._get_train_params(self._evaluate_param_keys, **kwargs)
         data_gen = self._data_reader.train_generator
         steps_per_epoch = data_gen.total_batch
@@ -199,6 +208,10 @@ class Model:
         """
         Evaluate model's performance using validation data
         """
+        if self._data_reader is None:
+            raise Warning('No DataReader is specified. This action is ignored')
+            return None
+
         params = self._get_train_params(self._evaluate_param_keys, **kwargs)
         data_gen = self._data_reader.val_generator
         steps_per_epoch = data_gen.total_batch
@@ -211,6 +224,10 @@ class Model:
         """
         Predict validation data
         """
+        if self._data_reader is None:
+            raise Warning('No DataReader is specified. This action is ignored')
+            return None
+
         params = self._get_train_params(self._predict_param_keys, **kwargs)
         data_gen = self._data_reader.val_generator
         steps_per_epoch = data_gen.total_batch
@@ -223,6 +240,10 @@ class Model:
         """
         Evaluate model performance using test data
         """
+        if self._data_reader is None:
+            raise Warning('No DataReader is specified. This action is ignored')
+            return None
+
         params = self._get_train_params(self._evaluate_param_keys, **kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
@@ -235,6 +256,10 @@ class Model:
         """
         Predict test data
         """
+        if self._data_reader is None:
+            raise Warning('No DataReader is specified. This action is ignored')
+            return None
+
         params = self._get_train_params(self._predict_param_keys, **kwargs)
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
