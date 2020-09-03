@@ -48,7 +48,7 @@ def load_data(dataset_params):
         The data reader instance
     """
     if not dataset_params:
-        return {}
+        return None
     params = deep_copy(dataset_params)
 
     if params['config']:
@@ -66,4 +66,8 @@ def load_data(dataset_params):
                                 preprocessor_from_config({'class_name': v}))
                     params['config'][key] = preprocessors
 
-    return datareader_from_config(params)
+    dr = datareader_from_config(params)
+    if dr.ready:
+        return dr
+    else:
+        return None

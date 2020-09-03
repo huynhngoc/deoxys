@@ -8,7 +8,7 @@ import h5py
 import numpy as np
 from deoxys.keras.preprocessing import ImageDataGenerator
 from .data_generator import DataGenerator, HDF5DataGenerator
-from ..utils import Singleton
+from ..utils import Singleton, file_finder
 
 
 class DataReader:
@@ -132,6 +132,11 @@ class HDF5Reader(DataReader):
         file. This file should be split into groups. Each group contain
         datasets, each of which is a column in the data.
         """
+        if file_finder(filename) is None:
+            self.ready = False
+            return
+
+        self.ready = True
 
         self.hf = h5py.File(filename, 'r')
         self.batch_size = batch_size
