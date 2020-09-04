@@ -47,7 +47,8 @@ class Model:
 
     def __init__(self, model, model_params=None, train_params=None,
                  data_reader=None,
-                 pre_compiled=False, weights_file=None, config=None):
+                 pre_compiled=False, weights_file=None, config=None,
+                 sample_data=None):
         """
         Create a deoxys model
 
@@ -87,8 +88,20 @@ class Model:
                 if weights_file:
                     # This initializes the variables used by the optimizers,
                     # as well as any stateful metric variables
+                    if self._data_reader is not None:
+                        batch_x, batch_y = next(
+                            self.data_reader.train_generator.generate())
+                    elif sample_data is not None:
+                        batch_x, batch_y = sample_data
+                    else:
+                        shape_x = self._model.input_shape[1:]
+                        shape_y = self.model.output_shape[1:]
+                        batch_x = np.zeros((1, *shape_x))
+                        batch_y = np.zeros((1, *shape_y))
+
                     self._model.train_on_batch(
-                        *next(self.data_reader.train_generator.generate()))
+                        batch_x, batch_y
+                    )
 
                     self._model.load_weights(weights_file)
                 self._compiled = True
@@ -127,9 +140,13 @@ class Model:
         if self.config:
             config = json.dumps(self.config)
 
-            saved_model = h5py.File(filename, 'a')
-            saved_model.attrs.create('deoxys_config', config)
-            saved_model.close()
+            with h5py.File(filename, 'a') as saved_model:
+                saved_model.attrs.create('deoxys_config', config)
+                if self._data_reader is not None:
+                    batch_x, batch_y = next(
+                        self.data_reader.train_generator.generate())
+                    saved_model.attrs.create('deoxys_batch_x', batch_x)
+                    saved_model.attrs.create('deoxys_batch_y', batch_y)
 
     def fit(self, *args, **kwargs):
         """
@@ -170,7 +187,6 @@ class Model:
         if self._data_reader is None:
             raise Warning('No DataReader is specified. This action is ignored')
             return None
-
 
         # Reset layer map as weight will change after training
         self._layers = None

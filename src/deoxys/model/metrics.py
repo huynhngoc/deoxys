@@ -38,6 +38,8 @@ class Fbeta(Metric):
         reduce_ax = list(range(1, size))
         eps = 1e-8
 
+        y_true = K.cast(y_true, y_pred.dtype)
+
         true_positive = K.sum(y_pred * y_true, axis=reduce_ax)
         target_positive = K.sum(K.square(y_true), axis=reduce_ax)
         predicted_positive = K.sum(

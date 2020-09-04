@@ -128,13 +128,14 @@ class HDF5Reader(DataReader):
         defaults to 'fold'
         :type fold_prefix: str, optional
         """
-        if file_finder(filename) is None:
+        h5_filename = file_finder(filename)
+        if h5_filename is None:
             self.ready = False
             return
 
         self.ready = True
 
-        self.hf = h5py.File(filename, 'r')
+        self.hf = h5py.File(h5_filename, 'r')
         self.batch_size = batch_size
         self.batch_cache = batch_cache
         self.preprocessors = preprocessors
