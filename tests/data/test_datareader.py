@@ -177,9 +177,9 @@ def test_decorator():
     assert DataReaders()._dataReaders["TestDataReader2"] is TestDataReader2
 
 
-def test_hdf5_dr_constructor_invalid_filename():
-    with pytest.raises(ValueError):
-        HDF5Reader("", batch_size=8, train_folds=None)
+# def test_hdf5_dr_constructor_invalid_filename():
+#     with pytest.raises(ValueError):
+#         HDF5Reader("", batch_size=8, train_folds=None)
 
 
 def test_hdf5_dr_constructor_invalid_preprocessor():
