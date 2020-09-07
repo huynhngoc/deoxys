@@ -145,8 +145,9 @@ class Model:
                 if self._data_reader is not None:
                     batch_x, batch_y = next(
                         self.data_reader.train_generator.generate())
-                    saved_model.attrs.create('deoxys_batch_x', batch_x)
-                    saved_model.attrs.create('deoxys_batch_y', batch_y)
+                    group = saved_model.create_group('deoxys')
+                    group.create_dataset('batch_x', data=batch_x)
+                    group.create_dataset('batch_y', data=batch_y)
 
     def fit(self, *args, **kwargs):
         """
@@ -789,12 +790,17 @@ def load_model(filename, **kwargs):
                 model._data_reader = load_data(config['dataset_params'])
 
     except Exception:
-        hf = h5py.File(filename, 'r')
-        if 'deoxys_config' in hf.attrs.keys():
-            config = hf.attrs['deoxys_config']
-        hf.close()
+        with h5py.File(filename, 'r') as hf:
+            if 'deoxys_config' in hf.attrs.keys():
+                config = hf.attrs['deoxys_config']
 
-        model = model_from_full_config(config, weights_file=filename)
+            if 'deoxys' in hf.keys():
+                if 'batch_x' in hf['deoxys'] and 'batch_y' in hf['deoxys']:
+                    sample_data = (hf['deoxys']['batch_x'],
+                                   hf['deoxys']['batch_y'])
+
+        model = model_from_full_config(
+            config, weights_file=filename, sample_data=sample_data)
 
     return model
 
