@@ -29,6 +29,11 @@ Keras-based framework for UNet structure in Cancer Tumor Delineation
 
 Features
 --------
+Applying different deep learning models on medical images
+
+
+Build from source
+--------
 
 Editable mode installation
 ```
