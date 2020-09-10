@@ -16,8 +16,10 @@ class DataGenerator:
         """
         Total number of batches to iterate all data
 
-        : return: Total number of batches to iterate all data
-        : rtype: int
+        Returns
+        -------
+        int
+            Total number of batches to iterate all data
         """
         return 0
 
@@ -103,8 +105,10 @@ class HDF5DataGenerator(DataGenerator):
         It will be used as the number of steps per epochs when training or
         validating data in a model.
 
-        : return: Total number of batches to iterate all data
-        : rtype: int
+        Returns
+        -------
+        int
+            Total number of batches to iterate all data
         """
         if self._total_batch is None:
             total_batch = 0
@@ -167,11 +171,12 @@ class HDF5DataGenerator(DataGenerator):
                     self.x_cur, self.y_cur)
 
     def generate(self):
-        """
-        Create a generator that generate a batch of data
+        """Create a generator that generate a batch of data
 
-        :yield: batch of (input, target)
-        :rtype: tuple of 2 arrays
+        Yields
+        -------
+        tuple of 2 arrays
+            batch of (input, target)
         """
         while True:
             # When all batches of data are yielded, move to next seg

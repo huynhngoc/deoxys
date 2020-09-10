@@ -45,10 +45,12 @@ def register_activation(key, activation):
     Register the customized activation.
     If the key name is already registered, it will raise a KeyError exception
 
-    :param key: the unique key-name of the activation
-    :type key: str
-    :param activation: the customized activation class
-    :type activation: keras.activations.Activation
+    Parameters
+    ----------
+    key: str
+        The unique key-name of the activation
+    activation: tensorflow.keras.activations.Activation
+        The customized activation class
     """
     Activations().register(key, activation)
 
@@ -57,8 +59,10 @@ def unregister_activation(key):
     """
     Remove the registered activation with the key-name
 
-    :param key: the key-name of the activation to be removed
-    :type key: str
+    Parameters
+    ----------
+    key: str
+        The key-name of the activation to be removed
     """
     Activations().unregister(key)
 

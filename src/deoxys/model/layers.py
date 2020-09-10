@@ -46,10 +46,12 @@ def register_layer(key, layer):
     Register the customized layer.
     If the key name is already registered, it will raise a KeyError exception
 
-    :param key: the unique key-name of the layer
-    :type key: str
-    :param layer: the customized layer class
-    :type layer: keras.layers.Layer
+    Parameters
+    ----------
+    key : str
+        The unique key-name of the layer
+    layer : tensorflow.keras.layers.Layer
+        The customized layer class
     """
     Layers().register(key, layer)
 
@@ -58,8 +60,10 @@ def unregister_layer(key):
     """
     Remove the registered layer with the key-name
 
-    :param key: the key-name of the layer to be removed
-    :type key: str
+    Parameters
+    ----------
+    key : str
+        The key-name of the layer to be removed
     """
     Layers().unregister(key)
 

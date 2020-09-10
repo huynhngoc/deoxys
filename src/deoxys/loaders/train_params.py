@@ -12,22 +12,28 @@ def load_train_params(train_params):
     """
     Create training parameters from configuration
 
-    :param train_params: dictionary of training parameters configuration
-    (epochs, callbacks)
-    ```
-    {
-        "epoch": 10,
-        "callbacks": [
-            "CSVLogger",
-            {
-                "class_name": "ModelCheckpoint"
-            }
-        ]
-    }
-    ```
-    :type train_params: dict
-    :return: dictionary of training parameters objects
-    :rtype: dict
+    Parameters
+    ----------
+    train_params : dict
+        dictionary of training parameters configuration (epochs, callbacks)
+
+        Example:
+        ```
+        {
+            "epoch": 10,
+            "callbacks": [
+                "CSVLogger",
+                {
+                    "class_name": "ModelCheckpoint"
+                }
+            ]
+        }
+        ```
+
+    Returns
+    -------
+    dict
+        Dictionary of training parameters objects
     """
     if not train_params:
         return {}

@@ -25,8 +25,10 @@ class DataReader:
         """
         Data Generator for the training dataset
 
-        :return: an DataGenerator instance that generates the train dataset
-        :rtype: deoxys.data.DataGenerator
+        Returns
+        -------
+        deoxys.data.DataGenerator
+            An DataGenerator instance that generates the train dataset
         """
         return DataGenerator().generate()
 
@@ -35,8 +37,10 @@ class DataReader:
         """
         Data Generator for the test dataset
 
-        :return: an DataGenerator instance that generates the test dataset
-        :rtype: deoxys.data.DataGenerator
+        Returns
+        -------
+        deoxys.data.DataGenerator
+            An DataGenerator instance that generates the test dataset
         """
         return DataGenerator().generate()
 
@@ -45,9 +49,10 @@ class DataReader:
         """
         Data Generator for the validation dataset
 
-        :return: an DataGenerator instance that generates the
-        validataion dataset
-        :rtype: deoxys.data.DataGenerator
+        Returns
+        -------
+        deoxys.data.DataGenerator
+            An DataGenerator instance that generates the validation dataset
         """
         return DataGenerator().generate()
 
@@ -99,33 +104,30 @@ class HDF5Reader(DataReader):
         can set `fold_prefix=None` then put the full group name
         directly to `train_folds`, `val_folds` and `test_folds`.
 
-        :param filename: the hdf5 file name that contains the data.
-        :type filename: str
-        :param batch_size: number of sample to feeds in
-        the neural network in each step, defaults to 32
-        :type batch_size: int, optional
-        :param preprocessors: list of preprocessors to apply on the data,
-        defaults to None
-        :type preprocessors: list of deoxys.data.Preprocessor, optional
-        :param x_name: dataset name to be use as input, defaults to 'x'
-        :type x_name: str, optional
-        :param y_name: dataset name to be use as target, defaults to 'y'
-        :type y_name: str, optional
-        :param batch_cache: number of batches to be cached when reading the
-        file, defaults to 10
-        :type batch_cache: int, optional
-        :param train_folds: list of folds to be use as train data,
-        defaults to None
-        :type train_folds: list of int, or list of str, optional
-        :param test_folds: list of folds to be use as test data,
-        defaults to None
-        :type test_folds: list of int, or list of str, optional
-        :param val_folds: list of folds to be use as validation data,
-        defaults to None
-        :type val_folds: list of int, or list of str, optional
-        :param fold_prefix: the prefix of the group name,
-        defaults to 'fold'
-        :type fold_prefix: str, optional
+        Parameters
+        ----------
+        filename : str
+            The hdf5 file name that contains the data.
+        batch_size : int, optional
+            Number of sample to feeds in
+            the neural network in each step, by default 32
+        preprocessors : list of deoxys.data.Preprocessor, optional
+            List of preprocessors to apply on the data, by default None
+        x_name : str, optional
+            Dataset name to be use as input, by default 'x'
+        y_name : str, optional
+            Dataset name to be use as target, by default 'y'
+        batch_cache : int, optional
+            Number of batches to be cached when reading the
+            file, by default 10
+        train_folds : list of int, or list of str, optional
+            List of folds to be use as train data, by default None
+        test_folds : list of int, or list of str, optional
+            List of folds to be use as test data, by default None
+        val_folds : list of int, or list of str, optional
+            List of folds to be use as validation data, by default None
+        fold_prefix : str, optional
+            The prefix of the group name in the HDF5 file, by default 'fold'
         """
 
         self.hf = h5py.File(filename, 'r')
@@ -158,8 +160,11 @@ class HDF5Reader(DataReader):
     @property
     def train_generator(self):
         """
-        :return: A DataGenerator for generating batches of data for training
-        :rtype: deoxys.data.DataGenerator
+
+        Returns
+        -------
+        deoxys.data.DataGenerator
+            A DataGenerator for generating batches of data for training
         """
         return HDF5DataGenerator(
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
@@ -170,8 +175,11 @@ class HDF5Reader(DataReader):
     @property
     def test_generator(self):
         """
-        :return: A DataGenerator for generating batches of data for testing
-        :rtype: deoxys.data.DataGenerator
+
+        Returns
+        -------
+        deoxys.data.DataGenerator
+            A DataGenerator for generating batches of data for testing
         """
         return HDF5DataGenerator(
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
@@ -182,8 +190,11 @@ class HDF5Reader(DataReader):
     @property
     def val_generator(self):
         """
-        :return: A DataGenerator for generating batches of data for validation
-        :rtype: deoxys.data.DataGenerator
+
+        Returns
+        -------
+        deoxys.data.DataGenerator
+            A DataGenerator for generating batches of data for validation
         """
         return HDF5DataGenerator(
             self.hf, batch_size=self.batch_size, batch_cache=self.batch_cache,
@@ -266,14 +277,15 @@ class DataReaders(metaclass=Singleton):
 
 
 def register_datareader(key, dr):
-    """
-    Register the customized data reader.
-    If the key name is already registered, it will raise a KeyError exception
+    """Register the customized data reader.
+    If the key name is already registered, it will raise a KeyError exception.
 
-    :param key: the unique key-name of the data reader
-    :type key: str
-    :param dr: the customized data reader class
-    :type dr: deoxys.data.DataReader
+    Parameters
+    ----------
+    key : str
+        The unique key-name of the data reader
+    dr : deoxys.data.DataReader
+        The customized data reader class
     """
     DataReaders().register(key, dr)
 
@@ -282,8 +294,10 @@ def unregister_datareader(key):
     """
     Remove the registered data reader with the key-name
 
-    :param key: the key-name of the data reader to be removed
-    :type key: str
+    Parameters
+    ----------
+    key : str
+        The key-name of the data reader to be removed
     """
     DataReaders().unregister(key)
 

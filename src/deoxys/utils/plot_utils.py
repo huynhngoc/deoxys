@@ -20,10 +20,12 @@ def plot_log_performance_from_csv(filepath, output_path):
     Plot and save multiple performance figure using a log file generated from
     tensorflow.keras.callbacks.CSVLogger
 
-    :param filepath: filename of the log file
-    :type filepath: str
-    :param output_path: path to the folder for saving plotted diagram
-    :type output_path: str
+    Parameters
+    ----------
+    filepath : str
+        filename of the log file
+    output_path : str
+        path to the folder for saving plotted diagram
     """
     df = read_csv(filepath, index_col='epoch')
 
@@ -62,22 +64,23 @@ def mask_prediction(output_path, image, true_mask, pred_mask,
     Generate and save predicted images with true mask and predicted mask as
     contouring lines
 
-    :param output_path: path to folder for saving the output images
-    :type output_path: str
-    :param image: a collection of original 2D image data
-    :type image: numpy array / collection
-    :param true_mask: a collection of true mask data
-    :type true_mask: numpy array / collection
-    :param pred_mask: a collection of predicted mask data
-    :type pred_mask: numpy array / collection
-    :param title: title of the diagram, defaults to 'Predicted'
-    :type title: str, optional
-    :param mask_levels: mask_levels when contouring the images,
-    defaults to None
-    :type mask_levels: int, or list of int or float, optional
-    :param channel: if the original image has multiple channels, this indicates
-    which channel to plot the images, defaults to None
-    :type channel: int, optional
+    Parameters
+    ----------
+    output_path : str
+        path to folder for saving the output images
+    image : numpy array / collection
+        a collection of original 2D image data
+    true_mask : numpy array / collection
+        a collection of true mask data
+    pred_mask : numpy array / collection
+        a collection of predicted mask data
+    title : str, optional
+        title of the diagram, by default 'Predicted'
+    mask_levels : [type], optional
+        mask_levels when contouring the images, by default None
+    channel : int, optional
+        if the original image has multiple channels, this indicates
+        which channel to plot the images, by default None
     """
     if not mask_levels:
         mask_levels = 1
@@ -121,19 +124,23 @@ def plot_images_w_predictions(output_path, image, true_mask, pred_mask,
     Generate and save predicted images with true mask and predicted mask as
     separate images
 
-    :param output_path: path to folder for saving the output images
-    :type output_path: str
-    :param image: a collection of original 2D image data
-    :type image: numpy array / collection
-    :param true_mask: a collection of true mask data
-    :type true_mask: numpy array / collection
-    :param pred_mask: a collection of predicted mask data
-    :type pred_mask: numpy array / collection
-    :param title: title of the diagram, defaults to 'Predicted'
-    :type title: str, optional
-    :param channel: if the original image has multiple channels, this indicates
-    which channel to plot the images, defaults to None
-    :type channel: int, optional
+    Parameters
+    ----------
+    output_path : str
+        path to folder for saving the output images
+    image : numpy array / collection
+        a collection of original 2D image data
+    true_mask : numpy array / collection
+        a collection of true mask data
+    pred_mask : numpy array / collection
+        a collection of predicted mask data
+    title : str, optional
+        title of the diagram, by default 'Predicted'
+    mask_levels : [type], optional
+        mask_levels when contouring the images, by default None
+    channel : int, optional
+        if the original image has multiple channels, this indicates
+        which channel to plot the images, by default None
     """
     kwargs = {}
     if not channel:
