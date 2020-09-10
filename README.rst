@@ -33,7 +33,7 @@ Applying different deep learning models on medical images
 
 
 Build from source
---------
+-----------------
 
 Editable mode installation
 ```
