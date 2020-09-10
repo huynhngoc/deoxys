@@ -185,10 +185,12 @@ def register_preprocessor(key, preprocessor):
     Register the customized preprocessor.
     If the key name is already registered, it will raise a KeyError exception
 
-    :param key: the unique key-name of the preprocessor
-    :type key: str
-    :param preprocessor: the customized preprocessor class
-    :type preprocessor: deoxys.data.BasePreprocessor
+    Parameters
+    ----------
+    key : str
+        The unique key-name of the preprocessor
+    preprocessor : deoxys.data.BasePreprocessor
+        The customized preprocessor class
     """
     Preprocessors().register(key, preprocessor)
 
@@ -197,8 +199,10 @@ def unregister_preprocessor(key):
     """
     Remove the registered preprocessor with the key-name
 
-    :param key: the key-name of the preprocessor to be removed
-    :type key: str
+    Parameters
+    ----------
+    key : str
+        The key-name of the preprocessor to be removed
     """
     Preprocessors().unregister(key)
 

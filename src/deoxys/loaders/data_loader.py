@@ -12,6 +12,7 @@ from ..utils import deep_copy
 def load_data(dataset_params):
     """
     Create an data reader instance from a config object.
+
     Example:
     {
         "class_name": "HDF5Reader",
@@ -35,10 +36,16 @@ def load_data(dataset_params):
         }
     }
 
-    :param dataset_params: the configuration of the data reader
-    :type dataset_params: dict
-    :return: the data reader instance
-    :rtype: deoxys.data.DataReader
+
+    Parameters
+    ----------
+    dataset_params : dict
+        The configuration of the data reader
+
+    Returns
+    -------
+    deoxys.data.DataReader
+        The data reader instance
     """
     if not dataset_params:
         return {}

@@ -304,11 +304,6 @@ class Experiment:
     def run_lambda(self, lambda_fn, **kwargs):
         """
         Custom action between experiments
-
-        :param lambda_fn: [description]
-        :type lambda_fn: [type]
-        :return: [description]
-        :rtype: [type]
         """
         lambda_fn(self, **kwargs)
         return self
@@ -369,16 +364,25 @@ class ExperimentDB(Experiment):
         """
         An experiment logging performance to a database
 
-        :param dbclient: the database client
-        :type dbclient: deoxys.database.DBClient
-        :param experiment: experiment id
-        :type experiment: str, int, or ObjectID depending of the dbclient
-        :param log_base_path: base path to log files, defaults to 'logs'
-        :type log_base_path: str, optional
-        :param best_model_monitors: defaults to 'val_loss'
-        :type best_model_monitors: str, optional
-        :param best_model_modes: defaults to 'auto'
-        :type best_model_modes: str, optional
+        Parameters
+        ----------
+        dbclient : deoxys.database.DBClient
+            The database client
+        experiment_id : str, int, or ObjectID depending of the dbclient, optional
+            Experiment id, by default None
+        session_id : str, int, or ObjectID depending of the dbclient, optional
+            Session id, by default None
+        log_base_path : str, optional
+            Base path to log files, by default 'logs'
+        best_model_monitors : str, optional
+            Attribute to monitor, by default 'val_loss'
+        best_model_modes : str, optional
+            One of 'max', 'min', 'auto', by default 'auto'
+
+        Raises
+        ------
+        ValueError
+            When both `session_id` and `experiment_id` are not set
         """
         super().__init__(log_base_path, best_model_monitors, best_model_modes)
 

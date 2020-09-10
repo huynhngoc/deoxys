@@ -182,10 +182,12 @@ def register_metric(key, metric):
     Register the customized metric.
     If the key name is already registered, it will raise a KeyError exception
 
-    :param key: the unique key-name of the metric
-    :type key: str
-    :param metric: the customized metric class
-    :type metric: keras.metrics.Metric
+    Parameters
+    ----------
+    key : str
+        The unique key-name of the metric
+    loss : tensorflow.keras.metrics.Metric
+        The customized metric class
     """
     Metrics().register(key, metric)
 
@@ -194,8 +196,10 @@ def unregister_metric(key):
     """
     Remove the registered metric with the key-name
 
-    :param key: the key-name of the metric to be removed
-    :type key: str
+    Parameters
+    ----------
+    key : str
+        The key-name of the metric to be removed
     """
     Metrics().unregister(key)
 
