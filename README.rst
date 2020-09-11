@@ -32,6 +32,21 @@ Features
 Applying different deep learning models on medical images
 
 
+Configure and run experiment
+-----------------------------
+
+1. Create a dataset file (optional)
+
+
+2. Create a configuration file `config.json`
+```
+
+```
+
+
+3. Run from configuration
+
+
 Build from source
 -----------------
 

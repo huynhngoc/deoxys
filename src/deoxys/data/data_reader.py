@@ -62,15 +62,8 @@ class DataReader:
 
 
 class HDF5Reader(DataReader):
-    """
-    DataReader that use data from an hdf5 file.
-    """
+    """DataReader that use data from an hdf5 file.
 
-    def __init__(self, filename, batch_size=32, preprocessors=None,
-                 x_name='x', y_name='y', batch_cache=10,
-                 train_folds=None, test_folds=None, val_folds=None,
-                 fold_prefix='fold'):
-        """
         Initialize a HDF5 Data Reader, which reads data from a HDF5
         file. This file should be split into groups. Each group contain
         datasets, each of which is a column in the data.
@@ -128,6 +121,16 @@ class HDF5Reader(DataReader):
             List of folds to be use as validation data, by default None
         fold_prefix : str, optional
             The prefix of the group name in the HDF5 file, by default 'fold'
+    """
+
+    def __init__(self, filename, batch_size=32, preprocessors=None,
+                 x_name='x', y_name='y', batch_cache=10,
+                 train_folds=None, test_folds=None, val_folds=None,
+                 fold_prefix='fold'):
+        """
+        Initialize a HDF5 Data Reader, which reads data from a HDF5
+        file. This file should be split into groups. Each group contain
+        datasets, each of which is a column in the data.
         """
 
         self.hf = h5py.File(filename, 'r')

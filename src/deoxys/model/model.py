@@ -33,6 +33,30 @@ from .callbacks import DeoxysModelCallback
 class Model:
     """
     Model
+
+
+    Parameters
+    ----------
+    model : tensorflow.keras.models.Model
+        a keras model object
+    model_params : dict, optional
+        params to compile a keras model, by default None
+    train_params : dict, optional
+        params for training, evaluate, predict, by default None
+    data_reader : deoxys.data.DataReader, optional
+        A deoxys data reader, by default None
+    pre_compiled : bool, optional
+        True if model has been compiled, by default False
+    weights_file : str, optional
+        path to h5 file that contains the weights of the
+        keras model, by default None
+    config : dict, optional
+        full config to create the model, by default None
+
+    Raises
+    ------
+    ValueError
+        raises error if model_params is defined without optimizer
     """
     _evaluate_param_keys = ['callbacks', 'max_queue_size',
                             'workers', 'use_multiprocessing', 'verbose']
@@ -49,29 +73,6 @@ class Model:
                  pre_compiled=False, weights_file=None, config=None):
         """
         Create a deoxys model
-
-        Parameters
-        ----------
-        model : tensorflow.keras.models.Model
-            a keras model object
-        model_params : dict, optional
-            params to compile a keras model, by default None
-        train_params : dict, optional
-            params for training, evaluate, predict, by default None
-        data_reader : deoxys.data.DataReader, optional
-            A deoxys data reader, by default None
-        pre_compiled : bool, optional
-            True if model has been compiled, by default False
-        weights_file : str, optional
-            path to h5 file that contains the weights of the
-            keras model, by default None
-        config : dict, optional
-            full config to create the model, by default None
-
-        Raises
-        ------
-        ValueError
-            raises error if model_params is defined without optimizer
         """
 
         self._model = model

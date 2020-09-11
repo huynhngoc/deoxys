@@ -100,8 +100,7 @@ class HDF5DataGenerator(DataGenerator):
 
     @property
     def total_batch(self):
-        """
-        Total number of batches to iterate all data.
+        """Total number of batches to iterate all data.
         It will be used as the number of steps per epochs when training or
         validating data in a model.
 
