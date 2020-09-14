@@ -29,7 +29,7 @@ class DeoxysModelCallback(Callback):  # noqa: F405
             self.deoxys_model = deoxys_model
 
 
-class EvaluationCheckpoint(DeoxysModelCallback):
+class EvaluationCheckpoint(DeoxysModelCallback):  # pragma: no cover
     """
     Evaluate test after some epochs. Only use when cross validation
     to avoid data leakage.
@@ -114,7 +114,7 @@ class EvaluationCheckpoint(DeoxysModelCallback):
             self.csv_file.flush()
 
 
-class DBLogger(Callback):  # noqa: F405
+class DBLogger(Callback):  # noqa: F405  # pragma: no cover
 
     def __init__(self, dbclient, session):
         """

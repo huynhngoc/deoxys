@@ -285,7 +285,7 @@ class Model:
         return self._layers
 
     @property
-    def node_graph(self):
+    def node_graph(self):  # pragma: no cover
         """
         Node graph from nodes in model, ignoring resize and concatenate nodes
         """
@@ -415,7 +415,7 @@ class Model:
         else:
             list_index = filter_index
 
-        input_shape = [1] + (self.model.input.shape)[1:]
+        input_shape = [1] + list((self.model.input.shape)[1:])
         if img is None:
             input_img_data = np.random.random(input_shape)
         else:

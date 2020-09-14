@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from . import ExperimentDB
 
 
-class MultiExperimentDB:
+class MultiExperimentDB:  # pragma: no cover
 
     def __init__(self, dbclient):
         self.dbclient = dbclient

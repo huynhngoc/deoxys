@@ -2,7 +2,7 @@
     "dataset_params": {
         "class_name": "HDF5Reader",
         "config": {
-            "filename": "test/h5_files/sample_dataset_xs.h5",
+            "filename": "tests/h5_files/sample_dataset_xs.h5",
             "batch_size": 5,
             "x_name": "x",
             "y_name": "y",
@@ -20,7 +20,7 @@
         }
     },
     "train_params": {
-        "epochs": 5,
+        "epochs": 5
     },
     "input_params": {
         "shape": [

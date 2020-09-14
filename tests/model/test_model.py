@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+
+__author__ = "Ngoc Huynh Bao"
+__email__ = "ngoc.huynh.bao@nmbu.no"
+
+
+import pytest
+
 from deoxys.model import Model, model_from_full_config
 from deoxys.utils import read_file
 

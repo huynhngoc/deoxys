@@ -355,7 +355,7 @@ class Experiment:
         return False
 
 
-class ExperimentDB(Experiment):
+class ExperimentDB(Experiment):  # pragma: no cover
 
     def __init__(self, dbclient, experiment_id=None, session_id=None,
                  log_base_path='logs',

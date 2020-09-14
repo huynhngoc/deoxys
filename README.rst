@@ -4,14 +4,14 @@ deoxys
 
 
 .. image:: https://img.shields.io/travis/huynhngoc/deoxys.svg
-        :target: https://travis-ci.org/huynhngoc/deoxys
+        :target: https://travis-ci.com/huynhngoc/deoxys
 
 .. image:: https://readthedocs.org/projects/deoxys/badge/?version=latest
         :target: https://deoxys.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-.. image:: https://travis-ci.org/huynhngoc/deoxys.svg
-   :target: https://travis-ci.org/huynhngoc/deoxys
+.. image:: https://travis-ci.com/huynhngoc/deoxys.svg
+   :target: https://travis-ci.com/huynhngoc/deoxys
 
 .. image:: https://coveralls.io/repos/github/huynhngoc/deoxys/badge.svg
    :target: https://coveralls.io/github/huynhngoc/deoxys
