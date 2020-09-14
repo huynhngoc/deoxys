@@ -12,7 +12,6 @@ import tensorflow as tf
 from .singleton import Singleton
 from .file_utils import *
 from .json_utils import *
-from .plot_utils import *
 from .data_utils import *
 
 

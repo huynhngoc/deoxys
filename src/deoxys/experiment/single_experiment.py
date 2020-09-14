@@ -13,7 +13,7 @@ from deoxys.keras.callbacks import CSVLogger
 from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint, \
     DBLogger
 from ..model import model_from_full_config, model_from_config, load_model
-from ..utils import plot_log_performance_from_csv, mask_prediction, \
+from deoxys_vis import plot_log_performance_from_csv, mask_prediction, \
     plot_images_w_predictions, read_csv
 from ..database import Tables, ExperimentAttr, HDF5Attr, SessionAttr, \
     SessionStatus
