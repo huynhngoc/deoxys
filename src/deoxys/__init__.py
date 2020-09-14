@@ -10,5 +10,4 @@ from . import model
 from . import data
 from . import customize
 from . import database
-from . import web
 from . import automation
