@@ -68,7 +68,7 @@ def test_backprop(vgg):
         outs = deprocess_image(deo.backprop(layer, img)[0])
 
     deo.backprop(layer, img, mode='one')
-    deo.backprop(layer, img, mode='one')
+    deo.backprop(layer, img, mode='all')
 
 
 def test_deconvnet(vgg):
