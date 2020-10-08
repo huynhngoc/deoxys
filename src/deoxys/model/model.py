@@ -100,8 +100,14 @@ class Model:
                     else:
                         shape_x = self._model.input_shape[1:]
                         shape_y = self.model.output_shape[1:]
-                        batch_x = np.zeros((1, *shape_x))
-                        batch_y = np.zeros((1, *shape_y))
+                        try:
+                            batch_x = np.zeros((1, *shape_x))
+                            batch_y = np.zeros((1, *shape_y))
+                        except TypeError:
+                            dim_x = (256,)*(len(shape_x) - 1)
+                            dim_y = (256,)*(len(shape_y) - 1)
+                            batch_x = np.zeros((1, *dim_x, shape_x[-1]))
+                            batch_y = np.zeros((1, *dim_y, shape_y[-1]))
 
                     self._model.train_on_batch(
                         batch_x, batch_y
@@ -839,6 +845,7 @@ def load_model(filename, **kwargs):
                 model._data_reader = load_data(config['dataset_params'])
 
     except Exception:
+        sample_data = None
         with h5py.File(filename, 'r') as hf:
             if 'deoxys_config' in hf.attrs.keys():
                 config = hf.attrs['deoxys_config']
