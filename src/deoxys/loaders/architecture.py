@@ -2,7 +2,6 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
 
 
 from ..keras.models import Model as KerasModel
@@ -21,47 +20,58 @@ class BaseModelLoader:
     neuralnetwork model with a predefined architecture.
     For example, UnetModelLoader creates a neural network with Unet structure.
 
-    :raises NotImplementedError: `load` method needs to be implemented in
-    children classes
+    Raises
+    ------
+    NotImplementedError
+        `load` method needs to be implemented in
+        children classes
     """
     def load():
         raise NotImplementedError()
 
     def __init__(self, architecture, input_params):
         """
-        Initialize a model loader.
+        Initialize a model loader
 
-        :param architecture: configuration for the network architecture
-        Example:
-        ```
-        {
-            "type": "Sequential",
-            "layers": [
-                {
-                "class_name": "Conv2D",
-                "config": {
-                    "filters": 4,
-                    "kernel_size": 3,
-                    "activation": "relu",
-                    "padding": "same"
-                },
-                {
-                "class_name": "Dense",
-                "config": {
-                    "units": 2,
-                    "activation": "sigmoid"
-                },
-            ]
-        }
-        ```
-        :type architecture: dict
-        :param input_params: configuration for the input layer
-        ```
-        {
-            "shape": [128, 128, 3]
-        }
-        ```
-        :type input_params: dict
+        Parameters
+        ----------
+        architecture : dict
+            Configuration for the network architecture
+
+            Example:
+            ```
+            {
+                "type": "Sequential",
+                "layers": [
+                    {
+                    "class_name": "Conv2D",
+                    "config": {
+                        "filters": 4,
+                        "kernel_size": 3,
+                        "activation": "relu",
+                        "padding": "same"
+                    },
+                    {
+                    "class_name": "Dense",
+                    "config": {
+                        "units": 2,
+                        "activation": "sigmoid"
+                    },
+                ]
+            }
+            ```
+
+        input_params : dict
+            Configuration for the input layer
+
+            Example
+            ```
+            {
+                "shape": [128, 128, 3]
+            }
+            ```
+
+
         """
         if 'layers' in architecture:
             self._layers = deep_copy(architecture['layers'])
@@ -76,9 +86,12 @@ class SequentialModelLoader(BaseModelLoader):
 
     def load(self):
         """
-        :return: A neural network of sequential layers
-        from the configured layer list.
-        :rtype: tensorflow.keras.models.Model
+
+        Returns
+        -------
+        tensorflow.keras.models.Model
+            A neural network of sequential layers
+            from the configured layer list.
         """
         layers = [Input(**self._input_params)]
 
@@ -92,13 +105,17 @@ class UnetModelLoader(BaseModelLoader):
     """
     Create a unet neural network from layers
 
-    :raises NotImplementedError: volumn adjustment in skip connection
-    doesn't support for 3D unet
+    Raises
+    ------
+    NotImplementedError
+        volumn adjustment in skip connection
+        doesn't support for 3D unet
     """
 
     def load(self):
         """
         Load the unet neural network.
+
         Example of Configuration for `layers`:
         ```
         [
@@ -301,10 +318,15 @@ class UnetModelLoader(BaseModelLoader):
         ]
         ```
 
-        :raises NotImplementedError: volumn adjustment in skip connection
-        doesn't support
-        :return: A neural network with unet structure
-        :rtype: tensorflow.keras.models.Model
+        Returns
+        -------
+        tensorflow.keras.models.Model
+            A neural network with unet structure
+
+        Raises
+        ------
+        NotImplementedError
+            Doesn't support volumn adjustment in skip connection
         """
         layers = [Input(**self._input_params)]
         saved_input = {}
@@ -386,8 +408,6 @@ class Vnet(BaseModelLoader):
     email: afreen.mirza@nmbu.no
 
     Create a vnet neural network from layers
-
-    :raises NotImplementedError: skip connection are not between 3D images
     """
 
     def resize_by_axis(self, img, dim_1, dim_2, ax):
@@ -412,8 +432,16 @@ class Vnet(BaseModelLoader):
     def load(self):
         """
         Load the unet neural network. Use Conv3d
-        :return: A neural network with unet structure
-        :rtype: tensorflow.keras.models.Model
+
+        Returns
+        -------
+        tensorflow.keras.models.Model
+            A neural network with unet structure
+
+        Raises
+        ------
+        NotImplementedError
+            Does not support video and time-series image inputs
         """
         global next_input
         layers = [Input(**self._input_params)]

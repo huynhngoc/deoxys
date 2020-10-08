@@ -2,7 +2,6 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
 
 
 from ..keras.utils import deserialize_keras_object
@@ -30,7 +29,7 @@ class DeoxysModelCallback(Callback):  # noqa: F405
             self.deoxys_model = deoxys_model
 
 
-class EvaluationCheckpoint(DeoxysModelCallback):
+class EvaluationCheckpoint(DeoxysModelCallback):  # pragma: no cover
     """
     Evaluate test after some epochs. Only use when cross validation
     to avoid data leakage.
@@ -115,17 +114,18 @@ class EvaluationCheckpoint(DeoxysModelCallback):
             self.csv_file.flush()
 
 
-class DBLogger(Callback):  # noqa: F405
+class DBLogger(Callback):  # noqa: F405  # pragma: no cover
 
     def __init__(self, dbclient, session):
         """
         Log performance to database
 
-        :param dbclient: the database client that stores all data
-        :type dbclient: deoxys.database.DBClient
-        :param session: session id
-        :type session: str, int, or ObjectId, depending of the provider
-                       of DBClient
+        Parameters
+        ----------
+        dbclient : deoxys.database.DBClient
+            The database client that stores all data
+        session : str, int, or ObjectId, depending of the provider of DBClient
+            Session id
         """
         self.dbclient = dbclient
         self.session = session
@@ -358,10 +358,12 @@ def register_callback(key, callback):
     Register the customized callback.
     If the key name is already registered, it will raise a KeyError exception
 
-    :param key: the unique key-name of the callback
-    :type key: str
-    :param callback: the customized callback class
-    :type callback: keras.callbacks.Callback
+    Parameters
+    ----------
+    key: str
+        The unique key-name of the callback
+    callback: tensorflow.keras.callbacks.Callback
+        the customized callback class
     """
     Callbacks().register(key, callback)
 
@@ -370,8 +372,10 @@ def unregister_callback(key):
     """
     Remove the registered callback with the key-name
 
-    :param key: the key-name of the callback to be removed
-    :type key: str
+    Parameters
+    ----------
+    key: str
+        The key-name of the callback to be removed
     """
     Callbacks().unregister(key)
 

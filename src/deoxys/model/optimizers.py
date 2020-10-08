@@ -2,7 +2,7 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
+
 
 from ..keras.optimizers import Optimizer, deserialize
 from ..utils import Singleton
@@ -44,10 +44,12 @@ def register_optimizer(key, optimizer):
     Register the customized optimizer.
     If the key name is already registered, it will raise a KeyError exception
 
-    :param key: the unique key-name of the optimizer
-    :type key: str
-    :param optimizer: the customized optimizer class
-    :type optimizer: keras.optimizers.Optimizer
+    Parameters
+    ----------
+    key : str
+        The unique key-name of the optimizer
+    optimizer : tensorflow.keras.optimizers.Optimizer
+        The customized optimizer class
     """
     Optimizers().register(key, optimizer)
 
@@ -56,8 +58,10 @@ def unregister_optimizer(key):
     """
     Remove the registered optimizer with the key-name
 
-    :param key: the key-name of the optimizer to be removed
-    :type key: str
+    Parameters
+    ----------
+    key : str
+        The key-name of the optimizer to be removed
     """
     Optimizers().unregister(key)
 

@@ -2,7 +2,6 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
 
 
 from ..utils import Singleton
@@ -15,7 +14,7 @@ import json
 import pandas as pd
 
 
-class DBClient(metaclass=Singleton):
+class DBClient(metaclass=Singleton):  # pragma: no cover
     def __init__(self, *args, **kwargs):
         pass
 
@@ -77,7 +76,7 @@ class DBClient(metaclass=Singleton):
         return data
 
 
-class MongoDBClient(DBClient, metaclass=Singleton):
+class MongoDBClient(DBClient, metaclass=Singleton):  # pragma: no cover
     def __init__(self, db_name, *args, **kwargs):
         self.client = MongoClient(*args, **kwargs)
         self.db = self.client[db_name]

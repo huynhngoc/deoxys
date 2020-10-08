@@ -2,7 +2,6 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
 
 
 import tensorflow as tf
@@ -34,6 +33,30 @@ from .callbacks import DeoxysModelCallback
 class Model:
     """
     Model
+
+
+    Parameters
+    ----------
+    model : tensorflow.keras.models.Model
+        a keras model object
+    model_params : dict, optional
+        params to compile a keras model, by default None
+    train_params : dict, optional
+        params for training, evaluate, predict, by default None
+    data_reader : deoxys.data.DataReader, optional
+        A deoxys data reader, by default None
+    pre_compiled : bool, optional
+        True if model has been compiled, by default False
+    weights_file : str, optional
+        path to h5 file that contains the weights of the
+        keras model, by default None
+    config : dict, optional
+        full config to create the model, by default None
+
+    Raises
+    ------
+    ValueError
+        raises error if model_params is defined without optimizer
     """
     _evaluate_param_keys = ['callbacks', 'max_queue_size',
                             'workers', 'use_multiprocessing', 'verbose']
@@ -51,25 +74,6 @@ class Model:
                  sample_data=None):
         """
         Create a deoxys model
-
-        :param model: a keras model object
-        :type model: tf.keras.models.Model, keras.models.Model
-        :param model_params: params to compile a keras model, defaults to None
-        :type model_params: dict, optional
-        :param train_params: params for training, evaluate, predict,
-        defaults to None
-        :type train_params: dict, optional
-        :param data_reader: A deoxys data reader, defaults to None
-        :type data_reader: deoxys.data.DataReader, optional
-        :param pre_compiled: True if model has been compiled, defaults to False
-        :type pre_compiled: bool, optional
-        :param weights_file: path to h5 file that contains the weights of the
-        keras model, defaults to None
-        :type weights_file: str, optional
-        :param config: full config to create the model, defaults to None
-        :type config: dict, optional
-        :raises ValueError: raises error if model_params is defined without
-        optimizer
         """
 
         self._model = model
@@ -113,10 +117,12 @@ class Model:
                 loss_weights=None,
                 sample_weight_mode=None, weighted_metrics=None,
                 target_tensors=None, **kwargs):
-        """Compile the model
-
-        :raises Warning: calling this function will recompile the model with
-        new configuration
+        """
+        Raises
+        ------
+        Warning
+            calling this function will recompile the model with
+            new configuration
         """
         if self._compiled:
             raise Warning(
@@ -132,8 +138,10 @@ class Model:
         """
         Save model to file
 
-        :param filename: name of the file
-        :type filename: str
+        Parameters
+        ----------
+        filename : str
+            name of the file
         """
         self._model.save(filename, *args, **kwargs)
 
@@ -308,8 +316,10 @@ class Model:
         """
         Get the dictionary of layers in the model
 
-        :return: dictionary of layers
-        :rtype: dict
+        Returns
+        -------
+        dict
+            dictionary of layers
         """
         if self._layers is None:
             self._layers = {layer.name: layer for layer in self.model.layers}
@@ -317,7 +327,7 @@ class Model:
         return self._layers
 
     @property
-    def node_graph(self):
+    def node_graph(self):  # pragma: no cover
         """
         Node graph from nodes in model, ignoring resize and concatenate nodes
         """
@@ -375,10 +385,15 @@ class Model:
         Create a sub-model with the same inputs, and the outputs of a specific
         layer in the deoxys model.
 
-        :param layer_name: name of layer
-        :type layer_name: str
-        :return: Model, whose outputs are of the layer_name
-        :rtype: tf.keras.models.Model or keras.models.Model
+        Parameters
+        ----------
+        layer_name : str
+            name of layer
+
+        Returns
+        -------
+        tensorflow.keras.models.Model
+            Model, whose outputs are of the layer_name
         """
         return KerasModel(inputs=self.model.inputs,
                           outputs=self.layers[layer_name].output)
@@ -410,28 +425,39 @@ class Model:
         Return the image that maximize the activation output of one or more
         filters in a specific layer.
 
-        :param layer_name: name of the node
-        :type layer_name: str
-        :param img: list of initial images, defaults to None. If None, a random
-        image with noises will be used
-        :type img: [list], optional
-        :param step_size: Size of the step when performing gradient descent,
-        defaults to 1
-        :type step_size: int, optional
-        :param epochs: Number of epochs for gradient descent, defaults to 20
-        :type epochs: int, optional
-        :param filter_index: index of the filter to get the gradient, can be
-        any number between 0 and (size of the filters - 1), defaults to 0
-        :type filter_index: int, or list, optional
-        :return: list of images that maximize the activation's filters
-        :rtype: list
+        Parameters
+        ----------
+        layer_name: str
+            name of the node
+        img: [type], optional
+            list of initial images, by default None
+
+            If None, a random
+            image with noises will be used.
+
+        step_size: int, optional
+            Size of the step when performing gradient descent, by default 1
+        epochs: int, optional
+            Number of epochs for gradient descent, by default 20
+        filter_index: int, or list, optional
+            index of the filter to get the gradient, can be
+            any number between 0 and (size of the filters - 1), by default 0
+        loss_fn: callable, optional
+            customized loss function, by default None
+        verbose: bool, optional
+            By default True
+
+        Returns
+        -------
+        list
+            list of images that maximize the activation's filters
         """
         if type(filter_index) == int:
             list_index = [filter_index]
         else:
             list_index = filter_index
 
-        input_shape = [1] + (self.model.input.shape)[1:]
+        input_shape = [1] + list((self.model.input.shape)[1:])
         if img is None:
             input_img_data = np.random.random(input_shape)
         else:
@@ -538,33 +564,38 @@ class Model:
         """
         Return saliency map, or backprop, or gradient map of a list of images
 
-        :param layer_name: name of the layer
-        :type layer_name: str
-        :param images: list of images
-        :type images: list
-        :param mode: mode to calculate the loss to use when backpropagation,
-        defaults to 'max', other options are 'mean', 'min', 'one', 'custom',
-        and 'all'.
+        Parameters
+        ----------
+        layer_name : str
+            name of the layer
+        images : list
+            list of images
+        mode : str, optional
+            mode to calculate the loss to use when backpropagation,
+            by default 'max', other options are 'mean', 'min', 'one', 'custom',
+            and 'all'.
 
-        'max', 'min', 'mean': calculate the loss by calculating the max, min,
-        or mean over the inner most axis (axis=-1) of the output.
+            'max', 'min', 'mean': calculate the loss by calculating the
+            max, min, or mean over the inner most axis(axis=-1) of the output.
 
-        'one': calculate the loss on one index in the inner most axis (axis=-1)
-        of the output of the layer.
+            'one': calculate the loss on one index in the inner-most
+            axis(axis=-1) of the output of the layer.
 
-        'all': use the output of the layer as the loss score.
+            'all': use the output of the layer as the loss score.
 
-        'custom': use a custom function to calculate the loss score based on
-        the output of the layer.
+            'custom': use a custom function to calculate the loss score based
+            on the output of the layer.
 
-        :type mode: str, optional
-        :param output_index: use when mode='one', defaults to 0
-        :type output_index: int, optional
-        :param loss_fn: use when mode='custom', the function to calculate the
-        loss score based on the output of the layer, defaults to None
-        :type loss_fn: function, optional
-        :return: resulting images when performing backpropagation.
-        :rtype: numpy.array of images
+        output_index : int, optional
+            use when mode = 'one', by default 0
+        loss_fn : callable, optional
+            use when mode = 'custom', the function to calculate the
+            loss score based on the output of the layer, by default None
+
+        Returns
+        -------
+        numpy.array of images
+            resulting images when performing backpropagation
         """
         if is_default_tf_eager_mode():
             grads = self._backprop_eagerly(
@@ -702,14 +733,25 @@ class Model:
 
 
 def model_from_full_config(model_config, weights_file=None, **kwargs):
-    """
-    Return the model from the full config
+    """[summary]
 
-    :param model_config: a json string or a dictionary contains the
-    architecture, model_params, input_params of the model
-    :type model_config: a JSON string or a dictionary object
-    :return: The model
-    :rtype: deoxys.model.Model
+    Parameters
+    ----------
+    model_config : str or dict
+        a JSON string or a dictionary contains the
+        architecture, model_params, input_params configuration of the model
+    weights_file : str, optional
+        path to the saved weight file, by default None
+
+    Returns
+    -------
+    deoxys.model.Model
+        The model
+
+    Raises
+    ------
+    ValueError
+        When architecture or input_params are missing
     """
     config = load_json_config(model_config)
 
@@ -771,8 +813,15 @@ def load_model(filename, **kwargs):
     """
     Load model from file
 
-    :param filename: path to the h5 file
-    :type filename: str
+    Parameters
+    ----------
+    filename : str
+        path to the h5 file
+
+    Returns
+    -------
+    deoxys.model.Model
+        The loaded model
     """
     # Keras got the error of loading custom object
     try:

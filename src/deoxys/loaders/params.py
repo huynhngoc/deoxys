@@ -2,7 +2,6 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
 
 
 from ..model.optimizers import optimizer_from_config
@@ -15,31 +14,36 @@ def load_params(model_params):
     """
     Create model objects from configurations
 
-    :param model_params: dictionary of model objects (optimizer, loss, metrics)
+    Parameters
+    ----------
+    model_params : dict
+        dictionary of model objects (optimizer, loss, metrics)
 
-    Example:
-    ```
-    {
-        "loss": {
-            "class_name": "BinaryFbetaLoss"
-        },
-        "optimizer": {
-            "class_name": "adam",
-            "config": {
-                "learning_rate": 0.0001
-            }
-        },
-        "metrics": [
-            {
-                "class_name": "BinaryFbeta"
+        Example:
+        ```
+        {
+            "loss": {
+                "class_name": "BinaryFbetaLoss"
             },
-            "accuracy"
-        ]
-    }
-    ```
-    :type model_params: dict
-    :return: [description]
-    :rtype: dict
+            "optimizer": {
+                "class_name": "adam",
+                "config": {
+                    "learning_rate": 0.0001
+                }
+            },
+            "metrics": [
+                {
+                    "class_name": "BinaryFbeta"
+                },
+                "accuracy"
+            ]
+        }
+        ```
+
+    Returns
+    -------
+    dict
+        Dictionary of optimizer, loss, and metric instances
     """
     if not model_params:
         return {}

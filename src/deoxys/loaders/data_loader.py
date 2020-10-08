@@ -2,7 +2,6 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
 
 
 from ..data.data_reader import datareader_from_config
@@ -13,6 +12,7 @@ from ..utils import deep_copy
 def load_data(dataset_params):
     """
     Create an data reader instance from a config object.
+
     Example:
     {
         "class_name": "HDF5Reader",
@@ -36,10 +36,16 @@ def load_data(dataset_params):
         }
     }
 
-    :param dataset_params: the configuration of the data reader
-    :type dataset_params: dict
-    :return: the data reader instance
-    :rtype: deoxys.data.DataReader
+
+    Parameters
+    ----------
+    dataset_params : dict
+        The configuration of the data reader
+
+    Returns
+    -------
+    deoxys.data.DataReader
+        The data reader instance
     """
     if not dataset_params:
         return None

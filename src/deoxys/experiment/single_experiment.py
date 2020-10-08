@@ -2,7 +2,6 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
 
 
 import os
@@ -14,7 +13,7 @@ from deoxys.keras.callbacks import CSVLogger
 from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint, \
     DBLogger
 from ..model import model_from_full_config, model_from_config, load_model
-from ..utils import plot_log_performance_from_csv, mask_prediction, \
+from deoxys_vis import plot_log_performance_from_csv, mask_prediction, \
     plot_images_w_predictions, read_csv
 from ..database import Tables, ExperimentAttr, HDF5Attr, SessionAttr, \
     SessionStatus
@@ -305,11 +304,6 @@ class Experiment:
     def run_lambda(self, lambda_fn, **kwargs):
         """
         Custom action between experiments
-
-        :param lambda_fn: [description]
-        :type lambda_fn: [type]
-        :return: [description]
-        :rtype: [type]
         """
         lambda_fn(self, **kwargs)
         return self
@@ -361,7 +355,7 @@ class Experiment:
         return False
 
 
-class ExperimentDB(Experiment):
+class ExperimentDB(Experiment):  # pragma: no cover
 
     def __init__(self, dbclient, experiment_id=None, session_id=None,
                  log_base_path='logs',
@@ -370,16 +364,25 @@ class ExperimentDB(Experiment):
         """
         An experiment logging performance to a database
 
-        :param dbclient: the database client
-        :type dbclient: deoxys.database.DBClient
-        :param experiment: experiment id
-        :type experiment: str, int, or ObjectID depending of the dbclient
-        :param log_base_path: base path to log files, defaults to 'logs'
-        :type log_base_path: str, optional
-        :param best_model_monitors: defaults to 'val_loss'
-        :type best_model_monitors: str, optional
-        :param best_model_modes: defaults to 'auto'
-        :type best_model_modes: str, optional
+        Parameters
+        ----------
+        dbclient : deoxys.database.DBClient
+            The database client
+        experiment_id : str, int, or ObjectID depending of the dbclient, optional
+            Experiment id, by default None
+        session_id : str, int, or ObjectID depending of the dbclient, optional
+            Session id, by default None
+        log_base_path : str, optional
+            Base path to log files, by default 'logs'
+        best_model_monitors : str, optional
+            Attribute to monitor, by default 'val_loss'
+        best_model_modes : str, optional
+            One of 'max', 'min', 'auto', by default 'auto'
+
+        Raises
+        ------
+        ValueError
+            When both `session_id` and `experiment_id` are not set
         """
         super().__init__(log_base_path, best_model_monitors, best_model_modes)
 

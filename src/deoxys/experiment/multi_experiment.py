@@ -2,7 +2,6 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
 
 
 from ..database import Tables, SessionStatus, SessionAttr, ExperimentAttr, \
@@ -14,7 +13,7 @@ import matplotlib.pyplot as plt
 from . import ExperimentDB
 
 
-class MultiExperimentDB:
+class MultiExperimentDB:  # pragma: no cover
 
     def __init__(self, dbclient):
         self.dbclient = dbclient
@@ -23,9 +22,6 @@ class MultiExperimentDB:
     def experiments(self):
         """
         List all experiements
-
-        :return: [description]
-        :rtype: [type]
         """
         all_exp = self.dbclient.find_all(Tables.EXPERIMENTS)
 
@@ -35,11 +31,6 @@ class MultiExperimentDB:
         """
         List all sessions (created, training, finished, failed) of
         an experiments
-
-        :param experiment_id: [description]
-        :type experiment_id: [type]
-        :return: [description]
-        :rtype: [type]
         """
         sessions = self.dbclient.find_by_col(
             Tables.SESSIONS, SessionAttr.EXPERIMENT_ID,
@@ -51,20 +42,7 @@ class MultiExperimentDB:
                         model_checkpoint_period=2,
                         prediction_checkpoint_period=2):
         """
-        Start a new session of an experiment
-
-        :param experiment_id: [description]
-        :type experiment_id: [type]
-        :param epochs: [description]
-        :type epochs: [type]
-        :param log_base_path: [description], defaults to 'logs'
-        :type log_base_path: str, optional
-        :param model_checkpoint_period: [description], defaults to 2
-        :type model_checkpoint_period: int, optional
-        :param prediction_checkpoint_period: [description], defaults to 2
-        :type prediction_checkpoint_period: int, optional
-        :return: [description]
-        :rtype: [type]
+        Start a new session of an experimenton]
         """
         exp = ExperimentDB(
             self.dbclient, experiment_id=experiment_id,
@@ -82,19 +60,6 @@ class MultiExperimentDB:
                                  prediction_checkpoint_period=2):
         """
         Run `num` number of new sessions of an experiment
-
-        :param num: [description]
-        :type num: [type]
-        :param experiment_id: [description]
-        :type experiment_id: [type]
-        :param epochs: [description]
-        :type epochs: [type]
-        :param log_base_path: [description], defaults to 'logs'
-        :type log_base_path: str, optional
-        :param model_checkpoint_period: [description], defaults to 2
-        :type model_checkpoint_period: int, optional
-        :param prediction_checkpoint_period: [description], defaults to 2
-        :type prediction_checkpoint_period: int, optional
         """
         return_exps = []
         for _ in range(num):
@@ -117,19 +82,6 @@ class MultiExperimentDB:
                          prediction_checkpoint_period=2):
         """
         Continue a session from a model checkpoint
-
-        :param session_id: [description]
-        :type session_id: [type]
-        :param epochs: [description]
-        :type epochs: [type]
-        :param log_base_path: [description], defaults to 'logs'
-        :type log_base_path: str, optional
-        :param model_checkpoint_period: [description], defaults to 2
-        :type model_checkpoint_period: int, optional
-        :param prediction_checkpoint_period: [description], defaults to 2
-        :type prediction_checkpoint_period: int, optional
-        :return: [description]
-        :rtype: [type]
         """
         exp = ExperimentDB(
             self.dbclient, session_id=session_id, log_base_path=log_base_path
@@ -146,17 +98,6 @@ class MultiExperimentDB:
                                   prediction_checkpoint_period=2):
         """
         Continue multiple sessions
-
-        :param session_id_list: [description]
-        :type session_id_list: [type]
-        :param epochs: [description]
-        :type epochs: [type]
-        :param log_base_path: [description], defaults to 'logs'
-        :type log_base_path: str, optional
-        :param model_checkpoint_period: [description], defaults to 2
-        :type model_checkpoint_period: int, optional
-        :param prediction_checkpoint_period: [description], defaults to 2
-        :type prediction_checkpoint_period: int, optional
         """
         return_exps = []
         for session_id in session_id_list:
@@ -222,15 +163,6 @@ class MultiExperimentDB:
     def new_experiment_from_full_config(self, name, config, description=''):
         """
         Add a new experiement from a configuration JSON
-
-        :param name: [description]
-        :type name: [type]
-        :param config: [description]
-        :type config: [type]
-        :param description: [description], defaults to ''
-        :type description: str, optional
-        :return: [description]
-        :rtype: [type]
         """
         new_exp = {
             ExperimentAttr.NAME: name,
@@ -244,15 +176,6 @@ class MultiExperimentDB:
         """
         Add a new experiment from a h5 model file.
         This is used in case we want to train a modified model on disk.
-
-        :param name: [description]
-        :type name: [type]
-        :param file_path: [description]
-        :type file_path: [type]
-        :param description: [description], defaults to ''
-        :type description: str, optional
-        :return: [description]
-        :rtype: [type]
         """
         new_exp = {
             ExperimentAttr.NAME: name,
@@ -268,23 +191,6 @@ class MultiExperimentDB:
                                        name='', description=''):
         """
         Create a new experiment by combining pre-defined JSON config
-
-        :param dataset_params: [description]
-        :type dataset_params: [type]
-        :param input_params: [description]
-        :type input_params: [type]
-        :param architecture: [description]
-        :type architecture: [type]
-        :param model_params: [description]
-        :type model_params: [type]
-        :param train_params: [description], defaults to None
-        :type train_params: [type], optional
-        :param name: [description], defaults to ''
-        :type name: str, optional
-        :param description: [description], defaults to ''
-        :type description: str, optional
-        :return: [description]
-        :rtype: [type]
         """
         exp_name = name or ''
         try:
@@ -336,21 +242,6 @@ class MultiExperimentDB:
                                               train_params=None):
         """
         Create multiple experiments by combination of all components
-
-        :param dataset_params: [description]
-        :type dataset_params: [type]
-        :param input_params: [description]
-        :type input_params: [type]
-        :param architecture: [description]
-        :type architecture: [type]
-        :param model_params: [description]
-        :type model_params: [type]
-        :param train_params: [description], defaults to None
-        :type train_params: [type], optional
-        :param name: [description], defaults to ''
-        :type name: str, optional
-        :param description: [description], defaults to ''
-        :type description: str, optional
         """
         # Assuming they're all list
         components = [dataset_params, input_params, architecture, model_params,
@@ -366,11 +257,6 @@ class MultiExperimentDB:
     def rename_experiment(self, experiment_id, new_name):
         """
         Rename an experiment by id
-
-        :param experiment_id: [description]
-        :type experiment_id: [type]
-        :param new_name: [description]
-        :type new_name: [type]
         """
         return self.dbclient.update_by_id(Tables.EXPERIMENTS, experiment_id, {
             ExperimentAttr.NAME: new_name
@@ -379,11 +265,6 @@ class MultiExperimentDB:
     def update_experiment_description(self, experiment_id, description):
         """
         Rename an experiment by id
-
-        :param experiment_id: [description]
-        :type experiment_id: [type]
-        :param new_name: [description]
-        :type new_name: [type]
         """
         return self.dbclient.update_by_id(Tables.EXPERIMENTS, experiment_id, {
             ExperimentAttr.DESC: description
@@ -392,15 +273,6 @@ class MultiExperimentDB:
     def new_architecture_config(self, name, config, description=''):
         """
         Add a new JSON config for architecture.
-
-        :param name: [description]
-        :type name: [type]
-        :param config: [description]
-        :type config: [type]
-        :param description: [description], defaults to ''
-        :type description: str, optional
-        :return: [description]
-        :rtype: [type]
         """
         return self._new_ref_config(
             ConfigRef.ARCHITECTURE, name, config, description)
@@ -408,15 +280,6 @@ class MultiExperimentDB:
     def new_dataset_config(self, name, config, description=''):
         """
         Add a new JSON config for dataset_params
-
-        :param name: [description]
-        :type name: [type]
-        :param config: [description]
-        :type config: [type]
-        :param description: [description], defaults to ''
-        :type description: str, optional
-        :return: [description]
-        :rtype: [type]
         """
         return self._new_ref_config(
             ConfigRef.DATASET_PARAMS, name, config, description)
@@ -424,15 +287,6 @@ class MultiExperimentDB:
     def new_input_config(self, name, config, description=''):
         """
         Add a new JSON config for input_params
-
-        :param name: [description]
-        :type name: [type]
-        :param config: [description]
-        :type config: [type]
-        :param description: [description], defaults to ''
-        :type description: str, optional
-        :return: [description]
-        :rtype: [type]
         """
         return self._new_ref_config(
             ConfigRef.INPUT_PARAMS, name, config, description)
@@ -440,15 +294,6 @@ class MultiExperimentDB:
     def new_train_config(self, name, config, description=''):
         """
         Add a new JSON config for train_params
-
-        :param name: [description]
-        :type name: [type]
-        :param config: [description]
-        :type config: [type]
-        :param description: [description], defaults to ''
-        :type description: str, optional
-        :return: [description]
-        :rtype: [type]
         """
         return self._new_ref_config(
             ConfigRef.TRAIN_PARAMS, name, config, description)
@@ -456,15 +301,6 @@ class MultiExperimentDB:
     def new_model_params_config(self, name, config, description=''):
         """
         Add a new JSON config for model_params
-
-        :param name: [description]
-        :type name: [type]
-        :param config: [description]
-        :type config: [type]
-        :param description: [description], defaults to ''
-        :type description: str, optional
-        :return: [description]
-        :rtype: [type]
         """
         return self._new_ref_config(
             ConfigRef.MODEL_PARAMS, name, config, description)

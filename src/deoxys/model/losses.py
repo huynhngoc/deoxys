@@ -2,7 +2,7 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.1"
+
 
 import numpy as np
 
@@ -77,10 +77,12 @@ def register_loss(key, loss):
     Register the customized loss.
     If the key name is already registered, it will raise a KeyError exception
 
-    :param key: the unique key-name of the loss
-    :type key: str
-    :param loss: the customized loss class
-    :type loss: keras.losses.Loss
+    Parameters
+    ----------
+    key : str
+        The unique key-name of the loss
+    loss : tensorflow.keras.losses.Loss
+        The customized loss class
     """
     Losses().register(key, loss)
 
@@ -89,8 +91,10 @@ def unregister_loss(key):
     """
     Remove the registered loss with the key-name
 
-    :param key: the key-name of the loss to be removed
-    :type key: str
+    Parameters
+    ----------
+    key : str
+        The key-name of the loss to be removed
     """
     Losses().unregister(key)
 
