@@ -104,8 +104,8 @@ class Model:
                             batch_x = np.zeros((1, *shape_x))
                             batch_y = np.zeros((1, *shape_y))
                         except TypeError:
-                            dim_x = (256,)*(len(shape_x) - 1)
-                            dim_y = (256,)*(len(shape_y) - 1)
+                            dim_x = (64,)*(len(shape_x) - 1)
+                            dim_y = (64,)*(len(shape_y) - 1)
                             batch_x = np.zeros((1, *dim_x, shape_x[-1]))
                             batch_y = np.zeros((1, *dim_y, shape_y[-1]))
 
@@ -836,7 +836,7 @@ def load_model(filename, **kwargs):
                                             **Layers().layers,
                                             **Activations().activations,
                                             **Losses().losses,
-                                            **Metrics().metrics}),
+                                            **Metrics().metrics})
 
         # keyword arguments to create the model
         model_kwargs = {}
