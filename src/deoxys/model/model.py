@@ -842,6 +842,7 @@ def load_model(filename, **kwargs):
         with h5py.File(filename) as hf:
             if 'deoxys_config' in hf.attrs.keys():
                 config = hf.attrs['deoxys_config']
+                config = load_json_config(config)
                 model._data_reader = load_data(config['dataset_params'])
 
     except Exception:
