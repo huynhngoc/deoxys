@@ -831,19 +831,35 @@ def load_model(filename, **kwargs):
     """
     # Keras got the error of loading custom object
     try:
-        model = Model(keras_load_model(filename,
-                                       custom_objects={
-                                           **Layers().layers,
-                                           **Activations().activations,
-                                           **Losses().losses,
-                                           **Metrics().metrics}),
-                      pre_compiled=True, **kwargs)
+        loaded_model = keras_load_model(filename,
+                                        custom_objects={
+                                            **Layers().layers,
+                                            **Activations().activations,
+                                            **Losses().losses,
+                                            **Metrics().metrics}),
 
+        # keyword arguments to create the model
+        model_kwargs = {}
         with h5py.File(filename) as hf:
+            # get the data_reader
             if 'deoxys_config' in hf.attrs.keys():
                 config = hf.attrs['deoxys_config']
                 config = load_json_config(config)
-                model._data_reader = load_data(config['dataset_params'])
+
+                if 'dataset_params' in config:
+                    model_kwargs['data_reader'] = load_data(
+                        config['dataset_params'])
+
+            # take the sample data
+            if 'deoxys' in hf.keys():
+                if 'batch_x' in hf['deoxys'] and 'batch_y' in hf['deoxys']:
+                    model_kwargs['sample_data'] = (hf['deoxys']['batch_x'],
+                                                   hf['deoxys']['batch_y'])
+
+            # User input will overwrites all existing args
+            model_kwargs.update(kwargs)
+
+        model = Model(loaded_model, pre_compiled=True, **model_kwargs)
 
     except Exception:
         sample_data = None
