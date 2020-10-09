@@ -17,8 +17,11 @@ class DataReader:
     inherit from this class.
     """
 
-    def __init__(self, filename, batch_size=32, preprocessors=None, **kwargs):
-        pass
+    def __init__(self, *args, **kwargs):
+        # the existence of the data reader is True by default
+        # if the data reader cannot be loaded because of IO reason,
+        # set this value to false
+        self.ready = True
 
     @property
     def train_generator(self):
@@ -132,12 +135,13 @@ class HDF5Reader(DataReader):
         file. This file should be split into groups. Each group contain
         datasets, each of which is a column in the data.
         """
+        super().__init__()
+
         h5_filename = file_finder(filename)
         if h5_filename is None:
+            # HDF5DataReader is created, but won't be loaded into model
             self.ready = False
             return
-
-        self.ready = True
 
         self.hf = h5py.File(h5_filename, 'r')
         self.batch_size = batch_size
