@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: deoxys
-Version: 0.0.2
+Version: 0.0.3
 Summary: Keras-based framework for UNet structure in Cancer Tumor Delineation
 Home-page: https://github.com/huynhngoc/deoxys
 Author: Ngoc Huynh Bao

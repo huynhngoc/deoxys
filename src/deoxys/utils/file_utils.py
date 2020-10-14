@@ -54,7 +54,7 @@ def write_byte(content, filename):
         f.write(content)
 
 
-def file_finder(filename, callback=None, **kwargs):
+def file_finder(filename, callback=None, **kwargs):   # pragma: no cover
     # check for file existence
     if os.path.isfile(filename):
         return filename
@@ -69,7 +69,7 @@ def file_finder(filename, callback=None, **kwargs):
             count = 0
             while not os.path.isfile(filename) and count < 3:
                 msg = '"{}" not fould! Please enter the new filename: '.format(
-                        filename)
+                    filename)
                 filename = input(msg)
                 count += 1
             if count < 3:
