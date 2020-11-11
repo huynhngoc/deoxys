@@ -776,7 +776,8 @@ def model_from_full_config(model_config, weights_file=None, **kwargs):
 
 def model_from_config(architecture, input_params,
                       model_params=None, train_params=None,
-                      dataset_params=None, weights_file=None, **kwargs):
+                      dataset_params=None, weights_file=None, sample_data=None,
+                      **kwargs):
     architecture, input_params, model_params, train_params = load_json_config(
         architecture, input_params, model_params, train_params)
 
@@ -804,6 +805,7 @@ def model_from_config(architecture, input_params,
 
     return Model(loaded_model, loaded_params, train_params,
                  data_generator, config=config, weights_file=weights_file,
+                 sample_data=sample_data,
                  **kwargs)
 
 
@@ -853,8 +855,8 @@ def load_model(filename, **kwargs):
             # take the sample data
             if 'deoxys' in hf.keys():
                 if 'batch_x' in hf['deoxys'] and 'batch_y' in hf['deoxys']:
-                    model_kwargs['sample_data'] = (hf['deoxys']['batch_x'],
-                                                   hf['deoxys']['batch_y'])
+                    model_kwargs['sample_data'] = (hf['deoxys']['batch_x'][:],
+                                                   hf['deoxys']['batch_y'][:])
 
             # User input will overwrites all existing args
             model_kwargs.update(kwargs)
@@ -869,8 +871,8 @@ def load_model(filename, **kwargs):
 
             if 'deoxys' in hf.keys():
                 if 'batch_x' in hf['deoxys'] and 'batch_y' in hf['deoxys']:
-                    sample_data = (hf['deoxys']['batch_x'],
-                                   hf['deoxys']['batch_y'])
+                    sample_data = (hf['deoxys']['batch_x'][:],
+                                   hf['deoxys']['batch_y'][:])
 
         model = model_from_full_config(
             config, weights_file=filename, sample_data=sample_data)
