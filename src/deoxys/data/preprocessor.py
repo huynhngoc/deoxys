@@ -4,6 +4,7 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
+from deoxys_image import normalize
 from deoxys.keras.preprocessing import ImageDataGenerator
 from ..utils import Singleton
 
@@ -54,6 +55,34 @@ class WindowingPreprocessor(BasePreprocessor):
         images[..., self.channel] = self.perform_windowing(
             images[..., self.channel])
         return images, targets
+
+
+class HounsfieldWindowingPreprocessor(WindowingPreprocessor):
+    def __init__(self, window_center, window_width, channel,
+                 houndsfield_offset=1024):
+        super().__init__(
+            window_center+houndsfield_offset, window_width, channel)
+
+
+class ImageNormalizerPreprocessor(BasePreprocessor):
+    def __init__(self, vmin=None, vmax=None):
+        """
+        Normalize all channels to the range of the close interval [0, 1]
+
+        Parameters
+        ----------
+        vmin : int, optional
+            [description], by default 0
+        vmax : int, optional
+            [description], by default 255
+        """
+        self.vmin = vmin
+        self.vmax = vmax
+
+    def transform(self, images, targets):
+        transformed_images = normalize(images, self.vmin, self.vmax)
+
+        return transformed_images, targets
 
 
 class KerasImagePreprocessorX(BasePreprocessor):

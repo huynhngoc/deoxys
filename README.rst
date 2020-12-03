@@ -40,7 +40,7 @@ Configure and run experiment
 
 2. Create a configuration file `config.json`
 ```
-
+{}
 ```
 
 
