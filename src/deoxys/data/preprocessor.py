@@ -4,6 +4,7 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
+import numpy as np
 from deoxys_image import normalize
 from deoxys.keras.preprocessing import ImageDataGenerator
 from ..utils import Singleton
@@ -83,6 +84,117 @@ class ImageNormalizerPreprocessor(BasePreprocessor):
         transformed_images = normalize(images, self.vmin, self.vmax)
 
         return transformed_images, targets
+
+
+class ChannelRemoval(BasePreprocessor):
+    def __init__(self, channel=1):
+        self.channel = channel
+
+    def transform(self, images, targets):
+        return np.delete(images, self.channel, axis=-1), targets
+
+
+class ChannelSelector(BasePreprocessor):
+    def __init__(self, channel=0):
+        if '__iter__' not in dir(channel):
+            self.channel = [channel]
+        else:
+            self.channel = channel
+
+    def transform(self, images, targets):
+        remove_channel = [c for c in np.arange(
+            images.shape[-1]) if c not in self.channel]
+        return np.delete(images, remove_channel, axis=-1), targets
+
+
+class UnetPaddingPreprocessor(BasePreprocessor):
+    def __init__(self, depth=4, mode='auto'):
+        self.depth = depth
+        self.mode = mode
+
+    def transform(self, images, targets):
+        image_shape = images.shape
+        target_shape = targets.shape
+
+        shape = image_shape[1:-1]
+
+        divide_factor = 2 ** self.depth
+
+        if len(shape) == 2:
+            height, width = shape
+            if height % divide_factor != 0:
+                new_height = (height // divide_factor + 1) * divide_factor
+            else:
+                new_height = height
+
+            if width % divide_factor != 0:
+                new_width = (width // divide_factor + 1) * divide_factor
+            else:
+                new_width = width
+
+            new_images = np.zeros(
+                (image_shape[0],
+                 new_height, new_width,
+                 image_shape[-1]))
+            new_targets = np.zeros(
+                (target_shape[0],
+                    new_height, new_width,
+                    target_shape[-1]))
+
+            min_h = (new_height - height) // 2
+            min_w = (new_width - width) // 2
+
+            new_images[:, min_h: min_h+height,
+                       min_w: min_w+width, :] = images
+
+            new_targets[:, min_h: min_h+height,
+                        min_w: min_w+width, :] = targets
+
+            return new_images, new_targets
+
+        if len(shape) == 3:
+            height, width, z = shape
+
+            if height % divide_factor != 0:
+                new_height = (height // divide_factor + 1) * divide_factor
+            else:
+                new_height = height
+
+            if width % divide_factor != 0:
+                new_width = (width // divide_factor + 1) * divide_factor
+            else:
+                new_width = width
+
+            if z % divide_factor != 0:
+                new_z = (z // divide_factor + 1) * divide_factor
+            else:
+                new_z = z
+
+            if self.mode == 'edge':
+                pass
+            else:  # default - pad with zeros
+                new_images = np.zeros(
+                    (image_shape[0],
+                     new_height, new_width, new_z,
+                     image_shape[-1]))
+                new_targets = np.zeros(
+                    (target_shape[0],
+                     new_height, new_width, new_z,
+                     target_shape[-1]))
+
+            min_h = (new_height - height) // 2
+            min_w = (new_width - width) // 2
+            min_z = (new_z - z) // 2
+
+            new_images[:, min_h: min_h+height,
+                       min_w: min_w+width, min_z:min_z+z, :] = images
+
+            new_targets[:, min_h: min_h+height,
+                        min_w: min_w+width, min_z:min_z+z, :] = targets
+
+            return new_images, new_targets
+
+        raise RuntimeError('Does not support 4D tensors')
 
 
 class KerasImagePreprocessorX(BasePreprocessor):
@@ -181,6 +293,11 @@ class Preprocessors(metaclass=Singleton):
     def __init__(self):
         self._preprocessors = {
             'WindowingPreprocessor': WindowingPreprocessor,
+            "HounsfieldWindowingPreprocessor": HounsfieldWindowingPreprocessor,
+            "ImageNormalizerPreprocessor": ImageNormalizerPreprocessor,
+            'UnetPaddingPreprocessor': UnetPaddingPreprocessor,
+            "ChannelSelector": ChannelSelector,
+            "ChannelRemoval": ChannelRemoval,
             'SingleChannelPreprocessor': SingleChannelPreprocessor,
             'KerasImagePreprocessorX': KerasImagePreprocessorX,
             'KerasImagePreprocessorY': KerasImagePreprocessorY

@@ -10,6 +10,7 @@ from deoxys.data import Preprocessors, BasePreprocessor, \
     SingleChannelPreprocessor, WindowingPreprocessor, \
     KerasImagePreprocessorX, KerasImagePreprocessorY, \
     HounsfieldWindowingPreprocessor, ImageNormalizerPreprocessor, \
+    UnetPaddingPreprocessor, ChannelRemoval, ChannelSelector, \
     preprocessor_from_config
 from deoxys.customize import register_preprocessor, \
     unregister_preprocessor, custom_preprocessor
@@ -229,6 +230,119 @@ def test_image_normalizer_preprocessor_per_channel():
     assert output_y.shape == expected_y.shape
     assert np.allclose(output_x, expected_x)
     assert np.all(output_y == expected_y)
+
+
+def test_padding_preprocessor():
+    images = np.random.random((30, 40, 40, 2))
+    targets = np.random.random((30, 40, 40, 1))
+
+    output_x, output_y = UnetPaddingPreprocessor(
+        depth=4).transform(images, targets)
+
+    assert output_x.shape == (30, 48, 48, 2)
+    assert output_y.shape == (30, 48, 48, 1)
+    assert np.all(output_x[:, 4:44, 4:44] == images)
+    assert np.all(output_y[:, 4:44, 4:44] == targets)
+
+    images = np.random.random((30, 40, 40, 40, 2))
+    targets = np.random.random((30, 40, 40, 40, 1))
+
+    output_x, output_y = UnetPaddingPreprocessor(
+        depth=4).transform(images, targets)
+
+    assert output_x.shape == (30, 48, 48, 48, 2)
+    assert output_y.shape == (30, 48, 48, 48, 1)
+    assert np.all(output_x[:, 4:44, 4:44, 4:44] == images)
+    assert np.all(output_y[:, 4:44, 4:44, 4:44] == targets)
+
+
+def test_padding_preprocessor_unchanged():
+    images = np.random.random((30, 48, 40, 2))
+    targets = np.random.random((30, 48, 40, 1))
+
+    output_x, output_y = UnetPaddingPreprocessor(
+        depth=4).transform(images, targets)
+
+    assert output_x.shape == (30, 48, 48, 2)
+    assert output_y.shape == (30, 48, 48, 1)
+    assert np.all(output_x[:, :, 4:44] == images)
+    assert np.all(output_y[:, :, 4:44] == targets)
+
+    images = np.random.random((30, 40, 48, 2))
+    targets = np.random.random((30, 40, 48, 1))
+
+    output_x, output_y = UnetPaddingPreprocessor(
+        depth=4).transform(images, targets)
+
+    assert output_x.shape == (30, 48, 48, 2)
+    assert output_y.shape == (30, 48, 48, 1)
+    assert np.all(output_x[:, 4:44] == images)
+    assert np.all(output_y[:, 4:44] == targets)
+
+    images = np.random.random((30, 40, 48, 48, 2))
+    targets = np.random.random((30, 40, 48, 48, 1))
+
+    output_x, output_y = UnetPaddingPreprocessor(
+        depth=4).transform(images, targets)
+
+    assert output_x.shape == (30, 48, 48, 48, 2)
+    assert output_y.shape == (30, 48, 48, 48, 1)
+    assert np.all(output_x[:, 4:44] == images)
+    assert np.all(output_y[:, 4:44] == targets)
+
+    images = np.random.random((30, 48, 40, 48, 2))
+    targets = np.random.random((30, 48, 40, 48, 1))
+
+    output_x, output_y = UnetPaddingPreprocessor(
+        depth=4).transform(images, targets)
+
+    assert output_x.shape == (30, 48, 48, 48, 2)
+    assert output_y.shape == (30, 48, 48, 48, 1)
+    assert np.all(output_x[:, :, 4:44] == images)
+    assert np.all(output_y[:, :, 4:44] == targets)
+
+
+def test_channel_removal():
+    images = np.random.random((30, 40, 40, 3))
+    targets = np.random.random((30, 40, 40, 1))
+
+    output_x, output_y = ChannelRemoval(channel=1).transform(images, targets)
+    assert output_x.shape == (30, 40, 40, 2)
+    assert output_y.shape == (30, 40, 40, 1)
+    assert np.all(output_x == images[..., [0, 2]])
+    assert np.all(output_y == targets)
+
+    images = np.random.random((30, 40, 40, 40, 3))
+    targets = np.random.random((30, 40, 40, 40, 1))
+
+    output_x, output_y = ChannelRemoval(
+        channel=[1, 2]).transform(images, targets)
+    assert output_x.shape == (30, 40, 40, 40, 1)
+    assert output_y.shape == (30, 40, 40, 40, 1)
+    assert np.all(output_x == images[..., [0]])
+    assert np.all(output_y == targets)
+
+
+def test_channel_selector():
+    images = np.random.random((30, 40, 40, 3))
+    targets = np.random.random((30, 40, 40, 1))
+
+    output_x, output_y = ChannelSelector(
+        channel=[0, 2]).transform(images, targets)
+    assert output_x.shape == (30, 40, 40, 2)
+    assert output_y.shape == (30, 40, 40, 1)
+    assert np.all(output_x == images[..., [0, 2]])
+    assert np.all(output_y == targets)
+
+    images = np.random.random((30, 40, 40, 40, 3))
+    targets = np.random.random((30, 40, 40, 40, 1))
+
+    output_x, output_y = ChannelSelector(
+        channel=0).transform(images, targets)
+    assert output_x.shape == (30, 40, 40, 40, 1)
+    assert output_y.shape == (30, 40, 40, 40, 1)
+    assert np.all(output_x == images[..., [0]])
+    assert np.all(output_y == targets)
 
 
 def test_keras_image_preprocessor():

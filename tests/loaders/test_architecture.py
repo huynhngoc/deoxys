@@ -5,12 +5,14 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
+import numpy as np
 from deoxys.keras.models import Model
 from deoxys.keras.layers import Input, Dense, Flatten, Dropout, \
-    BatchNormalization, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate
+    BatchNormalization, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, \
+    Conv3D, Conv3DTranspose, MaxPooling3D
 from deoxys.loaders.architecture import BaseModelLoader, ModelLoaderFactory, \
     SequentialModelLoader, UnetModelLoader, DenseModelLoader, \
-    load_architecture
+    Vnet, load_architecture
 from deoxys.customize import register_architecture, custom_architecture
 from deoxys.utils import read_file, load_json_config
 
@@ -20,6 +22,7 @@ def clear_singleton():
     ModelLoaderFactory._loaders = {
         'Sequential': SequentialModelLoader,
         'Unet': UnetModelLoader,
+        'Vnet': Vnet,
         'Dense': DenseModelLoader
     }  # clear singleton
 
@@ -144,21 +147,117 @@ def test_load_unet_model():
     conv_6 = conv_layers(128, max_pool_5)
     conv_trans_1 = Conv2DTranspose(32, **conv_t_kwargs)(conv_6)
 
-    upconv_1 = conv_layers(64, concatenate([conv_trans_1, conv_5]))
+    upconv_1 = conv_layers(64, concatenate([conv_5, conv_trans_1]))
     conv_trans_2 = Conv2DTranspose(16, **conv_t_kwargs)(upconv_1)
 
-    upconv_2 = conv_layers(32, concatenate([conv_trans_2, conv_4]))
+    upconv_2 = conv_layers(32, concatenate([conv_4, conv_trans_2]))
     conv_trans_3 = Conv2DTranspose(8, **conv_t_kwargs)(upconv_2)
 
-    upconv_3 = conv_layers(16, concatenate([conv_trans_3, conv_3]))
+    upconv_3 = conv_layers(16, concatenate([conv_3, conv_trans_3]))
     conv_trans_4 = Conv2DTranspose(4, **conv_t_kwargs)(upconv_3)
 
-    upconv_4 = conv_layers(8, concatenate([conv_trans_4, conv_2]))
+    upconv_4 = conv_layers(8, concatenate([conv_2, conv_trans_4]))
     conv_trans_5 = Conv2DTranspose(2, **conv_t_kwargs)(upconv_4)
 
-    upconv_5 = conv_layers(4, concatenate([conv_trans_5, conv_1]))
+    upconv_5 = conv_layers(4, concatenate([conv_1, conv_trans_5]))
     output = Conv2D(1, kernel_size=1, activation='sigmoid')(upconv_5)
 
     expected_model = Model(inputs=input_layer, outputs=output)
 
     assert check_same_models(model, expected_model)
+
+
+def test_load_unet_model_resize():
+    architecture = load_json_config(
+        read_file('tests/json/unet_architecture.json')
+    )
+
+    input_params = {'shape': [129, 129, 3]}
+
+    model = load_architecture(architecture, input_params)
+
+    assert np.all(model.input_shape == (None, 129, 129, 3))
+    assert np.all(model.output_shape == (None, 129, 129, 1))
+
+
+def test_load_vnet_model():
+    architecture = load_json_config(
+        read_file('tests/json/vnet_architecture.json')
+    )
+
+    input_params = {'shape': [128, 128, 128, 3]}
+
+    model = load_architecture(architecture, input_params)
+
+    def conv_layers(filters, pre_layer):
+        conv = BatchNormalization()(
+            Conv3D(filters,
+                   kernel_size=3,
+                   activation='relu',
+                   padding='same')(pre_layer))
+
+        return BatchNormalization()(
+            Conv3D(filters,
+                   kernel_size=3,
+                   activation='relu',
+                   padding='same')(conv))
+
+    input_layer = Input(shape=[128, 128, 128, 3])
+
+    conv_1 = conv_layers(4, input_layer)
+    max_pool_1 = MaxPooling3D()(conv_1)
+
+    conv_2 = conv_layers(8, max_pool_1)
+    max_pool_2 = MaxPooling3D()(conv_2)
+
+    conv_3 = conv_layers(16, max_pool_2)
+    max_pool_3 = MaxPooling3D()(conv_3)
+
+    conv_4 = conv_layers(32, max_pool_3)
+    max_pool_4 = MaxPooling3D()(conv_4)
+
+    conv_5 = conv_layers(64, max_pool_4)
+    max_pool_5 = MaxPooling3D()(conv_5)
+
+    conv_t_kwargs = {"kernel_size": 3,
+                     "strides": [
+                         2,
+                         2,
+                         2
+                     ],
+                     "padding": "same"}
+
+    conv_6 = conv_layers(128, max_pool_5)
+    conv_trans_1 = Conv3DTranspose(32, **conv_t_kwargs)(conv_6)
+
+    upconv_1 = conv_layers(64, concatenate([conv_5, conv_trans_1]))
+    conv_trans_2 = Conv3DTranspose(16, **conv_t_kwargs)(upconv_1)
+
+    upconv_2 = conv_layers(32, concatenate([conv_4, conv_trans_2]))
+    conv_trans_3 = Conv3DTranspose(8, **conv_t_kwargs)(upconv_2)
+
+    upconv_3 = conv_layers(16, concatenate([conv_3, conv_trans_3]))
+    conv_trans_4 = Conv3DTranspose(4, **conv_t_kwargs)(upconv_3)
+
+    upconv_4 = conv_layers(8, concatenate([conv_2, conv_trans_4]))
+    conv_trans_5 = Conv3DTranspose(2, **conv_t_kwargs)(upconv_4)
+
+    upconv_5 = conv_layers(4, concatenate([conv_1, conv_trans_5]))
+    output = Conv3D(1, kernel_size=1, activation='sigmoid')(upconv_5)
+
+    expected_model = Model(inputs=input_layer, outputs=output)
+
+    assert check_same_models(model, expected_model)
+
+
+def test_load_vnet_model_resize():
+    architecture = load_json_config(
+        read_file('tests/json/vnet_architecture.json')
+    )
+
+    input_params = {'shape': [129, 129, 129, 3]}
+
+    model = load_architecture(architecture, input_params)
+
+    assert np.all(model.input_shape == (None, 129, 129, 129, 3))
+    assert np.all(model.output_shape == (None, 129, 129, 129, 1))

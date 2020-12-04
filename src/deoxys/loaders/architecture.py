@@ -338,7 +338,7 @@ class UnetModelLoader(BaseModelLoader):
                 inputs = []
                 size_factors = None
                 for input_name in layer['inputs']:
-                    if is_keras_standalone():
+                    if is_keras_standalone():  # pragma: no cover
                         # keras issue: convtranspose layer output shape are
                         # (None, None, None, filters)
                         if saved_input[
@@ -353,7 +353,7 @@ class UnetModelLoader(BaseModelLoader):
                             next_input = saved_input[input_name]
                         else:
                             if len(size_factors) == 2:
-                                if is_keras_standalone():
+                                if is_keras_standalone():  # pragma: no cover
                                     # Create the resize function
                                     def resize_tensor(
                                             input_tensor, resize_fn, new_size):
@@ -494,7 +494,7 @@ class Vnet(BaseModelLoader):
                 saved_input[layer['name']] = next_layer
 
             layers.append(next_layer)
-        print(layers[0], layers[-1])
+
         return KerasModel(inputs=layers[0], outputs=layers[-1])
 
 
