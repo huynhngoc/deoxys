@@ -39,6 +39,34 @@ class BinaryFbetaLoss(Loss):
         return 1 - fb_numerator / fb_denominator
 
 
+class DiceLoss(Loss):
+    def __init__(self, reduction='auto', name="dice_loss", beta=1):
+        if is_keras_standalone():
+            # use Keras default reduction
+            super().__init__('sum_over_batch_size', name)
+        else:
+            super().__init__(reduction, name)
+
+        self.beta = beta
+
+    def call(self, target, prediction):
+        size = len(prediction.get_shape().as_list())
+        reduce_ax = list(range(1, size))
+        eps = 1e-8
+
+        true_positive = K.sum(prediction * target, axis=reduce_ax)
+        target_positive = K.sum(target, axis=reduce_ax)
+        predicted_positive = K.sum(
+            prediction, axis=reduce_ax)
+
+        fb_numerator = (1 + self.beta ** 2) * true_positive + eps
+        fb_denominator = (
+            (self.beta ** 2) * target_positive + predicted_positive + eps
+        )
+
+        return 1 - fb_numerator / fb_denominator
+
+
 class Losses(metaclass=Singleton):
     """
     A singleton that contains all the registered customized losses
@@ -46,7 +74,8 @@ class Losses(metaclass=Singleton):
 
     def __init__(self):
         self._losses = {
-            'BinaryFbetaLoss': BinaryFbetaLoss
+            'BinaryFbetaLoss': BinaryFbetaLoss,
+            'DiceLoss': DiceLoss
         }
 
     def register(self, key, loss):

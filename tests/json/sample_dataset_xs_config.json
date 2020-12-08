@@ -42,6 +42,9 @@
             "accuracy",
             {
                 "class_name": "Fbeta"
+            },
+            {
+                "class_name": "Dice"
             }
         ]
     },

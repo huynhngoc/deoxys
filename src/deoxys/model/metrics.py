@@ -75,6 +75,61 @@ class Fbeta(Metric):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class Dice(Metric):
+    def __init__(self, threshold=None, name='dice', dtype=None, beta=1):
+        super().__init__(name=name, dtype=dtype)
+
+        self.threshold = 0.5 if threshold is None else threshold
+        self.beta = beta
+
+        self.total = self.add_weight(
+            'total', initializer='zeros')
+        self.count = self.add_weight(
+            'count', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        size = len(y_pred.get_shape().as_list())
+        reduce_ax = list(range(1, size))
+        eps = 1e-8
+
+        # y_true = K.cast(y_true, y_pred.dtype)
+        y_pred = K.cast(y_pred > self.threshold, y_true.dtype)
+
+        true_positive = K.sum(y_pred * y_true, axis=reduce_ax)
+        target_positive = K.sum(y_true, axis=reduce_ax)
+        predicted_positive = K.sum(y_pred, axis=reduce_ax)
+
+        fb_numerator = (1 + self.beta ** 2) * true_positive + eps
+        fb_denominator = (
+            (self.beta ** 2) * target_positive + predicted_positive + eps
+        )
+        if sample_weight:
+            weight = K.cast(sample_weight, self.dtype)
+            total_ops = K.update_add(
+                self.total,
+                K.sum(weight * fb_numerator / fb_denominator))
+        else:
+            total_ops = K.update_add(
+                self.total, K.sum(fb_numerator / fb_denominator))
+
+        count = K.sum(weight) if sample_weight else K.cast(
+            K.shape(y_pred)[0], y_pred.dtype)
+
+        count_ops = K.update_add(self.count, count)
+
+        if is_keras_standalone():
+            return [total_ops, count_ops]
+
+    def result(self):
+        return self.total / self.count
+
+    def get_config(self):
+        config = {'threshold': self.threshold,
+                  'beta': self.beta}
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 class BinaryFbeta(_ConfusionMatrixConditionCount):
     """
     Calculate the micro f1 score in the set of data
@@ -153,7 +208,8 @@ class Metrics(metaclass=Singleton):
     def __init__(self):
         self._metrics = {
             'BinaryFbeta': BinaryFbeta,
-            'Fbeta': Fbeta
+            'Fbeta': Fbeta,
+            'Dice': Dice
         }
 
     def register(self, key, metric):

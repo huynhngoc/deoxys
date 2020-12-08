@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 from deoxys.keras import backend as K
 from deoxys.keras.metrics import Metric
-from deoxys.model.metrics import Metrics, BinaryFbeta, Fbeta
+from deoxys.model.metrics import Metrics, BinaryFbeta, Fbeta, Dice
 from deoxys.customize import register_metric, \
     unregister_metric, custom_metric
 from deoxys.utils import Singleton
@@ -138,6 +138,12 @@ def test_binary_fbeta_metric():
     metric = BinaryFbeta(beta=beta)
     assert np.isclose(K.eval(metric(true, pred)), fscore(beta, tp, fp, fn))
 
+    metric = BinaryFbeta(beta=beta)
+    metric.update_state(true, pred)
+    assert np.isclose(
+        K.eval(metric.result()),
+        fscore(beta, tp, fp, fn))
+
 
 def test_fbeta_metric():
     true = [
@@ -233,4 +239,113 @@ def test_fbeta_metric():
     metric = Fbeta(beta=beta)
     assert np.isclose(
         K.eval(metric(true, pred, sample_weight=[1, 1, 2, 1])),
+        fscore(beta, values + values[2:3]))
+
+    metric = Fbeta(beta=beta)
+    metric.update_state(true, pred, sample_weight=[1, 1, 2, 1])
+    assert np.isclose(
+        K.eval(metric.result()),
+        fscore(beta, values + values[2:3]))
+
+
+def test_dice_metric():
+    true = [
+        [
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0]
+        ],
+        [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0]
+        ],
+        [
+            [1, 1, 1],
+            [0, 1, 0],
+            [1, 1, 1]
+        ],
+        [
+            [1, 0, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+        ]
+    ]
+
+    pred = [
+        [
+            [0, 0, 0],
+            [0, 1, 0],
+            [0, 1, 0]
+        ],
+        [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 0, 0]
+        ],
+        [
+            [1, 1, 1],
+            [0, 0, 1],
+            [1, 1, 1]
+        ],
+        [
+            [1, 1, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+        ]
+    ]
+
+    true = K.constant(true)
+    pred = K.constant(pred)
+
+    values = [{'tp': 2,
+               'fp': 0,
+               'fn': 1},
+              {'tp': 4,
+               'fp': 0,
+               'fn': 1},
+              {'tp': 6,
+               'fp': 1,
+               'fn': 1},
+              {'tp': 5,
+               'fp': 1,
+               'fn': 0}]
+
+    eps = 1e-8
+
+    def fscore(beta, values):
+        res = 0
+        for value in values:
+            tp, fp, fn = value['tp'], value['fp'], value['fn']
+            numerator = (1 + beta**2) * tp + eps
+            denominator = (1 + beta**2) * tp + beta**2 * fn + fp + eps
+
+            res += numerator / denominator
+
+        return res / len(values)
+
+    beta = 1
+    metric = Dice(beta=beta)
+    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, values))
+
+    beta = 2
+    metric = Dice(beta=beta)
+    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, values))
+
+    beta = 1
+    metric = Dice(beta=beta)
+    assert np.isclose(
+        K.eval(metric(true, pred, sample_weight=[1, 1, 0, 0])),
+        fscore(beta, values[:2]))
+
+    beta = 2
+    metric = Dice(beta=beta)
+    assert np.isclose(
+        K.eval(metric(true, pred, sample_weight=[1, 1, 2, 1])),
+        fscore(beta, values + values[2:3]))
+
+    metric = Dice(beta=beta)
+    metric.update_state(true, pred, sample_weight=[1, 1, 2, 1])
+    assert np.isclose(
+        K.eval(metric.result()),
         fscore(beta, values + values[2:3]))

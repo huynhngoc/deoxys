@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 from deoxys.keras import backend as K
 from deoxys.keras.losses import Loss
-from deoxys.model.losses import Losses, BinaryFbetaLoss
+from deoxys.model.losses import Losses, BinaryFbetaLoss, DiceLoss
 from deoxys.customize import register_loss, \
     unregister_loss, custom_loss
 from deoxys.utils import Singleton
@@ -136,4 +136,74 @@ def test_binary_fbeta_loss():
 
     beta = 2
     loss = BinaryFbetaLoss(beta=beta)
+    assert np.allclose(loss.call(true, pred), (1 - fscore(beta, tp, fp, fn)))
+
+
+def test_dice_loss():
+    true = [
+        [
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0]
+        ],
+        [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0]
+        ],
+        [
+            [1, 1, 1],
+            [0, 1, 0],
+            [1, 1, 1]
+        ],
+        [
+            [1, 0, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+        ]
+    ]
+
+    pred = [
+        [
+            [0, 0, 0],
+            [0, 1, 0],
+            [0, 1, 0]
+        ],
+        [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 0, 0]
+        ],
+        [
+            [1, 1, 1],
+            [0, 0, 1],
+            [1, 1, 1]
+        ],
+        [
+            [1, 1, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+        ]
+    ]
+
+    true = K.constant(true)
+    pred = K.constant(pred)
+    tp = K.constant([2, 4, 6, 5])
+    fp = K.constant([0, 0, 1, 1])
+    fn = K.constant([1, 1, 1, 0])
+
+    eps = 1e-8
+
+    def fscore(beta, tp, fp, fn):
+        numerator = (1 + beta**2) * tp + eps
+        denominator = (1 + beta**2) * tp + beta**2 * fn + fp + eps
+
+        return numerator / denominator
+
+    beta = 1
+    loss = DiceLoss(beta=beta)
+    assert np.allclose(loss.call(true, pred), (1 - fscore(beta, tp, fp, fn)))
+
+    beta = 2
+    loss = DiceLoss(beta=beta)
     assert np.allclose(loss.call(true, pred), (1 - fscore(beta, tp, fp, fn)))
