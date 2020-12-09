@@ -1,0 +1,28 @@
+{
+    "class_name": "H5Reader",
+    "config": {
+        "filename": "data.h5",
+        "batch_size": 8,
+        "x_name": "input",
+        "y_name": "target",
+        "batch_cache": 4,
+        "train_folds": [
+            0,
+            1,
+            2
+        ],
+        "val_folds": [
+            3
+        ],
+        "test_folds": [
+            4,
+            5
+        ],
+        "preprocessors": [
+            {
+                "class_name": "PlusOnePreprocessor"
+            },
+            "PlusOnePreprocessor"
+        ]
+    }
+}

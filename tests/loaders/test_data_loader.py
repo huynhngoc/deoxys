@@ -10,7 +10,7 @@ import os
 import numpy as np
 from deoxys.loaders import load_data
 from deoxys.customize import custom_preprocessor
-from deoxys.data import BasePreprocessor, HDF5Reader
+from deoxys.data import BasePreprocessor, HDF5Reader, H5Reader
 from deoxys.utils import read_file, load_json_config, Singleton
 
 
@@ -123,6 +123,79 @@ def test_load_data_multi_preprocessor(h5file):
     )
 
     assert isinstance(actual_dr, HDF5Reader)
+    assert isinstance(actual_dr.preprocessors[0], PlusOnePreprocessor)
+    assert isinstance(actual_dr.preprocessors[1], PlusOnePreprocessor)
+
+    actual_train_data = actual_dr.train_generator
+    actual_val_data = actual_dr.val_generator
+    actual_test_data = actual_dr.test_generator
+
+    expected_train_data = expected_dr.train_generator
+    expected_val_data = expected_dr.val_generator
+    expected_test_data = expected_dr.test_generator
+
+    check_equal_data_generator(actual_train_data, expected_train_data)
+    check_equal_data_generator(actual_val_data, expected_val_data)
+    check_equal_data_generator(actual_test_data, expected_test_data)
+
+
+def test_load_h5_data(h5file):
+    @custom_preprocessor
+    class PlusOnePreprocessor(BasePreprocessor):
+        def transform(self, x, y):
+            return x + 1, y + 1
+
+    actual_dr = load_data(load_json_config(
+        read_file('tests/json/h5_dataset_config.json')))
+
+    expected_dr = H5Reader(
+        filename=h5file,
+        batch_size=8,
+        preprocessors=PlusOnePreprocessor(),
+        x_name='input',
+        y_name='target',
+        train_folds=[0, 1, 2],
+        val_folds=[3],
+        test_folds=[4, 5]
+    )
+
+    assert isinstance(actual_dr, H5Reader)
+    assert isinstance(actual_dr.preprocessors[0], PlusOnePreprocessor)
+
+    actual_train_data = actual_dr.train_generator
+    actual_val_data = actual_dr.val_generator
+    actual_test_data = actual_dr.test_generator
+
+    expected_train_data = expected_dr.train_generator
+    expected_val_data = expected_dr.val_generator
+    expected_test_data = expected_dr.test_generator
+
+    check_equal_data_generator(actual_train_data, expected_train_data)
+    check_equal_data_generator(actual_val_data, expected_val_data)
+    check_equal_data_generator(actual_test_data, expected_test_data)
+
+
+def test_load_h5_data_multi_preprocessor(h5file):
+    @custom_preprocessor
+    class PlusOnePreprocessor(BasePreprocessor):
+        def transform(self, x, y):
+            return x + 1, y + 1
+
+    actual_dr = load_data(load_json_config(
+        read_file('tests/json/h5_dataset_config_multi_preprocessor.json')))
+
+    expected_dr = H5Reader(
+        filename=h5file,
+        batch_size=8,
+        preprocessors=[PlusOnePreprocessor(), PlusOnePreprocessor()],
+        x_name='input',
+        y_name='target',
+        train_folds=[0, 1, 2],
+        val_folds=[3],
+        test_folds=[4, 5]
+    )
+
+    assert isinstance(actual_dr, H5Reader)
     assert isinstance(actual_dr.preprocessors[0], PlusOnePreprocessor)
     assert isinstance(actual_dr.preprocessors[1], PlusOnePreprocessor)
 

@@ -490,7 +490,7 @@ class Model:
                             outputs, filter_index, loss_fn)
 
                     grads = tape.gradient(loss_value, input_img_data[i])
-                else:
+                else:  # pragma: no cover
                     outputs = activation_model.output
 
                     loss_value = self._get_gradient_loss(
@@ -509,12 +509,12 @@ class Model:
         if len(input_img_data) > 1:
             if is_default_tf_eager_mode():
                 return [K.get_value(input_img) for input_img in input_img_data]
-            else:
+            else:  # pragma: no cover
                 return [K.eval(input_img) for input_img in input_img_data]
 
         if is_default_tf_eager_mode():
             return K.get_value(input_img_data[0])
-        else:
+        else:  # pragma: no cover
             return K.eval(input_img_data[0])
 
     def _get_backprop_loss(self, output, mode='max', output_index=0,
@@ -554,7 +554,7 @@ class Model:
         return K.get_value(grads)
 
     def _backprop_symbolic(self, layer_name, images, mode='max',
-                           output_index=0, loss_fn=None):
+                           output_index=0, loss_fn=None):  # pragma: no cover
         output = self.layers[layer_name].output
 
         loss = self._get_backprop_loss(output, mode, output_index, loss_fn)
@@ -606,13 +606,14 @@ class Model:
         if is_default_tf_eager_mode():
             grads = self._backprop_eagerly(
                 layer_name, images, mode, output_index, loss_fn)
-        else:
+        else:  # pragma: no cover
             grads = self._backprop_symbolic(
                 layer_name, images, mode, output_index, loss_fn)
         return grads
 
     def _gradient_backprop(self, gradient_name, layer_name,
-                           images, mode, output_index, loss_fn=None):
+                           images, mode, output_index,
+                           loss_fn=None):  # pragma: no cover
         # save current weight
         weights = self.model.get_weights()
 
@@ -660,7 +661,7 @@ class Model:
                 _DeconvRelu, layer_name,
                 images, mode, output_index, loss_fn
             )
-        else:
+        else:  # pragma: no cover
             return self._gradient_backprop('DeconvNet', layer_name,
                                            images, mode, output_index, loss_fn)
 
@@ -671,7 +672,7 @@ class Model:
                 _GuidedBackPropRelu, layer_name,
                 images, mode, output_index, loss_fn
             )
-        else:
+        else:  # pragma: no cover
             return self._gradient_backprop('GuidedBackProp', layer_name,
                                            images, mode, output_index, loss_fn)
 
