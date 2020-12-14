@@ -39,8 +39,8 @@ class BinaryFbetaLoss(Loss):
         return 1 - fb_numerator / fb_denominator
 
 
-class DiceLoss(Loss):
-    def __init__(self, reduction='auto', name="dice_loss", beta=1):
+class ModifiedDiceLoss(Loss):
+    def __init__(self, reduction='auto', name="modified_dice_loss", beta=1):
         if is_keras_standalone():
             # use Keras default reduction
             super().__init__('sum_over_batch_size', name)
@@ -75,7 +75,7 @@ class Losses(metaclass=Singleton):
     def __init__(self):
         self._losses = {
             'BinaryFbetaLoss': BinaryFbetaLoss,
-            'DiceLoss': DiceLoss
+            'ModifiedDiceLoss': ModifiedDiceLoss
         }
 
     def register(self, key, loss):

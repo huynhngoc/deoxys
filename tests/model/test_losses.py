@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 from deoxys.keras import backend as K
 from deoxys.keras.losses import Loss
-from deoxys.model.losses import Losses, BinaryFbetaLoss, DiceLoss
+from deoxys.model.losses import Losses, BinaryFbetaLoss, ModifiedDiceLoss
 from deoxys.customize import register_loss, \
     unregister_loss, custom_loss
 from deoxys.utils import Singleton
@@ -201,9 +201,9 @@ def test_dice_loss():
         return numerator / denominator
 
     beta = 1
-    loss = DiceLoss(beta=beta)
+    loss = ModifiedDiceLoss(beta=beta)
     assert np.allclose(loss.call(true, pred), (1 - fscore(beta, tp, fp, fn)))
 
     beta = 2
-    loss = DiceLoss(beta=beta)
+    loss = ModifiedDiceLoss(beta=beta)
     assert np.allclose(loss.call(true, pred), (1 - fscore(beta, tp, fp, fn)))
