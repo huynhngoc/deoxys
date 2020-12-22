@@ -11,7 +11,7 @@ from deoxys.data import Preprocessors, BasePreprocessor, \
     KerasImagePreprocessorX, KerasImagePreprocessorY, \
     HounsfieldWindowingPreprocessor, ImageNormalizerPreprocessor, \
     UnetPaddingPreprocessor, ChannelRemoval, ChannelSelector, \
-    preprocessor_from_config
+    ImageAffineTransformPreprocessor, preprocessor_from_config
 from deoxys.customize import register_preprocessor, \
     unregister_preprocessor, custom_preprocessor
 from deoxys.utils import Singleton
@@ -343,6 +343,30 @@ def test_channel_selector():
     assert output_y.shape == (30, 40, 40, 40, 1)
     assert np.all(output_x == images[..., [0]])
     assert np.all(output_y == targets)
+
+
+def test_affine_transform():
+    images = np.random.random((30, 40, 40, 3))
+    targets = np.rint(np.random.random((30, 40, 40, 1)))
+
+    output_x, output_y = ImageAffineTransformPreprocessor(
+        flip_axis=1, shift=(0, 10)
+    ).transform(images, targets)
+
+    expected_x = np.zeros((30, 40, 40, 3))
+    expected_x[:, :, :-10] = images[:, :, 10:]
+    expected_x = np.flip(expected_x, axis=2)
+
+    for i in range(30):
+        expected_x[i] = expected_x[i].clip(
+            images[i].min(axis=(0, 1)), images[i].max(axis=(0, 1)))
+
+    expected_y = np.zeros((30, 40, 40, 1))
+    expected_y[:, :, :-10] = targets[:, :, 10:]
+    expected_y = np.flip(expected_y, axis=2)
+
+    assert np.allclose(expected_x, output_x)
+    assert np.all(expected_y == output_y)
 
 
 def test_keras_image_preprocessor():

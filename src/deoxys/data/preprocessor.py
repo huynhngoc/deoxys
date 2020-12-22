@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import numpy as np
-from deoxys_image import normalize
+from deoxys_image import normalize, apply_affine_transform, apply_flip
 from deoxys.keras.preprocessing import ImageDataGenerator
 from ..utils import Singleton
 
@@ -197,6 +197,71 @@ class UnetPaddingPreprocessor(BasePreprocessor):
         raise RuntimeError('Does not support 4D tensors')
 
 
+class ImageAffineTransformPreprocessor(BasePreprocessor):
+    def __init__(self, rotation_degree=0, rotation_axis=2, zoom_factor=1,
+                 shift=None, flip_axis=None,
+                 fill_mode='constant', cval=0):
+
+        self.affine_transform = rotation_degree > 0 or \
+            zoom_factor != 1 or shift is not None
+
+        self.rotation_degree = rotation_degree
+        self.rotation_axis = rotation_axis
+        self.zoom_factor = zoom_factor
+        self.shift = shift
+        self.flip_axis = flip_axis
+        self.fill_mode = fill_mode
+        self.cval = cval
+
+    def transform(self, images, targets):
+        transformed_images = images.copy()
+        transformed_targets = targets.copy()
+
+        # loop through
+        for i in range(len(images)):
+            # apply affine transform if possible
+            if self.affine_transform:
+                # After affine transform, the pixel intensity may change
+                # the image should clip back to original range
+                reduced_ax = tuple(
+                    range(len(transformed_images[i].shape) - 1))
+                vmin = transformed_images[i].min(axis=reduced_ax)
+                vmax = transformed_images[i].max(axis=reduced_ax)
+
+                transformed_images[i] = apply_affine_transform(
+                    transformed_images[i],
+                    mode=self.fill_mode, cval=self.cval,
+                    theta=self.rotation_degree,
+                    rotation_axis=self.rotation_axis,
+                    zoom_factor=self.zoom_factor,
+                    shift=self.shift).clip(vmin, vmax)
+
+                transformed_targets[i] = apply_affine_transform(
+                    transformed_targets[i],
+                    mode=self.fill_mode, cval=self.cval,
+                    theta=self.rotation_degree,
+                    rotation_axis=self.rotation_axis,
+                    zoom_factor=self.zoom_factor,
+                    shift=self.shift)
+
+                # round the target label back to integer
+                transformed_targets[i] = np.rint(
+                    transformed_targets[i])
+
+            # flip image
+            if self.flip_axis is not None:
+                transformed_images[i] = apply_flip(
+                    transformed_images[i], self.flip_axis)
+
+                transformed_targets[i] = apply_flip(
+                    transformed_targets[i], self.flip_axis)
+
+                if i == 0:
+                    print(transformed_images[i][:5, :5, 0])
+
+        return transformed_images, transformed_targets
+
+
 class KerasImagePreprocessorX(BasePreprocessor):
     def __init__(self,
                  shuffle=False,
@@ -293,11 +358,13 @@ class Preprocessors(metaclass=Singleton):
     def __init__(self):
         self._preprocessors = {
             'WindowingPreprocessor': WindowingPreprocessor,
-            "HounsfieldWindowingPreprocessor": HounsfieldWindowingPreprocessor,
-            "ImageNormalizerPreprocessor": ImageNormalizerPreprocessor,
+            'HounsfieldWindowingPreprocessor': HounsfieldWindowingPreprocessor,
+            'ImageNormalizerPreprocessor': ImageNormalizerPreprocessor,
             'UnetPaddingPreprocessor': UnetPaddingPreprocessor,
-            "ChannelSelector": ChannelSelector,
-            "ChannelRemoval": ChannelRemoval,
+            'ChannelSelector': ChannelSelector,
+            'ChannelRemoval': ChannelRemoval,
+            'ImageAffineTransformPreprocessor':
+                ImageAffineTransformPreprocessor,
             'SingleChannelPreprocessor': SingleChannelPreprocessor,
             'KerasImagePreprocessorX': KerasImagePreprocessorX,
             'KerasImagePreprocessorY': KerasImagePreprocessorY
