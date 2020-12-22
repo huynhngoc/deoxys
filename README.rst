@@ -3,9 +3,6 @@ deoxys
 ======
 
 
-.. image:: https://img.shields.io/travis/huynhngoc/deoxys.svg
-        :target: https://travis-ci.com/huynhngoc/deoxys
-
 .. image:: https://readthedocs.org/projects/deoxys/badge/?version=latest
         :target: https://deoxys.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
