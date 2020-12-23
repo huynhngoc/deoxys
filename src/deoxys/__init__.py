@@ -2,7 +2,7 @@
 
 __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 
 
 from . import keras

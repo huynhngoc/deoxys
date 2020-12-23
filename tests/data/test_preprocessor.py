@@ -376,7 +376,6 @@ def test_image_augmentation():
     targets = np.rint(np.random.random((30, 40, 45, 1)))
 
     output_x, output_y = ImageAugmentation2D(rotation_range=14,
-                                             rotation_axis=0,
                                              zoom_range=(0.8, 1.2),
                                              flip_axis=1, shift_range=(0, 10)
                                              ).transform(images, targets)

@@ -935,8 +935,10 @@ def test_h5_dr_shuffle():
             break
 
         for x, y in zip(input_data, target):
+            # The target is in range(1-1000), thus can act as the index
             assert np.all(x == original_input[y-1])
 
+    # No shuffling in val and test data
     expected_val_input = np.reshape(
         np.arange(400 * 25, 500 * 25), (100, 5, 5))
     expected_val_target = np.array(np.arange(401, 501))
@@ -954,9 +956,6 @@ def test_h5_dr_shuffle():
 
         if end % 100 < batch_size:
             end -= end % 100
-
-        print(start, end, expected_val_target)
-        print(target)
 
         assert np.all(expected_val_target[start:end] == target)
         assert np.all(expected_val_input[start:end] == input_data)

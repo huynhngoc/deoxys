@@ -31,6 +31,9 @@ class DummyPreprocessor:
 
 
 class SingleChannelPreprocessor(BasePreprocessor):
+    """Make single channel images have one axis for the channel
+    """
+
     def transform(self, x, y):
         x_shape = tuple(list(x.shape) + [1])
         y_shape = tuple(list(y.shape) + [1])
@@ -39,7 +42,16 @@ class SingleChannelPreprocessor(BasePreprocessor):
 
 
 class WindowingPreprocessor(BasePreprocessor):
-    """Used to set the dynamic range of an image.
+    """Set the range of the images
+
+        Parameters
+        ----------
+        window_center : int, float
+            the center of the range
+        window_width : int, float
+            the range
+        channel : int
+            the index of the channel to apply windowing
     """
 
     def __init__(self, window_center, window_width, channel):
@@ -60,24 +72,45 @@ class WindowingPreprocessor(BasePreprocessor):
 
 
 class HounsfieldWindowingPreprocessor(WindowingPreprocessor):
+    """Set the range of the images
+
+        Parameters
+        ----------
+        window_center : int, float
+            the center of the range
+        window_width : int, float
+            the range
+        channel : int
+            the index of the channel to apply windowing
+        hounsfield_offset: int, float
+            the Hounsfield offset
+    """
+
     def __init__(self, window_center, window_width, channel,
-                 houndsfield_offset=1024):
+                 hounsfield_offset=1024):
         super().__init__(
-            window_center+houndsfield_offset, window_width, channel)
+            window_center+hounsfield_offset, window_width, channel)
 
 
 class ImageNormalizerPreprocessor(BasePreprocessor):
-    def __init__(self, vmin=None, vmax=None):
-        """
+    """
         Normalize all channels to the range of the close interval [0, 1]
 
         Parameters
         ----------
-        vmin : int, optional
-            [description], by default 0
-        vmax : int, optional
-            [description], by default 255
-        """
+        vmin : int, float, list, tuple, optional.
+            If an int or a float, it will be the lower limits in all channels,
+            else it should be a list of lower values associated with all axes.
+            By default None (choosing the minimum value of
+            each channel in the image batch)
+        vmax : int, float, list, tuple, optional
+            If an int or a float, it will be the upper limits in all channels,
+            else it should be a list of upper values associated with all axes.
+            By default None (choosing the maximum value of
+            each channel in the image batch)
+    """
+
+    def __init__(self, vmin=None, vmax=None):
         self.vmin = vmin
         self.vmax = vmax
 
@@ -88,6 +121,14 @@ class ImageNormalizerPreprocessor(BasePreprocessor):
 
 
 class ChannelRemoval(BasePreprocessor):
+    """Remove one or more channels from the images
+
+        Parameters
+        ----------
+        channel : int, list, tuple, optional
+            the index of the channel to be removed, by default 1
+    """
+
     def __init__(self, channel=1):
         self.channel = channel
 
@@ -96,6 +137,14 @@ class ChannelRemoval(BasePreprocessor):
 
 
 class ChannelSelector(BasePreprocessor):
+    """Select / filter one or more channels from the images
+
+        Parameters
+        ----------
+        channel : int, list, tuple, optional
+            the index of the channel to be selected, by default 0
+    """
+
     def __init__(self, channel=0):
         if '__iter__' not in dir(channel):
             self.channel = [channel]
@@ -109,6 +158,19 @@ class ChannelSelector(BasePreprocessor):
 
 
 class UnetPaddingPreprocessor(BasePreprocessor):
+    """
+        Pad the images so that their sizes would not change after going
+        through a standard Unet model.
+
+        Parameters
+        ----------
+        depth : int, optional
+            number of maxpooling layer in the Unet, by default 4
+        mode : str, optional
+            way to fill the values in the paddings,
+            currently only support 'auto' (pad with 0)
+    """
+
     def __init__(self, depth=4, mode='auto'):
         self.depth = depth
         self.mode = mode
@@ -202,6 +264,26 @@ class ImageAffineTransformPreprocessor(BasePreprocessor):
     def __init__(self, rotation_degree=0, rotation_axis=2, zoom_factor=1,
                  shift=None, flip_axis=None,
                  fill_mode='constant', cval=0):
+        """Apply affine transformation to all images
+
+        Parameters
+        ----------
+        rotation_degree : int, optional
+            the degree to rotate, by default 0
+        rotation_axis : int, optional
+            the rotation axis, by default 2
+        zoom_factor : int, optional
+            , by default 1
+        shift : list, tuple, optional
+            the pixels of shifting in each axis, by default None
+        flip_axis : int, optional
+            the axis to be flipped, by default None
+        fill_mode : str, optional
+            the mode to fill when applying affine transformation,
+            by default 'constant'
+        cval : int, optional
+            by default 0
+        """
 
         self.affine_transform = rotation_degree > 0 or \
             zoom_factor != 1 or shift is not None
@@ -269,9 +351,6 @@ class ImageAugmentation2D(BasePreprocessor):
         ----------
         rotation_range : int, optional
             range of the angle rotation, in degree, by default 0 (no rotation)
-        rotation_axis : int, optional
-            the axis of one image to apply rotation,
-            by default 0
         rotation_chance : float, optional
             probability to apply rotation transformation to an image,
             by default 0.2
@@ -290,7 +369,9 @@ class ImageAugmentation2D(BasePreprocessor):
             by default 0.1
         flip_axis : int, tuple, list, optional
             flip by one or more axis (in the single image) with a probability
-            of 0.5, by default None (no flipping)
+            of 0.5, by default None (no flipping).
+            `flip_axis=0` means the image will be flipped vertically, while
+            `flip_axis=1` means the image will be flipped horizontally.
         brightness_range : int, tuple, list, optional
             range of the brightness portion,
             based on the max intensity value of each channel.
@@ -317,7 +398,7 @@ class ImageAugmentation2D(BasePreprocessor):
         contrast_chance : float, optional
             probability to apply contrast change transform to an image,
             by default 0.1
-        noise_variance : int, tuple, list, optional
+        noise_variance : float, tuple, list, optional
             range of the noise variance
             when adding Gaussian noise to the image,
             by default 0 (no adding noise)
@@ -349,9 +430,10 @@ class ImageAugmentation2D(BasePreprocessor):
             By default 0
         """
 
-    RANK = 3
+    _RANK = 3
+    _ROTATION_AXIS = 2
 
-    def __init__(self, rotation_range=0, rotation_axis=0, rotation_chance=0.2,
+    def __init__(self, rotation_range=0, rotation_chance=0.2,
                  zoom_range=1, zoom_chance=0.2,
                  shift_range=None, shift_chance=0.1,
                  flip_axis=None,
@@ -364,8 +446,8 @@ class ImageAugmentation2D(BasePreprocessor):
                  blur_range=0, blur_channel=None, blur_chance=0.1,
                  fill_mode='constant', cval=0):
         self.augmentation_obj = ImageAugmentation(
-            self.RANK,
-            rotation_range, rotation_axis, rotation_chance,
+            self._RANK,
+            rotation_range, self._ROTATION_AXIS, rotation_chance,
             zoom_range, zoom_chance,
             shift_range, shift_chance,
             flip_axis,
@@ -399,10 +481,127 @@ class ImageAugmentation2D(BasePreprocessor):
 
 
 class ImageAugmentation3D(ImageAugmentation2D):
-    RANK = 4
+    r"""
+        Apply transformation in 3d image (and mask label) for augmentation
+
+        Parameters
+        ----------
+        rotation_range : int, optional
+            range of the angle rotation, in degree, by default 0 (no rotation)
+        rotation_axis : int, optional
+            the axis of one image to apply rotation,
+            by default 0
+        rotation_chance : float, optional
+            probability to apply rotation transformation to an image,
+            by default 0.2
+        zoom_range : float, list, tuple optional
+            the range of zooming, zooming in when the number is less than 1,
+            and zoom out when the number if larger than 1.
+            If a `float`, then it is the range between that number and 1,
+            by default 1 (no zooming)
+        zoom_chance : float, optional
+            probability to apply zoom transformation to an image,
+            by default 0.2
+        shift_range : tuple or list, optional
+            the range of translation in each axis, by default None (no shifts)
+        shift_chance : float, optional
+            probability to apply translation transformation to an image,
+            by default 0.1
+        flip_axis : int, tuple, list, optional
+            flip by one or more axis (in the single image),
+            by default None (no flipping)
+        brightness_range : int, tuple, list, optional
+            range of the brightness portion,
+            based on the max intensity value of each channel.
+            For example, when the max intensity value of one channel is 1.0,
+            and the brightness is chaned by 1.2, then every pixel in that
+            channel will increase the intensity value by 0.2.
+
+            .. math:: 0.2 = 1.0 \cdot (1.2 - 1)
+
+            By default 1 (no changes in brightness)
+        brightness_channel : int, tuple, list, optional
+            the channel(s) to apply changes in brightness,
+            by default None (apply to all channels)
+        brightness_chance : float, optional
+            probability to apply brightness change transform to an image,
+            by default 0.1
+        contrast_range : int, tuple, list, optional
+            range of the contrast portion,
+            (the history range is scaled up or down).
+            By default 1 (no changes in contrast)
+        contrast_channel : int, tuple, list, optional
+            the channel(s) to apply changes in contrast,
+            by default None (apply to all channels)
+        contrast_chance : float, optional
+            probability to apply contrast change transform to an image,
+            by default 0.1
+        noise_variance : float, tuple, list, optional
+            range of the noise variance
+            when adding Gaussian noise to the image,
+            by default 0 (no adding noise)
+        noise_channel : int, tuple, list, optional
+            the channel(s) to apply Gaussian noise,
+            by default None (apply to all channels)
+        noise_chance : float, optional
+            probability to apply gaussian noise to an image,
+            by default 0.1
+        blur_range : int, tuple, list, optional
+            range of the blur sigma
+            when applying the Gaussian filter to the image,
+            by default 0 (no blur)
+        blur_channel :int, tuple, list, optional
+            the channel(s) to apply Gaussian blur,
+            by default None (apply to all channels)
+        blur_chance : float, optional
+            probability to apply gaussian blur to an image,
+            by default 0.1
+        fill_mode : str, optional
+            the fill mode in affine transformation
+            (rotation, zooming, shifting / translation),
+            one of {'reflect', 'constant', 'nearest', 'mirror', 'wrap'},
+            by default 'constant'
+        cval : int, optional
+            When rotation, or zooming, or shifting is applied to the image,
+            `cval` is the value to fill past edges of input
+            if `fill_mode` is 'constant'.
+            By default 0
+        """
+    _RANK = 4
+
+    def __init__(self, rotation_range=0, rotation_axis=0, rotation_chance=0.2,
+                 zoom_range=1, zoom_chance=0.2,
+                 shift_range=None, shift_chance=0.1,
+                 flip_axis=None,
+                 brightness_range=1, brightness_channel=None,
+                 brightness_chance=0.1,
+                 contrast_range=1, contrast_channel=None,
+                 contrast_chance=0.1,
+                 noise_variance=0, noise_channel=None,
+                 noise_chance=0.1,
+                 blur_range=0, blur_channel=None, blur_chance=0.1,
+                 fill_mode='constant', cval=0):
+        self.augmentation_obj = ImageAugmentation(
+            self._RANK,
+            rotation_range, rotation_axis, rotation_chance,
+            zoom_range, zoom_chance,
+            shift_range, shift_chance,
+            flip_axis,
+            brightness_range, brightness_channel,
+            brightness_chance,
+            contrast_range, contrast_channel,
+            contrast_chance,
+            noise_variance, noise_channel,
+            noise_chance,
+            blur_range, blur_channel, blur_chance,
+            fill_mode, cval
+        )
 
 
 class KerasImagePreprocessorX(BasePreprocessor):
+    """Apply keras image augmentation to the input images
+    """
+
     def __init__(self,
                  shuffle=False,
                  featurewise_center=False,

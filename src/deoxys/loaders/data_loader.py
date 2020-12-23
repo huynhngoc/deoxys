@@ -53,7 +53,7 @@ def load_data(dataset_params):
 
     if params['config']:
         for key, val in params['config'].items():
-            if key == 'preprocessors':
+            if key == 'preprocessors' or key == 'augmentations':
                 if type(val) == dict:
                     params['config'][key] = [preprocessor_from_config(val)]
                 if type(val) == list:

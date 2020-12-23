@@ -15,7 +15,7 @@ if __name__ == '__main__':
     config = read_file('examples/json/unet-sample-config.json')
 
     Experiment(
-        log_base_path='../../hn_perf_gpu/logs'
+        log_base_path='../../hn_perf/logs'
     ).from_full_config(
         config
     ).run_experiment(
