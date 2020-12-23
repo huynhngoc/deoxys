@@ -11,7 +11,9 @@ from deoxys.data import Preprocessors, BasePreprocessor, \
     KerasImagePreprocessorX, KerasImagePreprocessorY, \
     HounsfieldWindowingPreprocessor, ImageNormalizerPreprocessor, \
     UnetPaddingPreprocessor, ChannelRemoval, ChannelSelector, \
-    ImageAffineTransformPreprocessor, preprocessor_from_config
+    ImageAffineTransformPreprocessor, ImageAugmentation2D, \
+    ImageAugmentation3D, \
+    preprocessor_from_config
 from deoxys.customize import register_preprocessor, \
     unregister_preprocessor, custom_preprocessor
 from deoxys.utils import Singleton
@@ -367,6 +369,33 @@ def test_affine_transform():
 
     assert np.allclose(expected_x, output_x)
     assert np.all(expected_y == output_y)
+
+
+def test_image_augmentation():
+    images = np.random.random((30, 40, 45, 3))
+    targets = np.rint(np.random.random((30, 40, 45, 1)))
+
+    output_x, output_y = ImageAugmentation2D(rotation_range=14,
+                                             rotation_axis=0,
+                                             zoom_range=(0.8, 1.2),
+                                             flip_axis=1, shift_range=(0, 10)
+                                             ).transform(images, targets)
+
+    assert output_x.shape == (30, 40, 45, 3)
+    assert output_y.shape == (30, 40, 45, 1)
+
+    images = np.random.random((30, 40, 45, 50, 3))
+    targets = np.rint(np.random.random((30, 40, 45, 50, 1)))
+
+    output_x, output_y = ImageAugmentation3D(rotation_range=14,
+                                             rotation_axis=0,
+                                             zoom_range=(0.8, 1.2),
+                                             flip_axis=1,
+                                             shift_range=(0, 10, 5)
+                                             ).transform(images, targets)
+
+    assert output_x.shape == (30, 40, 45, 50, 3)
+    assert output_y.shape == (30, 40, 45, 50, 1)
 
 
 def test_keras_image_preprocessor():
