@@ -14,7 +14,11 @@ from deoxys.keras.layers import Input, Dense, Flatten, Dropout, \
 from deoxys.loaders.architecture import load_architecture
 from deoxys.automation import generate_unet_architecture, \
     generate_vnet_architecture, generate_unet_architecture_json, \
-    generate_vnet_architecture_json
+    generate_vnet_architecture_json, generate_densenet_2d_architecture, \
+    generate_densenet_3d_architecture, generate_densenet_2d_json, \
+    generate_densenet_3d_json, generate_resnet_architecture, \
+    generate_voxresnet_architecture, generate_voxresnet_json, \
+    generate_resnet_json
 from deoxys.utils import read_file, load_json_config
 
 
@@ -38,12 +42,18 @@ def check_same_models(actual_model, expected_model):
 
     actual_config_str = str(actual_config)
 
+    # lock the activation function in the conv layer
+    actual_config_str = actual_config_str.replace(
+        "'activation':", "'activation_fn':")
+
     for actual_name, expected_name in name_map:
         actual_config_str = actual_config_str.replace(
             "'" + actual_name + "'", "'" + expected_name + "'")
-    print(actual_config_str)
-    print('====================')
-    print(expected_config)
+
+    # release back to original state
+    actual_config_str = actual_config_str.replace(
+        "'activation_fn':", "'activation':")
+
     return actual_config_str == str(expected_config)
 
 
@@ -217,3 +227,144 @@ def test_generate_vnet_model_resize():
 
     assert np.all(model.input_shape == (None, 129, 129, 129, 3))
     assert np.all(model.output_shape == (None, 129, 129, 129, 1))
+
+
+def test_generate_densenet_model():
+    architecture = generate_densenet_2d_architecture(
+        n_upsampling=4, n_filter=48, stride=2)
+
+    input_params = {'shape': [128, 128, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+    expected_model = load_architecture(
+        load_json_config('tests/json/densenet_architecture.json'), input_params
+    )
+
+    assert check_same_models(model, expected_model)
+
+
+def test_generate_densenet_model_resize():
+    architecture = generate_densenet_2d_architecture(
+        n_upsampling=4, n_filter=48, stride=2)
+
+    input_params = {'shape': [129, 129, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+    assert np.all(model.input_shape == (None, 129, 129, 3))
+    assert np.all(model.output_shape == (None, 129, 129, 1))
+
+
+def test_generate_densenet_model_batchnorm():
+    architecture = generate_densenet_2d_architecture(
+        n_upsampling=4, n_filter=48, stride=2, batchnorm=True)
+
+    input_params = {'shape': [128, 128, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+
+def test_generate_densenet_model_dropout():
+    architecture = generate_densenet_2d_architecture(
+        n_upsampling=4, n_filter=48, stride=2, dropout_rate=0.1)
+
+    input_params = {'shape': [128, 128, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+
+def test_generate_densenet_model_3d():
+    architecture = generate_densenet_3d_architecture(
+        n_upsampling=3, n_filter=[4, 8, 12, 16], dense_block=[2, 3, 4, 5],
+        stride=2)
+
+    input_params = {'shape': [128, 128, 128, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+
+def test_create_densenet_json():
+    unet = generate_densenet_2d_architecture()
+    generate_densenet_2d_json(FILE_NAME)
+    actual = load_json_config(FILE_NAME)
+
+    assert np.all(unet == actual)
+
+
+def test_create_densenet_3d_json():
+    unet = generate_densenet_3d_architecture()
+    generate_densenet_3d_json(FILE_NAME)
+    actual = load_json_config(FILE_NAME)
+
+    assert np.all(unet == actual)
+
+
+def test_generate_resnet_model():
+    architecture = generate_resnet_architecture(
+        n_upsampling=3, n_filter=64, stride=2)
+
+    input_params = {'shape': [128, 128, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+    expected_model = load_architecture(
+        load_json_config('tests/json/resnet_architecture.json'), input_params
+    )
+
+    assert check_same_models(model, expected_model)
+
+
+def test_generate_resnet_model_resize():
+    architecture = generate_resnet_architecture(
+        n_upsampling=3, n_filter=64, stride=2)
+
+    input_params = {'shape': [129, 129, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+    assert np.all(model.input_shape == (None, 129, 129, 3))
+    assert np.all(model.output_shape == (None, 129, 129, 1))
+
+
+def test_generate_resnet_model_dropout():
+    architecture = generate_resnet_architecture(
+        n_upsampling=4, n_filter=48, stride=2, dropout_rate=0.1)
+
+    input_params = {'shape': [128, 128, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+
+def test_generate_voxresnet_model():
+    architecture = generate_voxresnet_architecture(
+        n_upsampling=3, n_filter=64, stride=2)
+
+    input_params = {'shape': [128, 128, 128, 3]}
+
+    model = load_architecture(architecture, input_params)
+    model.summary()
+
+
+def test_create_resnet_json():
+    unet = generate_resnet_architecture()
+    generate_resnet_json(FILE_NAME)
+    actual = load_json_config(FILE_NAME)
+
+    assert np.all(unet == actual)
+
+
+def test_create_voxresnet_json():
+    unet = generate_voxresnet_architecture()
+    generate_voxresnet_json(FILE_NAME)
+    actual = load_json_config(FILE_NAME)
+
+    assert np.all(unet == actual)

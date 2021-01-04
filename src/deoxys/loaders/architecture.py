@@ -5,13 +5,16 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 from ..keras.models import Model as KerasModel
-from ..keras.layers import Input, concatenate, Lambda
+from ..keras.layers import Input, concatenate, Lambda, Add, Activation
 from ..utils import is_keras_standalone
 from tensorflow import image
 import tensorflow as tf
 
 from ..model.layers import layer_from_config
 from ..utils import deep_copy
+
+
+multi_input_layers = ['Add', 'Concatenate']
 
 
 class BaseModelLoader:
@@ -443,7 +446,7 @@ class Vnet(BaseModelLoader):
         NotImplementedError
             Does not support video and time-series image inputs
         """
-        global next_input
+        # global next_input
         layers = [Input(**self._input_params)]
         saved_input = {}
 
@@ -498,9 +501,228 @@ class Vnet(BaseModelLoader):
         return KerasModel(inputs=layers[0], outputs=layers[-1])
 
 
-class DenseModelLoader(BaseModelLoader):
-    def load():
-        pass
+class DenseModelLoader(Vnet):
+    def load(self):
+        """
+        Load the densenet neural network (2d and 3d)
+
+        Returns
+        -------
+        tensorflow.keras.models.Model
+            A neural network with densenet structure
+
+        Raises
+        ------
+        NotImplementedError
+            Does not support video and time-series image inputs
+        """
+        layers = [Input(**self._input_params)]
+        saved_input = {}
+
+        for i, layer in enumerate(self._layers):
+            if 'inputs' in layer:
+                inputs = []
+                size_factors = None
+                for input_name in layer['inputs']:
+                    if size_factors:
+                        if size_factors == saved_input[
+                                input_name].get_shape().as_list()[1:-1]:
+                            next_input = saved_input[input_name]
+                        else:
+                            if len(size_factors) == 2:
+                                next_input = image.resize(
+                                    saved_input[input_name],
+                                    size_factors,
+                                    # preserve_aspect_ratio=True,
+                                    method='bilinear')
+                            elif len(size_factors) == 3:
+
+                                next_input = self.resize_along_dim(
+                                    saved_input[input_name],
+                                    size_factors
+                                )
+
+                            else:
+                                raise NotImplementedError(
+                                    "Image shape is not supported ")
+                        inputs.append(next_input)
+
+                    else:
+                        inputs.append(saved_input[input_name])
+                        size_factors = saved_input[
+                            input_name].get_shape().as_list()[1:-1]
+
+                connected_input = concatenate(inputs)
+            else:
+                connected_input = layers[i]
+
+            if 'dense_block' in layer:
+                next_layer = self._create_dense_block(
+                    layer, connected_input)
+            else:
+                next_tensor = layer_from_config(layer)
+
+                next_layer = next_tensor(connected_input)
+
+                if 'normalizer' in layer:
+                    next_layer = layer_from_config(
+                        layer['normalizer'])(next_layer)
+
+            if 'name' in layer:
+                saved_input[layer['name']] = next_layer
+
+            layers.append(next_layer)
+
+        return KerasModel(inputs=layers[0], outputs=layers[-1])
+
+    def _create_dense_block(self, layer, connected_input):
+        dense = layer['dense_block']
+        if type(dense) == dict:
+            layer_num = dense['layer_num']
+        else:
+            layer_num = dense
+
+        dense_layers = [connected_input]
+        final_concat = []
+        for i in range(layer_num):
+            next_tensor = layer_from_config(layer)
+            if len(dense_layers) == 1:
+                next_layer = next_tensor(connected_input)
+            else:
+                inp = concatenate(dense_layers[-2:])
+                next_layer = next_tensor(inp)
+                dense_layers.append(inp)
+
+            if 'normalizer' in layer:
+                next_layer = layer_from_config(
+                    layer['normalizer'])(next_layer)
+            dense_layers.append(next_layer)
+            final_concat.append(next_layer)
+
+        return concatenate(final_concat)
+
+
+class ResNetModelLoader(BaseModelLoader):
+    def load(self):
+        """
+        Load the voxresnet neural network (2d and 3d)
+
+        Returns
+        -------
+        tensorflow.keras.models.Model
+            A neural network with vosresnet structure
+
+        Raises
+        ------
+        NotImplementedError
+            Does not support video and time-series image inputs
+        """
+        layers = [Input(**self._input_params)]
+        saved_input = {}
+
+        for i, layer in enumerate(self._layers):
+            if 'inputs' in layer:
+                if len(layer['inputs']) > 1:
+                    inputs = []
+                    size_factors = None
+                    for input_name in layer['inputs']:
+                        if size_factors:
+                            if size_factors == saved_input[
+                                    input_name].get_shape().as_list()[1:-1]:
+                                next_input = saved_input[input_name]
+                            else:
+                                if len(size_factors) == 2:
+                                    next_input = image.resize(
+                                        saved_input[input_name],
+                                        size_factors,
+                                        # preserve_aspect_ratio=True,
+                                        method='bilinear')
+                                elif len(size_factors) == 3:
+
+                                    next_input = self.resize_along_dim(
+                                        saved_input[input_name],
+                                        size_factors
+                                    )
+
+                                else:
+                                    raise NotImplementedError(
+                                        "Image shape is not supported ")
+                            inputs.append(next_input)
+
+                        else:
+                            inputs.append(saved_input[input_name])
+                            size_factors = saved_input[
+                                input_name].get_shape().as_list()[1:-1]
+
+                    if layer['class_name'] in multi_input_layers:
+                        connected_input = inputs
+                    else:
+                        connected_input = concatenate(inputs)
+                else:
+                    connected_input = saved_input[layer['inputs'][0]]
+            else:
+                connected_input = layers[i]
+
+            # Resize back to original input
+            if layer.get('resize_inputs'):
+                size_factors = layers[0].get_shape().as_list()[1:-1]
+                if size_factors != connected_input.get_shape().as_list()[1:-1]:
+                    if len(size_factors) == 2:
+                        connected_input = image.resize(
+                            connected_input,
+                            size_factors,
+                            # preserve_aspect_ratio=True,
+                            method='bilinear')
+                    elif len(size_factors) == 3:
+                        connected_input = self.resize_along_dim(
+                            connected_input,
+                            size_factors
+                        )
+                    else:
+                        raise NotImplementedError(
+                            "Image shape is not supported ")
+
+            if 'res_block' in layer:
+                next_layer = self._create_res_block(
+                    layer, connected_input)
+            else:
+                next_tensor = layer_from_config(layer)
+
+                next_layer = next_tensor(connected_input)
+
+                if 'normalizer' in layer:
+                    next_layer = layer_from_config(
+                        layer['normalizer'])(next_layer)
+
+            if 'name' in layer:
+                saved_input[layer['name']] = next_layer
+
+            layers.append(next_layer)
+
+        return KerasModel(inputs=layers[0], outputs=layers[-1])
+
+    def _create_res_block(self, layer, connected_input):
+        res = layer['res_block']
+        if type(res) == dict:
+            layer_num = res['layer_num']
+        else:
+            layer_num = res
+        next_layer = connected_input
+
+        for i in range(layer_num):
+            if 'normalizer' in layer:
+                next_layer = layer_from_config(
+                    layer['normalizer'])(next_layer)
+
+            if 'activation' in layer['config']:
+                activation = layer['config']['activation']
+                del layer['config']['activation']
+
+                next_layer = Activation(activation)(next_layer)
+
+            next_layer = layer_from_config(layer)(next_layer)
+
+        return Add()([connected_input, next_layer])
 
 
 class ModelLoaderFactory:
@@ -508,7 +730,10 @@ class ModelLoaderFactory:
         'Sequential': SequentialModelLoader,
         'Unet': UnetModelLoader,
         'Vnet': Vnet,
-        'Dense': DenseModelLoader
+        'Dense': DenseModelLoader,
+        'DenseNet': DenseModelLoader,  # Alias
+        'ResNet': ResNetModelLoader,
+        'VoxResNet': ResNetModelLoader  # Alias
     }
 
     @classmethod

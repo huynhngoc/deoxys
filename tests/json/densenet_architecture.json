@@ -1,0 +1,266 @@
+{
+    "type": "DenseNet",
+    "layers": [
+        {
+            "name": "down_conv_1",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 48,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "dense_block": 3,
+            "name": "dense_block_1",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 48,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "name": "down_conv_2",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 64,
+                "kernel_size": 1,
+                "strides": 2,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            },
+            "inputs": [
+                "down_conv_1",
+                "dense_block_1"
+            ]
+        },
+        {
+            "dense_block": 4,
+            "name": "dense_block_2",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 64,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "name": "down_conv_3",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 80,
+                "kernel_size": 1,
+                "strides": 2,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            },
+            "inputs": [
+                "down_conv_2",
+                "dense_block_2"
+            ]
+        },
+        {
+            "dense_block": 5,
+            "name": "dense_block_3",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 80,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "name": "down_conv_4",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 96,
+                "kernel_size": 1,
+                "strides": 2,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            },
+            "inputs": [
+                "down_conv_3",
+                "dense_block_3"
+            ]
+        },
+        {
+            "dense_block": 6,
+            "name": "dense_block_4",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 96,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "name": "down_conv_5",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 112,
+                "kernel_size": 1,
+                "strides": 2,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            },
+            "inputs": [
+                "down_conv_4",
+                "dense_block_4"
+            ]
+        },
+        {
+            "dense_block": 7,
+            "name": "dense_block_5",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 112,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "name": "up_conv_5",
+            "class_name": "Conv2DTranspose",
+            "config": {
+                "filters": 96,
+                "kernel_size": 1,
+                "strides": 2,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "dense_block": 6,
+            "name": "dense_block_6",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 96,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            },
+            "inputs": [
+                "down_conv_4",
+                "dense_block_4",
+                "up_conv_5"
+            ]
+        },
+        {
+            "name": "up_conv_4",
+            "class_name": "Conv2DTranspose",
+            "config": {
+                "filters": 80,
+                "kernel_size": 1,
+                "strides": 2,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "dense_block": 5,
+            "name": "dense_block_7",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 80,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            },
+            "inputs": [
+                "down_conv_3",
+                "dense_block_3",
+                "up_conv_4"
+            ]
+        },
+        {
+            "name": "up_conv_3",
+            "class_name": "Conv2DTranspose",
+            "config": {
+                "filters": 64,
+                "kernel_size": 1,
+                "strides": 2,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "dense_block": 4,
+            "name": "dense_block_8",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 64,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            },
+            "inputs": [
+                "down_conv_2",
+                "dense_block_2",
+                "up_conv_3"
+            ]
+        },
+        {
+            "name": "up_conv_2",
+            "class_name": "Conv2DTranspose",
+            "config": {
+                "filters": 48,
+                "kernel_size": 1,
+                "strides": 2,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        },
+        {
+            "dense_block": 3,
+            "name": "dense_block_9",
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 48,
+                "kernel_size": 3,
+                "activation": "relu",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            },
+            "inputs": [
+                "down_conv_1",
+                "dense_block_1",
+                "up_conv_2"
+            ]
+        },
+        {
+            "class_name": "Conv2D",
+            "config": {
+                "filters": 1,
+                "kernel_size": 3,
+                "activation": "sigmoid",
+                "kernel_initializer": "he_normal",
+                "padding": "same"
+            }
+        }
+    ]
+}

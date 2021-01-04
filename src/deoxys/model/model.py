@@ -219,7 +219,7 @@ class Model:
                                   validation_steps=val_steps_per_epoch,
                                   **params)
 
-    def evaluate_train(self, **kwargs):
+    def evaluate_train(self, **kwargs):  # pragma: no cover
         """
         Evaluate the model on the training data
         """
@@ -235,7 +235,7 @@ class Model:
                                        steps=steps_per_epoch,
                                        **params)
 
-    def evaluate_val(self, **kwargs):
+    def evaluate_val(self, **kwargs):  # pragma: no cover
         """
         Evaluate model's performance using validation data
         """

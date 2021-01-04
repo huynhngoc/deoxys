@@ -11,8 +11,8 @@ from deoxys.keras.layers import Input, Dense, Flatten, Dropout, \
     BatchNormalization, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, \
     Conv3D, Conv3DTranspose, MaxPooling3D
 from deoxys.loaders.architecture import BaseModelLoader, ModelLoaderFactory, \
-    SequentialModelLoader, UnetModelLoader, DenseModelLoader, \
-    Vnet, load_architecture
+    SequentialModelLoader, UnetModelLoader, DenseModelLoader,  \
+    Vnet, ResNetModelLoader, load_architecture
 from deoxys.customize import register_architecture, custom_architecture
 from deoxys.utils import read_file, load_json_config
 
@@ -23,7 +23,10 @@ def clear_singleton():
         'Sequential': SequentialModelLoader,
         'Unet': UnetModelLoader,
         'Vnet': Vnet,
-        'Dense': DenseModelLoader
+        'Dense': DenseModelLoader,
+        'DenseNet': DenseModelLoader,  # Alias
+        'ResNet': ResNetModelLoader,
+        'VoxResNet': ResNetModelLoader  # Alias
     }  # clear singleton
 
 
