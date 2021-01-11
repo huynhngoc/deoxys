@@ -257,6 +257,71 @@ class HDF5Reader(DataReader):
 
 
 class H5Reader(DataReader):
+    """DataReader that use data from an hdf5 file.
+
+        Initialize a HDF5 Data Reader, which reads data from a HDF5
+        file. This file should be split into groups. Each group contain
+        datasets, each of which is a column in the data.
+
+        Example:
+
+        The dataset X contain 1000 samples, with 4 columns:
+        x, y, z, t. Where x is the main input, y and z are supporting
+        information (index, descriptions) and t is the target for
+        prediction. We want to test 30% of this dataset, and have a
+        cross validation of 100 samples.
+
+        Then, the hdf5 containing dataset X should have 10 groups,
+        each group contains 100 samples. We can name these groups
+        'fold_1', 'fold_2', 'fold_3', ... , 'fold_9', 'fold_10'.
+        Each group will then have 4 datasets: x, y, z and t, each of
+        which has 100 items.
+
+        Since x is the main input, then `x_name='x'`, and t is the
+        target for prediction, then `y_name='t'`. We named the groups
+        in the form of fold_n, then `fold_prefix='fold'`.
+
+        Let's assume the data is stratified, we want to test on the
+        last 30% of the data, so `test_folds=[8, 9, 10]`.
+        100 samples is used for cross-validation. Thus, one option for
+        `train_folds` and `val_folds` is `train_folds=[1,2,3,4,5,6]`
+        and `val_folds=[7]`. Or in another experiment, you can set
+        `train_folds=[2,3,4,5,6,7]` and `val_folds=[1]`.
+
+        If the hdf5 didn't has any formular for group name, then you
+        can set `fold_prefix=None` then put the full group name
+        directly to `train_folds`, `val_folds` and `test_folds`.
+
+        Parameters
+        ----------
+        filename : str
+            The hdf5 file name that contains the data.
+        batch_size : int, optional
+            Number of sample to feeds in
+            the neural network in each step, by default 32
+        preprocessors : list of deoxys.data.Preprocessor, optional
+            List of preprocessors to apply on the data, by default None
+        x_name : str, optional
+            Dataset name to be use as input, by default 'x'
+        y_name : str, optional
+            Dataset name to be use as target, by default 'y'
+        batch_cache : int, optional
+            Number of batches to be cached when reading the
+            file, by default 10
+        train_folds : list of int, or list of str, optional
+            List of folds to be use as train data, by default None
+        test_folds : list of int, or list of str, optional
+            List of folds to be use as test data, by default None
+        val_folds : list of int, or list of str, optional
+            List of folds to be use as validation data, by default None
+        fold_prefix : str, optional
+            The prefix of the group name in the HDF5 file, by default 'fold'
+        shuffle : bool, optional
+            shuffle data while training, by default False
+        augmentations : list of deoxys.data.Preprocessor, optional
+            apply augmentation when generating traing data, by default None
+    """
+
     def __init__(self, filename, batch_size=32, preprocessors=None,
                  x_name='x', y_name='y', batch_cache=10,
                  train_folds=None, test_folds=None, val_folds=None,
