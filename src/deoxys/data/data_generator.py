@@ -26,6 +26,27 @@ class DataGenerator:
     def generate(self):
         raise NotImplementedError()
 
+    @property
+    def description(self):
+        """
+        Description of the size and number of input items in the data
+
+        Returns
+        -------
+        list of dictionary
+            List of information
+            ```
+            [{
+                'shape': (128, 128, 2),
+                'total': 100
+            },{
+                'shape': (256, 256, 2),
+                'total': 100
+            }]
+            ```
+        """
+        return None
+
 
 class HDF5DataGenerator(DataGenerator):
     def __init__(self, h5file, batch_size=32, batch_cache=10,
@@ -97,6 +118,32 @@ class HDF5DataGenerator(DataGenerator):
         self.fold_len = len(self.hf[first_fold_name][self.y_name])
 
         self._total_batch = None
+        self._description = None
+
+    @property
+    def description(self):
+        if self._description is None:
+            fold_names = self.folds
+            description = []
+            # find the shape of the inputs in the first fold
+            shape = self.hf[fold_names[0]][self.x_name].shape
+            obj = {'shape': shape[1:], 'total': shape[0]}
+
+            for fold_name in fold_names[1:]:  # iterate through each fold
+                shape = self.hf[fold_name][self.x_name].shape
+                # if the shape are the same, increase the total number
+                if np.all(obj['shape'] == shape[1:]):
+                    obj['total'] += shape[0]
+                # else create a new item
+                else:
+                    description.append(obj.copy())
+                    obj = {'shape': shape[1:], 'total': shape[0]}
+
+            # append the last item
+            description.append(obj.copy())
+
+            self._description = description
+        return self._description
 
     @property
     def total_batch(self):
@@ -267,6 +314,7 @@ class H5DataGenerator(DataGenerator):
         self.folds = str_folds
 
         self._total_batch = None
+        self._description = None
 
         # initialize "index" of current seg and fold
         self.seg_idx = 0
@@ -283,6 +331,34 @@ class H5DataGenerator(DataGenerator):
         self.seg_list = np.arange(seg_num).astype(int)
         if self.shuffle:
             np.random.shuffle(self.seg_list)
+
+    @property
+    def description(self):
+        if self.shuffle:
+            raise Warning('The data is shuffled, the description results '
+                          'may not accurate')
+        if self._description is None:
+            fold_names = self.folds
+            description = []
+            # find the shape of the inputs in the first fold
+            shape = self.hf[fold_names[0]][self.x_name].shape
+            obj = {'shape': shape[1:], 'total': shape[0]}
+
+            for fold_name in fold_names[1:]:  # iterate through each fold
+                shape = self.hf[fold_name][self.x_name].shape
+                # if the shape are the same, increase the total number
+                if np.all(obj['shape'] == shape[1:]):
+                    obj['total'] += shape[0]
+                # else create a new item
+                else:
+                    description.append(obj.copy())
+                    obj = {'shape': shape[1:], 'total': shape[0]}
+
+            # append the last item
+            description.append(obj.copy())
+
+            self._description = description
+        return self._description
 
     @property
     def total_batch(self):

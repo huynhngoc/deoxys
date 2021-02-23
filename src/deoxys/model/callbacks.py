@@ -176,6 +176,8 @@ class PredictionCheckpoint(DeoxysModelCallback):
     Predict test in every number of epochs
     """
 
+    _max_size = 1
+
     def __init__(self, filepath=None, period=1, use_original=False,
                  dbclient=None, session=None):
         self.period = period
@@ -187,7 +189,18 @@ class PredictionCheckpoint(DeoxysModelCallback):
         self.dbclient = dbclient
         self.session = session
 
+        self._data_description = None
+
         super().__init__()
+
+    @property
+    def data_information(self):
+        if self._data_description is None:
+            dr = self.deoxys_model.data_reader
+
+            self._data_description = dr.val_generator.description
+
+        return self._data_description
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
@@ -196,47 +209,152 @@ class PredictionCheckpoint(DeoxysModelCallback):
         if self.epochs_since_last_save >= self.period:
             self.epochs_since_last_save = 0
 
+            data_info = self.data_information
+            total_size = np.product(
+                data_info[0]['shape']) * data_info[0]['total'] / 1e9
+
             print('\nPredicting validation data...')
 
-            # Predict all data
-            predicted = self.deoxys_model.predict_val(verbose=1)
+            # predict directly for data of size < max_size (1GB)
+            if len(data_info) == 1 and total_size < self._max_size:
+                # Predict all data
+                predicted = self.deoxys_model.predict_val(verbose=1)
 
-            # Get file name
-            filepath = self.filepath.format(epoch=epoch + 1, **logs)
+                # Get file name
+                filepath = self.filepath.format(epoch=epoch + 1, **logs)
 
-            # Create the h5 file
-            hf = h5py.File(filepath, 'w')
-            hf.create_dataset('predicted', data=predicted, compression="gzip")
-            hf.close()
+                # Create the h5 file
+                hf = h5py.File(filepath, 'w')
+                hf.create_dataset('predicted', data=predicted,
+                                  compression="gzip")
+                hf.close()
 
-            if self.use_original:
-                original_data = self.deoxys_model.data_reader.original_val
+                if self.use_original:
+                    original_data = self.deoxys_model.data_reader.original_val
 
-                for key, val in original_data.items():
+                    for key, val in original_data.items():
+                        hf = h5py.File(filepath, 'a')
+                        hf.create_dataset(key, data=val, compression="gzip")
+                        hf.close()
+                else:
+                    # Create data from val_generator
+                    x = None
+                    y = None
+
+                    val_gen = self.deoxys_model.data_reader.val_generator
+                    data_gen = val_gen.generate()
+
+                    for _ in range(val_gen.total_batch):
+                        next_x, next_y = next(data_gen)
+                        if x is None:
+                            x = next_x
+                            y = next_y
+                        else:
+                            x = np.concatenate((x, next_x))
+                            y = np.concatenate((y, next_y))
+
                     hf = h5py.File(filepath, 'a')
-                    hf.create_dataset(key, data=val, compression="gzip")
+                    hf.create_dataset('x', data=x, compression="gzip")
+                    hf.create_dataset('y', data=y, compression="gzip")
                     hf.close()
-            else:
-                # Create data from val_generator
-                x = None
-                y = None
 
+            # for large data of same size, predict each chunk
+            elif len(data_info) == 1:
                 val_gen = self.deoxys_model.data_reader.val_generator
                 data_gen = val_gen.generate()
 
-                for _ in range(val_gen.total_batch):
-                    next_x, next_y = next(data_gen)
-                    if x is None:
-                        x = next_x
-                        y = next_y
-                    else:
-                        x = np.concatenate((x, next_x))
-                        y = np.concatenate((y, next_y))
+                next_x, next_y = next(data_gen)
+                predicted = self.deoxys_model.predict(next_x, verbose=1)
 
-                hf = h5py.File(filepath, 'a')
-                hf.create_dataset('x', data=x, compression="gzip")
-                hf.create_dataset('y', data=y, compression="gzip")
-                hf.close()
+                input_shape = (data_info[0]['total'],) + data_info[0]['shape']
+                input_chunks = (1,) + data_info[0]['shape']
+                target_shape = (data_info[0]['total'],) + next_y.shape[1:]
+                target_chunks = (1,) + next_y.shape[1:]
+
+                with h5py.File(filepath, 'w') as hf:
+                    hf.create_dataset('x',
+                                      shape=input_shape, chunks=input_chunks,
+                                      compression='gzip')
+                    hf.create_dataset('y',
+                                      shape=target_shape, chunks=target_chunks,
+                                      compression='gzip')
+
+                    hf.create_dataset('predicted',
+                                      shape=target_shape, chunks=target_chunks,
+                                      compression='gzip')
+
+                with h5py.File(filepath, 'a') as hf:
+                    next_index = len(next_x)
+                    hf['x'][:next_index] = next_x
+                    hf['y'][:next_index] = next_y
+                    hf['predicted'][:next_index] = predicted
+
+                for _ in range(val_gen.total_batch - 1):
+                    next_x, next_y = next(data_gen)
+                    predicted = self.deoxys_model.predict(next_x, verbose=1)
+
+                    curr_index = next_index
+                    next_index = curr_index + len(next_x)
+
+                    with h5py.File(filepath, 'a') as hf:
+                        hf['x'][curr_index:next_index] = next_x
+                        hf['y'][curr_index:next_index] = next_y
+                        hf['predicted'][curr_index:next_index] = predicted
+
+            # data of different size
+            else:
+                val_gen = self.deoxys_model.data_reader.val_generator
+                data_gen = val_gen.generate()
+
+                for curr_info_idx, info in enumerate(data_info):
+                    next_x, next_y = next(data_gen)
+                    predicted = self.deoxys_model.predict(next_x, verbose=1)
+
+                    input_shape = (info['total'],) + info['shape']
+                    input_chunks = (1,) + info['shape']
+                    target_shape = (info['total'],) + next_y.shape[1:]
+                    target_chunks = (1,) + next_y.shape[1:]
+                    if curr_info_idx == 0:
+                        mode = 'w'
+                    else:
+                        mode = 'a'
+                    with h5py.File(filepath, mode) as hf:
+                        hf.create_dataset(f'{curr_info_idx:02d}/x',
+                                          shape=input_shape,
+                                          chunks=input_chunks,
+                                          compression='gzip')
+                        hf.create_dataset(f'{curr_info_idx:02d}/y',
+                                          shape=target_shape,
+                                          chunks=target_chunks,
+                                          compression='gzip')
+
+                        hf.create_dataset(f'{curr_info_idx:02d}/predicted',
+                                          shape=target_shape,
+                                          chunks=target_chunks,
+                                          compression='gzip')
+
+                    with h5py.File(filepath, 'a') as hf:
+                        next_index = len(next_x)
+                        hf[f'{curr_info_idx:02d}/x'][:next_index] = next_x
+                        hf[f'{curr_info_idx:02d}/y'][:next_index] = next_y
+                        hf[f'{curr_info_idx:02d}/predicted'][
+                            :next_index] = predicted
+
+                    while next_index < info['total']:
+                        next_x, next_y = next(data_gen)
+                        predicted = self.deoxys_model.predict(
+                            next_x, verbose=1)
+
+                        curr_index = next_index
+                        next_index = curr_index + len(next_x)
+
+                        with h5py.File(filepath, 'a') as hf:
+                            hf[f'{curr_info_idx:02d}/x'][
+                                curr_index:next_index] = next_x
+                            hf[f'{curr_info_idx:02d}/y'][
+                                curr_index:next_index] = next_y
+                            hf[f'{curr_info_idx:02d}/predicted'][
+                                curr_index:next_index] = predicted
 
             if self.dbclient:
                 item = OrderedDict(

@@ -190,10 +190,10 @@ class Model:
         return self._model.fit_generator(*args, **kwargs)
 
     def evaluate_generator(self, *args, **kwargs):
-        return self._model.evaluate_generator(*args, **kwargs)
+        return self._model.evaluate(*args, **kwargs)
 
     def predict_generator(self, *args, **kwargs):
-        return self._model.predict_generator(*args, **kwargs)
+        return self._model.predict(*args, **kwargs)
 
     def fit_train(self, **kwargs):
         """
@@ -231,9 +231,9 @@ class Model:
         data_gen = self._data_reader.train_generator
         steps_per_epoch = data_gen.total_batch
 
-        return self.evaluate_generator(data_gen.generate(),
-                                       steps=steps_per_epoch,
-                                       **params)
+        return self.evaluate(data_gen.generate(),
+                             steps=steps_per_epoch,
+                             **params)
 
     def evaluate_val(self, **kwargs):  # pragma: no cover
         """
@@ -247,9 +247,9 @@ class Model:
         data_gen = self._data_reader.val_generator
         steps_per_epoch = data_gen.total_batch
 
-        return self.evaluate_generator(data_gen.generate(),
-                                       steps=steps_per_epoch,
-                                       **params)
+        return self.evaluate(data_gen.generate(),
+                             steps=steps_per_epoch,
+                             **params)
 
     def predict_val(self, **kwargs):
         """
@@ -263,9 +263,26 @@ class Model:
         data_gen = self._data_reader.val_generator
         steps_per_epoch = data_gen.total_batch
 
-        return self.predict_generator(data_gen.generate(),
-                                      steps=steps_per_epoch,
-                                      **params)
+        return self.predict(data_gen.generate(),
+                            steps=steps_per_epoch,
+                            **params)
+
+    def predict_val_generator(self, **kwargs):  # pragma: no cover
+        """
+        Predict validation data
+        """
+        if self._data_reader is None:
+            raise Warning('No DataReader is specified. This action is ignored')
+            return None
+
+        params = self._get_train_params(self._predict_param_keys, **kwargs)
+        data_gen = self._data_reader.val_generator
+        total_batch = data_gen.total_batch
+        for i, (x,) in enumerate(data_gen.generate()):
+            if i == total_batch:
+                break
+            yield self.predict(x,
+                               **params)
 
     def evaluate_test(self, **kwargs):
         """
@@ -279,9 +296,9 @@ class Model:
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
 
-        return self.evaluate_generator(data_gen.generate(),
-                                       steps=steps_per_epoch,
-                                       **params)
+        return self.evaluate(data_gen.generate(),
+                             steps=steps_per_epoch,
+                             **params)
 
     def predict_test(self, **kwargs):
         """
@@ -295,9 +312,27 @@ class Model:
         data_gen = self._data_reader.test_generator
         steps_per_epoch = data_gen.total_batch
 
-        return self.predict_generator(data_gen.generate(),
-                                      steps=steps_per_epoch,
-                                      **params)
+        return self.predict(data_gen.generate(),
+                            steps=steps_per_epoch,
+                            **params)
+
+    def predict_test_generator(self, **kwargs):  # pragma: no cover
+        """
+        Predict test data
+        """
+        if self._data_reader is None:
+            raise Warning('No DataReader is specified. This action is ignored')
+            return None
+
+        params = self._get_train_params(self._predict_param_keys, **kwargs)
+        data_gen = self._data_reader.test_generator
+        total_batch = data_gen.total_batch
+
+        for i, (x,) in enumerate(data_gen.generate()):
+            if i == total_batch:
+                break
+            yield self.predict(x,
+                               **params)
 
     @property
     def is_compiled(self):

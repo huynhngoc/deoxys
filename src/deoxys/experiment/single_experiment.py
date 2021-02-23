@@ -30,6 +30,7 @@ class Experiment:
     PREDICTED_IMAGE_PATH = '/images'
     TEST_OUTPUT_PATH = '/test'
     PREDICT_TEST_NAME = '/prediction_test.h5'
+    _max_size = 1
 
     def __init__(self,
                  log_base_path='logs',
@@ -197,6 +198,7 @@ class Experiment:
                         contour=True,
                         base_image_name='x',
                         truth_image_name='y',
+                        predicted_image_name='predicted',
                         predicted_image_title_name='Image {index:05d}',
                         img_name='{index:05d}.png'):
         log_base_path = self.log_base_path
@@ -223,6 +225,7 @@ class Experiment:
                         images=masked_images,
                         base_image_name=base_image_name,
                         truth_image_name=truth_image_name,
+                        predicted_image_name=predicted_image_name,
                         title=predicted_image_title_name,
                         contour=contour,
                         name=img_name)
@@ -235,6 +238,7 @@ class Experiment:
                  contour=True,
                  base_image_name='x',
                  truth_image_name='y',
+                 predicted_image_name='predicted',
                  image_name='{index:05d}.png',
                  image_title_name='Image {index:05d}'):
 
@@ -248,45 +252,147 @@ class Experiment:
         if use_best_model:
             raise NotImplementedError
         else:
-            score = self.model.evaluate_test(verbose=1)
-            print(score)
-
-            predicted = self.model.predict_test(verbose=1)
-
-            # Create the h5 file
+            # score = self.model.evaluate_test(verbose=1)
+            # print(score)
             filepath = test_path + self.PREDICT_TEST_NAME
-            hf = h5py.File(filepath, 'w')
-            hf.create_dataset('predicted', data=predicted)
-            hf.close()
 
-            if use_original_image:
-                original_data = self.model.data_reader.original_test
+            data_info = self.model.data_reader.test_generator.description
+            total_size = np.product(
+                data_info[0]['shape']) * data_info[0]['total'] / 1e9
 
-                for key, val in original_data.items():
+            # predict directly for data of size < max_size (1GB)
+            if len(data_info) == 1 and total_size < self._max_size:
+                predicted = self.model.predict_test(verbose=1)
+                # Create the h5 file
+                hf = h5py.File(filepath, 'w')
+                hf.create_dataset('predicted', data=predicted)
+                hf.close()
+
+                if use_original_image:
+                    original_data = self.model.data_reader.original_test
+
+                    for key, val in original_data.items():
+                        hf = h5py.File(filepath, 'a')
+                        hf.create_dataset(key, data=val)
+                        hf.close()
+                else:
+                    # Create data from test_generator
+                    x = None
+                    y = None
+
+                    test_gen = self.model.data_reader.test_generator
+                    data_gen = test_gen.generate()
+
+                    for _ in range(test_gen.total_batch):
+                        next_x, next_y = next(data_gen)
+                        if x is None:
+                            x = next_x
+                            y = next_y
+                        else:
+                            x = np.concatenate((x, next_x))
+                            y = np.concatenate((y, next_y))
+
                     hf = h5py.File(filepath, 'a')
-                    hf.create_dataset(key, data=val)
+                    hf.create_dataset('x', data=x)
+                    hf.create_dataset('y', data=y)
                     hf.close()
-            else:
-                # Create data from test_generator
-                x = None
-                y = None
 
+            # for large data of same size, predict each chunk
+            elif len(data_info) == 1:
                 test_gen = self.model.data_reader.test_generator
                 data_gen = test_gen.generate()
 
-                for _ in range(test_gen.total_batch):
-                    next_x, next_y = next(data_gen)
-                    if x is None:
-                        x = next_x
-                        y = next_y
-                    else:
-                        x = np.concatenate((x, next_x))
-                        y = np.concatenate((y, next_y))
+                next_x, next_y = next(data_gen)
+                predicted = self.model.predict(next_x, verbose=1)
 
-                hf = h5py.File(filepath, 'a')
-                hf.create_dataset('x', data=x)
-                hf.create_dataset('y', data=y)
-                hf.close()
+                input_shape = (data_info[0]['total'],) + data_info[0]['shape']
+                input_chunks = (1,) + data_info[0]['shape']
+                target_shape = (data_info[0]['total'],) + next_y.shape[1:]
+                target_chunks = (1,) + next_y.shape[1:]
+
+                with h5py.File(filepath, 'w') as hf:
+                    hf.create_dataset('x',
+                                      shape=input_shape, chunks=input_chunks,
+                                      compression='gzip')
+                    hf.create_dataset('y',
+                                      shape=target_shape, chunks=target_chunks,
+                                      compression='gzip')
+
+                    hf.create_dataset('predicted',
+                                      shape=target_shape, chunks=target_chunks,
+                                      compression='gzip')
+
+                with h5py.File(filepath, 'a') as hf:
+                    next_index = len(next_x)
+                    hf['x'][:next_index] = next_x
+                    hf['y'][:next_index] = next_y
+                    hf['predicted'][:next_index] = predicted
+
+                for _ in range(test_gen.total_batch - 1):
+                    next_x, next_y = next(data_gen)
+                    predicted = self.model.predict(next_x, verbose=1)
+
+                    curr_index = next_index
+                    next_index = curr_index + len(next_x)
+
+                    with h5py.File(filepath, 'a') as hf:
+                        hf['x'][curr_index:next_index] = next_x
+                        hf['y'][curr_index:next_index] = next_y
+                        hf['predicted'][curr_index:next_index] = predicted
+
+            # data of different size
+            else:
+                test_gen = self.model.data_reader.test_generator
+                data_gen = test_gen.generate()
+
+                for curr_info_idx, info in enumerate(data_info):
+                    next_x, next_y = next(data_gen)
+                    predicted = self.model.predict(next_x, verbose=1)
+
+                    input_shape = (info['total'],) + info['shape']
+                    input_chunks = (1,) + info['shape']
+                    target_shape = (info['total'],) + next_y.shape[1:]
+                    target_chunks = (1,) + next_y.shape[1:]
+                    if curr_info_idx == 0:
+                        mode = 'w'
+                    else:
+                        mode = 'a'
+                    with h5py.File(filepath, mode) as hf:
+                        hf.create_dataset(f'{curr_info_idx:02d}/x',
+                                          shape=input_shape,
+                                          chunks=input_chunks,
+                                          compression='gzip')
+                        hf.create_dataset(f'{curr_info_idx:02d}/y',
+                                          shape=target_shape,
+                                          chunks=target_chunks,
+                                          compression='gzip')
+
+                        hf.create_dataset(f'{curr_info_idx:02d}/predicted',
+                                          shape=target_shape,
+                                          chunks=target_chunks,
+                                          compression='gzip')
+
+                    with h5py.File(filepath, 'a') as hf:
+                        next_index = len(next_x)
+                        hf[f'{curr_info_idx:02d}/x'][:next_index] = next_x
+                        hf[f'{curr_info_idx:02d}/y'][:next_index] = next_y
+                        hf[f'{curr_info_idx:02d}/predicted'][
+                            :next_index] = predicted
+
+                    while next_index < info['total']:
+                        next_x, next_y = next(data_gen)
+                        predicted = self.model.predict(next_x, verbose=1)
+
+                        curr_index = next_index
+                        next_index = curr_index + len(next_x)
+
+                        with h5py.File(filepath, 'a') as hf:
+                            hf[f'{curr_info_idx:02d}/x'][
+                                curr_index:next_index] = next_x
+                            hf[f'{curr_info_idx:02d}/y'][
+                                curr_index:next_index] = next_y
+                            hf[f'{curr_info_idx:02d}/predicted'][
+                                curr_index:next_index] = predicted
 
             if masked_images:
                 self._plot_predicted_images(
@@ -295,6 +401,7 @@ class Experiment:
                     images=masked_images,
                     base_image_name=base_image_name,
                     truth_image_name=truth_image_name,
+                    predicted_image_name=predicted_image_name,
                     title=image_title_name,
                     contour=contour,
                     name=image_name)
@@ -325,10 +432,17 @@ class Experiment:
                                contour=True,
                                base_image_name='x',
                                truth_image_name='y',
+                               predicted_image_name='predicted',
                                title='Image {index:05d}',
                                name='{index:05d}.png'):
         hf = h5py.File(data_path, 'r')
         keys = list(hf.keys())
+        while 'create_group' in dir(hf[keys[0]]):
+            new_keys = []
+            for key in keys:
+                new_keys.extend([f'{key}/{k}' for k in hf[key].keys()])
+            keys = new_keys
+
         for index in images:
             kwargs = {key: hf[key][index] for key in keys}
             img_name = out_path + '/' + name.format(index=index, **kwargs)
@@ -336,14 +450,14 @@ class Experiment:
                 mask_prediction(img_name,
                                 image=kwargs[base_image_name],
                                 true_mask=kwargs[truth_image_name],
-                                pred_mask=kwargs['predicted'],
+                                pred_mask=kwargs[predicted_image_name],
                                 title=title.format(index=index, **kwargs))
             else:
                 plot_images_w_predictions(
                     img_name,
                     image=kwargs[base_image_name],
                     true_mask=kwargs[truth_image_name],
-                    pred_mask=kwargs['predicted'],
+                    pred_mask=kwargs[predicted_image_name],
                     title=title.format(index=index, **kwargs))
 
     def _check_run(self):
