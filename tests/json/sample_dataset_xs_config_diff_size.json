@@ -1,0 +1,369 @@
+{
+    "dataset_params": {
+        "class_name": "HDF5Reader",
+        "config": {
+            "filename": "tests/h5_files/sample_dataset_xs.h5",
+            "batch_size": 5,
+            "x_name": "x",
+            "y_name": "y",
+            "batch_cache": 4,
+            "train_folds": [
+                0
+            ],
+            "val_folds": [
+                1,
+                3
+            ],
+            "test_folds": [
+                2,
+                4
+            ],
+            "preprocessors": []
+        }
+    },
+    "train_params": {
+        "epochs": 5
+    },
+    "input_params": {
+        "shape": [
+            null,
+            null,
+            3
+        ]
+    },
+    "model_params": {
+        "loss": "binary_crossentropy",
+        "optimizer": {
+            "class_name": "rmsprop",
+            "config": {}
+        },
+        "metrics": [
+            {
+                "class_name": "BinaryFbeta"
+            },
+            "accuracy",
+            {
+                "class_name": "Fbeta"
+            },
+            {
+                "class_name": "Dice"
+            }
+        ]
+    },
+    "architecture": {
+        "type": "Unet",
+        "layers": [
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_1",
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "MaxPooling2D"
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_2",
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "MaxPooling2D"
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 16,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_3",
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 16,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "MaxPooling2D"
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_4",
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "MaxPooling2D"
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_5",
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "MaxPooling2D"
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 128,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 128,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_T_1",
+                "class_name": "Conv2DTranspose",
+                "config": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "strides": [
+                        2,
+                        2
+                    ],
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                "inputs": [
+                    "conv_T_1",
+                    "conv_5"
+                ]
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_T_2",
+                "class_name": "Conv2DTranspose",
+                "config": {
+                    "filters": 16,
+                    "kernel_size": 3,
+                    "strides": [
+                        2,
+                        2
+                    ],
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                "inputs": [
+                    "conv_T_2",
+                    "conv_4"
+                ]
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_T_3",
+                "class_name": "Conv2DTranspose",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "strides": [
+                        2,
+                        2
+                    ],
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 16,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                "inputs": [
+                    "conv_T_3",
+                    "conv_3"
+                ]
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 16,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_T_4",
+                "class_name": "Conv2DTranspose",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "strides": [
+                        2,
+                        2
+                    ],
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                "inputs": [
+                    "conv_T_4",
+                    "conv_2"
+                ]
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 8,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "name": "conv_T_5",
+                "class_name": "Conv2DTranspose",
+                "config": {
+                    "filters": 2,
+                    "kernel_size": 3,
+                    "strides": [
+                        2,
+                        2
+                    ],
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                },
+                "inputs": [
+                    "conv_T_5",
+                    "conv_1"
+                ]
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "activation": "relu",
+                    "padding": "same"
+                }
+            },
+            {
+                "class_name": "Conv2D",
+                "config": {
+                    "filters": 1,
+                    "kernel_size": 1,
+                    "activation": "sigmoid"
+                }
+            }
+        ]
+    }
+}

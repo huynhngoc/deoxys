@@ -35,6 +35,34 @@ def test_run_experiment():
     print(exp.best_model())
 
 
+def test_run_experiment_different_size():
+    exp = Experiment(
+        log_base_path='../../oxford_perf_2/logs',
+        best_model_monitors=['val_loss', 'val_accuracy']
+    ).from_full_config(
+        'tests/json/sample_dataset_xs_config_diff_size.json'
+    ).run_experiment(
+        train_history_log=True,
+        model_checkpoint_period=1,
+        prediction_checkpoint_period=1,
+        epochs=2
+    ).plot_performance().plot_prediction(
+        masked_images=[i for i in range(10)],
+        base_image_name='00/x',
+        truth_image_name='00/y',
+        predicted_image_name='00/predicted'
+    )
+
+    # Best model in this run
+    print(exp.best_model())
+
+    exp.run_test(
+        masked_images=[i for i in range(10)],
+        base_image_name='00/x',
+        truth_image_name='00/y',
+        predicted_image_name='00/predicted')
+
+
 def test_continue_experiment():
     exp = Experiment(
         log_base_path='../../oxford_perf/logs',
