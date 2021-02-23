@@ -215,13 +215,13 @@ class PredictionCheckpoint(DeoxysModelCallback):
 
             print('\nPredicting validation data...')
 
+            # Get file name
+            filepath = self.filepath.format(epoch=epoch + 1, **logs)
+
             # predict directly for data of size < max_size (1GB)
             if len(data_info) == 1 and total_size < self._max_size:
                 # Predict all data
                 predicted = self.deoxys_model.predict_val(verbose=1)
-
-                # Get file name
-                filepath = self.filepath.format(epoch=epoch + 1, **logs)
 
                 # Create the h5 file
                 hf = h5py.File(filepath, 'w')
