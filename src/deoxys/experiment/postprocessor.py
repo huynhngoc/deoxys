@@ -303,14 +303,12 @@ class H5MergePatches:
         self.patch_size = patch_size
         self.overlap = overlap
 
-        print('patch', patch_size)
+        print('merge images of patch', patch_size)
 
     def _save_inputs_target_to_merge_file(self, fold, meta, index):
         with h5py.File(self.ref_file, 'r') as f:
             inputs = f[fold][self.ref_inputs][index]
             targets = f[fold][self.ref_targets][index]
-
-        print(inputs.shape, self.inputs, meta)
 
         with h5py.File(self.merge_file, 'a') as mf:
             mf[self.inputs].create_dataset(
@@ -334,7 +332,6 @@ class H5MergePatches:
 
         predicted = np.zeros(shape)
         weight = np.zeros(shape)
-        print(data.shape, predicted.shape)
 
         for i in range(len(indice)):
             x, y, z = indice[i]
