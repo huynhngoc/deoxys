@@ -878,7 +878,7 @@ def load_model(filename, **kwargs):
 
         # keyword arguments to create the model
         model_kwargs = {}
-        with h5py.File(filename) as hf:
+        with h5py.File(filename, 'r') as hf:
             # get the data_reader
             if 'deoxys_config' in hf.attrs.keys():
                 config = hf.attrs['deoxys_config']

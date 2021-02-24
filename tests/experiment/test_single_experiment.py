@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
-from deoxys.experiment import Experiment
+from deoxys.experiment import Experiment, ExperimentPipeline
 
 
 def test_run_experiment():
@@ -87,3 +87,25 @@ def test_run_test():
     ).from_file(
         'tests/h5_files/model.002.h5'
     ).run_test(masked_images=[i for i in range(10)])
+
+
+def test_run_pipeline():
+    ex = ExperimentPipeline(
+        log_base_path='../../hn_perf/2d_xs'
+    ).from_full_config(
+        'tests/json/sample_dataset_xs_config_diff_size.json'
+    ).run_experiment(
+        train_history_log=True,
+        model_checkpoint_period=1,
+        prediction_checkpoint_period=1,
+        epochs=2
+    ).apply_post_processors(
+        map_meta_data='patient_idx'
+    ).plot_prediction(
+        masked_images=[i for i in range(10)], best_num=1, worst_num=1
+    ).load_best_model(
+    ).run_test(
+    ).apply_post_processors(
+        map_meta_data='patient_idx',
+        run_test=True
+    ).plot_3d_test_images(best_num=1, worst_num=1)

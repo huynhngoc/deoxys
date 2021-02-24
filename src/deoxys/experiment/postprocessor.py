@@ -1,5 +1,5 @@
-from .loaders import load_data
-from .utils import load_json_config
+from ..loaders import load_data
+from ..utils import load_json_config
 
 
 from deoxys_image.patch_sliding import get_patch_indice
@@ -21,6 +21,13 @@ class H5Metric:
 
         self.predicted = predicted_dataset
         self.target = target_dataset
+
+        with h5py.File(ref_file, 'r') as f:
+            keys = list(f.keys())
+        if target_dataset not in keys:
+            self.predicted = [f'{key}/{predicted_dataset}' for key in keys]
+            self.target = [f'{key}/{target_dataset}' for key in keys]
+
         self.batch_size = batch_size
 
         self.res_file = save_file
@@ -31,14 +38,25 @@ class H5Metric:
         self.scores = []
 
         if self.map_file is None:
-            with h5py.File(self.ref_file, 'r') as f:
-                size = f[self.target].shape[0]
-
-            for i in range(0, size, self.batch_size):
+            if type(self.predicted) == str:
                 with h5py.File(self.ref_file, 'r') as f:
-                    predicted = f[self.predicted][i:i+self.batch_size]
-                    targets = f[self.target][i:i+self.batch_size]
-                yield targets, predicted
+                    size = f[self.target].shape[0]
+
+                for i in range(0, size, self.batch_size):
+                    with h5py.File(self.ref_file, 'r') as f:
+                        predicted = f[self.predicted][i:i+self.batch_size]
+                        targets = f[self.target][i:i+self.batch_size]
+                    yield targets, predicted
+            else:
+                for pred, target in zip(self.predicted, self.target):
+                    with h5py.File(self.ref_file, 'r') as f:
+                        size = f[target].shape[0]
+
+                    for i in range(0, size, self.batch_size):
+                        with h5py.File(self.ref_file, 'r') as f:
+                            predicted = f[pred][i:i+self.batch_size]
+                            targets = f[target][i:i+self.batch_size]
+                        yield targets, predicted
         else:  # handle 3d with different sizes
             map_df = pd.read_csv(self.map_file)
             map_data = map_df[self.map_column].values
@@ -144,6 +162,13 @@ class H5Merge2dSlice:
         self.target = target_dataset
         self.inputs = input_dataset
 
+        with h5py.File(ref_file, 'r') as f:
+            keys = list(f.keys())
+        if input_dataset not in keys:
+            self.predicted = [f'{key}/{predicted_dataset}' for key in keys]
+            self.target = [f'{key}/{target_dataset}' for key in keys]
+            self.inputs = [f'{key}/{input_dataset}' for key in keys]
+
     def post_process(self):
         map_df = pd.read_csv(self.map_file)
         map_data = map_df[self.map_column].values
@@ -156,37 +181,90 @@ class H5Merge2dSlice:
         indice = np.where(tmp[1:] != tmp[:-1])[0]
         indice = np.concatenate([[0], indice, [len(map_data)]])
 
-        with h5py.File(self.merge_file, 'w') as mf:
-            mf.create_group(self.inputs)
-            mf.create_group(self.target)
-            mf.create_group(self.predicted)
+        if type(self.inputs) == str:
+            with h5py.File(self.merge_file, 'w') as mf:
+                mf.create_group(self.inputs)
+                mf.create_group(self.target)
+                mf.create_group(self.predicted)
 
-        for i in range(len(indice) - 1):
-            start = indice[i]
-            end = indice[i+1]
+            for i in range(len(indice) - 1):
+                start = indice[i]
+                end = indice[i+1]
 
-            unique_val.append(map_data[start])
+                unique_val.append(map_data[start])
 
-            assert map_data[start] == map_data[end-1], "id not match"
+                assert map_data[start] == map_data[end-1], "id not match"
 
-            curr_name = str(map_data[start])
+                curr_name = str(map_data[start])
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.inputs][start:end]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[self.inputs].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.target][start:end]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[self.target].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.predicted][start:end]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[self.predicted].create_dataset(
+                        curr_name, data=img, compression="gzip")
+        else:
+            inputs = self.inputs[0].split('/')[-1]
+            target = self.target[0].split('/')[-1]
+            predicted = self.predicted[0].split('/')[-1]
+            with h5py.File(self.merge_file, 'w') as mf:
+                mf.create_group(inputs)
+                mf.create_group(target)
+                mf.create_group(predicted)
+
+            offset = 0
+            curr_data_idx = 0
+
             with h5py.File(self.ref_file, 'r') as f:
-                img = f[self.inputs][start:end]
-            with h5py.File(self.merge_file, 'a') as mf:
-                mf[self.inputs].create_dataset(
-                    curr_name, data=img, compression="gzip")
+                total = f[self.inputs[curr_data_idx]].shape[0]
 
-            with h5py.File(self.ref_file, 'r') as f:
-                img = f[self.target][start:end]
-            with h5py.File(self.merge_file, 'a') as mf:
-                mf[self.target].create_dataset(
-                    curr_name, data=img, compression="gzip")
+            for i in range(len(indice) - 1):
+                if indice[i] - offset >= total:
+                    offset = indice[i]
+                    curr_data_idx += 1
 
-            with h5py.File(self.ref_file, 'r') as f:
-                img = f[self.predicted][start:end]
-            with h5py.File(self.merge_file, 'a') as mf:
-                mf[self.predicted].create_dataset(
-                    curr_name, data=img, compression="gzip")
+                    with h5py.File(self.ref_file, 'r') as f:
+                        total = f[self.inputs[curr_data_idx]].shape[0]
+
+                map_start, map_end = indice[i], indice[i+1]
+
+                start = indice[i] - offset
+                end = indice[i+1] - offset
+
+                unique_val.append(map_data[map_start])
+
+                assert map_data[map_start] == map_data[map_end -
+                                                       1], "id not match"
+
+                curr_name = str(map_data[map_start])
+                print(curr_name)
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.inputs[curr_data_idx]][start:end]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[inputs].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.target[curr_data_idx]][start:end]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[target].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.predicted[curr_data_idx]][start:end]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[predicted].create_dataset(
+                        curr_name, data=img, compression="gzip")
 
         df = pd.DataFrame(data=unique_val, columns=[self.map_column])
         df.to_csv(self.save_file, index=False)
@@ -353,7 +431,10 @@ class PostProcessor:
         self.epochs = [int(filename[-6:-3]) for filename in predicted_files]
 
         if map_meta_data:
-            self.map_meta_data = map_meta_data.split(',')
+            if type(map_meta_data) == str:
+                self.map_meta_data = map_meta_data.split(',')
+            else:
+                self.map_meta_data = map_meta_data
         else:
             self.map_meta_data = ['patient_idx', 'slice_idx']
 
@@ -419,6 +500,21 @@ class PostProcessor:
             ).post_process()
 
         return self
+
+    def calculate_fscore_single_3d(self):
+        self.calculate_fscore_single()
+        if not self.run_test:
+            map_folder = self.log_base_path + self.SINGLE_MAP_PATH
+
+            main_log_folder = self.log_base_path + self.MAP_PATH
+            os.rename(map_folder, main_log_folder)
+        else:
+            test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
+            map_filename = test_folder + self.TEST_SINGLE_MAP_NAME
+
+            main_result_file_name = test_folder + self.TEST_MAP_NAME
+
+            os.rename(map_filename, main_result_file_name)
 
     def merge_2d_slice(self):
         print('merge 2d slice to 3d images')
@@ -579,13 +675,67 @@ class PostProcessor:
                               self.PREDICTION_NAME.format(epoch=epoch))
                 elif self.log_base_path != self.analysis_base_path:
                     # move the best prediction to main folder
-                    shutil.copy(self.analysis_base_path + self.PREDICTION_PATH +
-                                self.PREDICTION_NAME.format(epoch=epoch),
-                                self.log_base_path + self.PREDICTION_PATH +
-                                self.PREDICTION_NAME.format(epoch=epoch))
+                    shutil.copy(
+                        self.analysis_base_path + self.PREDICTION_PATH +
+                        self.PREDICTION_NAME.format(epoch=epoch),
+                        self.log_base_path + self.PREDICTION_PATH +
+                        self.PREDICTION_NAME.format(epoch=epoch))
 
                     os.remove(self.analysis_base_path + self.PREDICTION_PATH +
                               self.PREDICTION_NAME.format(epoch=epoch))
+        elif self.log_base_path != self.analysis_base_path:
+            # Copy the best prediction to the main folder
+            shutil.copy(self.analysis_base_path + self.PREDICTION_PATH +
+                        self.PREDICTION_NAME.format(epoch=best_epoch),
+                        self.log_base_path + self.PREDICTION_PATH +
+                        self.PREDICTION_NAME.format(epoch=best_epoch))
 
         return self.log_base_path + self.MODEL_PATH + \
             self.MODEL_NAME.format(epoch=best_epoch)
+
+    def get_best_performance_images(self, monitor='', best_num=2, worst_num=2):
+        epochs = self.epochs
+        results_path = self.log_base_path + self.MAP_PATH + self.MAP_NAME
+
+        results = []
+        for epoch in epochs:
+            # only plot things in prediction
+            if os.path.exists(self.log_base_path + self.PREDICTION_PATH +
+                              self.PREDICTION_NAME.format(epoch=epoch)):
+                df = pd.read_csv(results_path.format(epoch=epoch))
+
+                if not monitor:
+                    monitor = df.columns[-1]
+                largest_indice = df[monitor].nlargest(best_num, keep='all')
+                smallest_indice = df[monitor].nlargest(
+                    worst_num, keep='all')
+
+                indice = list(largest_indice.index) + \
+                    list(smallest_indice.index)
+
+            results.append(
+                {'file_name': self.PREDICTION_NAME.format(epoch=epoch),
+                 'ids': df.values[indice][:, 0],
+                 'values': df.values[indice][:, 1]})
+
+        return results
+
+    def get_best_performance_images_test_set(
+            self, monitor='', best_num=2, worst_num=2):
+
+        test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
+        main_result_file_name = test_folder + self.TEST_MAP_NAME
+
+        df = pd.read_csv(main_result_file_name)
+
+        if not monitor:
+            monitor = df.columns[-1]
+        largest_indice = df[monitor].nlargest(best_num, keep='all')
+        smallest_indice = df[monitor].nlargest(
+            worst_num, keep='all')
+
+        indice = list(largest_indice.index) + \
+            list(smallest_indice.index)
+
+        return {'ids': df.values[indice][:, 0],
+                'values': df.values[indice][:, 1]}

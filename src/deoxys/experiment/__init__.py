@@ -6,3 +6,4 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 from .single_experiment import *
 from .multi_experiment import *
+from .pipeline import *
