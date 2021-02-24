@@ -416,7 +416,7 @@ class Experiment:
             print(score)
             filepath = test_path + self.PREDICT_TEST_NAME
 
-            self._predict_test(filepath)
+            self._predict_test(filepath, use_original_image=use_original_image)
 
             if masked_images:
                 self._plot_predicted_images(
@@ -515,7 +515,7 @@ class ExperimentDB(Experiment):  # pragma: no cover
         ----------
         dbclient : deoxys.database.DBClient
             The database client
-        experiment_id : str, int, or ObjectID depending of the dbclient, optional
+        experiment_id : str, int, or ObjectID the dbclient, optional
             Experiment id, by default None
         session_id : str, int, or ObjectID depending of the dbclient, optional
             Session id, by default None

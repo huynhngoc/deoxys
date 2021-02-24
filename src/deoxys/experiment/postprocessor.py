@@ -247,7 +247,7 @@ class H5Merge2dSlice:
                                                        1], "id not match"
 
                 curr_name = str(map_data[map_start])
-                print(curr_name)
+
                 with h5py.File(self.ref_file, 'r') as f:
                     img = f[self.inputs[curr_data_idx]][start:end]
                 with h5py.File(self.merge_file, 'a') as mf:
@@ -281,9 +281,6 @@ class H5MergePatches:
                  input_dataset='x'
                  ):
 
-        # def __init__(self, ref_file, map_file, map_column, merge_file, save_file,
-        #              predicted_dataset='predicted', target_dataset='y',
-        #              input_dataset='x'):
         self.ref_file = ref_file
         self.predicted_file = predicted_file
         self.map_column = map_column
