@@ -707,10 +707,12 @@ class PostProcessor:
                 indice = list(largest_indice.index) + \
                     list(smallest_indice.index)
 
+                # `values` will implicitly cast all item to the same type
+                # take out each column first, then use `values`
                 results.append(
                     {'file_name': self.PREDICTION_NAME.format(epoch=epoch),
-                     'ids': df.values[indice][:, 0],
-                     'values': df.values[indice][:, 1]})
+                     'ids': df[self.main_meta_data].values[indice],
+                     'values': df[monitor].values[indice]})
 
         return results
 
@@ -731,5 +733,7 @@ class PostProcessor:
         indice = list(largest_indice.index) + \
             list(smallest_indice.index)
 
-        return {'ids': df.values[indice][:, 0],
-                'values': df.values[indice][:, 1]}
+        # `values` will implicitly cast all item to the same type
+        # take out each column first, then use `values`
+        return {'ids': df[self.main_meta_data].values[indice],
+                'values': df[monitor].values[indice]}
