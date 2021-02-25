@@ -101,11 +101,15 @@ class ExperimentPipeline(Experiment):
             pred_mask = f[predicted_image_name][:]
 
         print('plotting 3d images...', images_path_single)
-        mask_prediction(images_path_single + '.html',
-                        image=images,
-                        true_mask=true_mask,
-                        pred_mask=pred_mask,
-                        title=f'Patient {image_id}, DSC {score}')
+        try:
+            mask_prediction(images_path_single + '.html',
+                            image=images,
+                            true_mask=true_mask,
+                            pred_mask=pred_mask,
+                            title=f'Patient {image_id}, DSC {score}')
+        except Exception as e:
+            print('An error occurred while plotting 3d images', e)
+
         print('plotting 2d images...')
         for i in range(len(images)):
             mask_prediction(

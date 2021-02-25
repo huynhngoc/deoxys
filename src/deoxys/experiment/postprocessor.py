@@ -707,10 +707,10 @@ class PostProcessor:
                 indice = list(largest_indice.index) + \
                     list(smallest_indice.index)
 
-            results.append(
-                {'file_name': self.PREDICTION_NAME.format(epoch=epoch),
-                 'ids': df.values[indice][:, 0],
-                 'values': df.values[indice][:, 1]})
+                results.append(
+                    {'file_name': self.PREDICTION_NAME.format(epoch=epoch),
+                     'ids': df.values[indice][:, 0],
+                     'values': df.values[indice][:, 1]})
 
         return results
 

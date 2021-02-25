@@ -479,19 +479,22 @@ class Experiment:
                 predicted_image_name = prefix + predicted_image_name
 
             img_name = out_path + '/' + name.format(index=index, **kwargs)
-            if contour:
-                mask_prediction(img_name,
-                                image=kwargs[base_image_name],
-                                true_mask=kwargs[truth_image_name],
-                                pred_mask=kwargs[predicted_image_name],
-                                title=title.format(index=index, **kwargs))
-            else:
-                plot_images_w_predictions(
-                    img_name,
-                    image=kwargs[base_image_name],
-                    true_mask=kwargs[truth_image_name],
-                    pred_mask=kwargs[predicted_image_name],
-                    title=title.format(index=index, **kwargs))
+            try:
+                if contour:
+                    mask_prediction(img_name,
+                                    image=kwargs[base_image_name],
+                                    true_mask=kwargs[truth_image_name],
+                                    pred_mask=kwargs[predicted_image_name],
+                                    title=title.format(index=index, **kwargs))
+                else:
+                    plot_images_w_predictions(
+                        img_name,
+                        image=kwargs[base_image_name],
+                        true_mask=kwargs[truth_image_name],
+                        pred_mask=kwargs[predicted_image_name],
+                        title=title.format(index=index, **kwargs))
+            except Exception as e:
+                print('An error occurred while plotting prediction', e)
 
     def _check_run(self):
         if self.model:
