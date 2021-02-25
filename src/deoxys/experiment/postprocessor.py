@@ -662,6 +662,18 @@ class PostProcessor:
 
         res_df.to_csv(self.log_base_path + '/log_new.csv', index=False)
 
+        if not os.path.exists(self.analysis_base_path + self.PREDICTION_PATH +
+                              self.PREDICTION_NAME.format(epoch=best_epoch)):
+            # no merging 2d slices or patches needed, copy the file from
+            # temp folder to main folder
+            shutil.copy(self.temp_base_path + self.PREDICTION_PATH +
+                        self.PREDICTION_NAME.format(epoch=best_epoch),
+                        self.log_base_path + self.PREDICTION_PATH +
+                        self.PREDICTION_NAME.format(epoch=best_epoch))
+
+            return self.log_base_path + self.MODEL_PATH + \
+                self.MODEL_NAME.format(epoch=best_epoch)
+
         if keep_best_only:
             for epoch in epochs:
                 if epoch != best_epoch:
