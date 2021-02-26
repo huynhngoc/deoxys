@@ -713,7 +713,7 @@ class PostProcessor:
                 if not monitor:
                     monitor = df.columns[-1]
                 largest_indice = df[monitor].nlargest(best_num, keep='all')
-                smallest_indice = df[monitor].nlargest(
+                smallest_indice = df[monitor].nsmallest(
                     worst_num, keep='all')
 
                 indice = list(largest_indice.index) + \
@@ -739,7 +739,7 @@ class PostProcessor:
         if not monitor:
             monitor = df.columns[-1]
         largest_indice = df[monitor].nlargest(best_num, keep='all')
-        smallest_indice = df[monitor].nlargest(
+        smallest_indice = df[monitor].nsmallest(
             worst_num, keep='all')
 
         indice = list(largest_indice.index) + \
