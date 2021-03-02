@@ -116,7 +116,7 @@ class H5CalculateFScore(H5Metric):
         target_positive = np.sum(y_true, axis=reduce_ax)
         predicted_positive = np.sum(y_pred, axis=reduce_ax)
 
-        fb_numerator = (1 + self.beta ** 2) * true_positive
+        fb_numerator = (1 + self.beta ** 2) * true_positive + eps
         fb_denominator = (
             (self.beta ** 2) * target_positive + predicted_positive + eps
         )
@@ -268,6 +268,108 @@ class H5Merge2dSlice:
 
         df = pd.DataFrame(data=unique_val, columns=[self.map_column])
         df.to_csv(self.save_file, index=False)
+
+
+class H5Transform3d:
+    def __init__(self, ref_file, map_file, map_column, merge_file,
+                 predicted_dataset='predicted', target_dataset='y',
+                 input_dataset='x'):
+        self.ref_file = ref_file
+        self.map_file = map_file
+        self.map_column = map_column
+        self.merge_file = merge_file
+
+        self.predicted = predicted_dataset
+        self.target = target_dataset
+        self.inputs = input_dataset
+
+        with h5py.File(ref_file, 'r') as f:
+            keys = list(f.keys())
+        if input_dataset not in keys:
+            self.predicted = [f'{key}/{predicted_dataset}' for key in keys]
+            self.target = [f'{key}/{target_dataset}' for key in keys]
+            self.inputs = [f'{key}/{input_dataset}' for key in keys]
+
+    def post_process(self):
+        map_df = pd.read_csv(self.map_file)
+        map_data = map_df[self.map_column].values
+
+        first, last = map_data[0], map_data[-1]
+
+        tmp = np.concatenate([[first], map_data, [last]])
+        indice = np.where(tmp[1:] != tmp[:-1])[0]
+        indice = np.concatenate([[0], indice, [len(map_data)]])
+
+        if type(self.inputs) == str:
+            with h5py.File(self.merge_file, 'w') as mf:
+                mf.create_group(self.inputs)
+                mf.create_group(self.target)
+                mf.create_group(self.predicted)
+
+            for i in range(len(map_data)):
+                curr_name = str(map_data[i])
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.inputs][i]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[self.inputs].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.target][i]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[self.target].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.predicted][i]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[self.predicted].create_dataset(
+                        curr_name, data=img, compression="gzip")
+        else:
+            inputs = self.inputs[0].split('/')[-1]
+            target = self.target[0].split('/')[-1]
+            predicted = self.predicted[0].split('/')[-1]
+            with h5py.File(self.merge_file, 'w') as mf:
+                mf.create_group(inputs)
+                mf.create_group(target)
+                mf.create_group(predicted)
+
+            offset = 0
+            curr_data_idx = 0
+
+            with h5py.File(self.ref_file, 'r') as f:
+                total = f[self.inputs[curr_data_idx]].shape[0]
+
+            for i in range(len(map_data)):
+                if i - offset >= total:
+                    offset = i
+                    curr_data_idx += 1
+
+                    with h5py.File(self.ref_file, 'r') as f:
+                        total = f[self.inputs[curr_data_idx]].shape[0]
+
+                curr_name = str(map_data[i])
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.inputs[curr_data_idx]][i-offset]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[inputs].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.target[curr_data_idx]][i-offset]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[target].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+                with h5py.File(self.ref_file, 'r') as f:
+                    img = f[self.predicted[curr_data_idx]][i-offset]
+                with h5py.File(self.merge_file, 'a') as mf:
+                    mf[predicted].create_dataset(
+                        curr_name, data=img, compression="gzip")
+
+        # df = pd.DataFrame(data=unique_val, columns=[self.map_column])
+        # df.to_csv(self.save_file, index=False)
 
 
 class H5MergePatches:
@@ -510,6 +612,14 @@ class PostProcessor:
 
             os.rename(map_filename, main_result_file_name)
 
+            H5Transform3d(
+                ref_file=self.temp_base_path + self.TEST_OUTPUT_PATH +
+                self.PREDICT_TEST_NAME,
+                map_file=main_result_file_name,
+                map_column=self.main_meta_data,
+                merge_file=test_folder + self.PREDICT_TEST_NAME,
+            ).post_process()
+
     def merge_2d_slice(self):
         print('merge 2d slice to 3d images')
         if not self.run_test:
@@ -666,10 +776,19 @@ class PostProcessor:
                               self.PREDICTION_NAME.format(epoch=best_epoch)):
             # no merging 2d slices or patches needed, copy the file from
             # temp folder to main folder
-            shutil.copy(self.temp_base_path + self.PREDICTION_PATH +
-                        self.PREDICTION_NAME.format(epoch=best_epoch),
-                        self.log_base_path + self.PREDICTION_PATH +
-                        self.PREDICTION_NAME.format(epoch=best_epoch))
+            # shutil.copy(self.temp_base_path + self.PREDICTION_PATH +
+            #             self.PREDICTION_NAME.format(epoch=best_epoch),
+            #             self.log_base_path + self.PREDICTION_PATH +
+            #             self.PREDICTION_NAME.format(epoch=best_epoch))
+
+            H5Transform3d(
+                ref_file=self.temp_base_path + self.PREDICTION_PATH +
+                self.PREDICTION_NAME.format(epoch=best_epoch),
+                map_file=results_path.format(epoch=best_epoch),
+                map_column=self.main_meta_data,
+                merge_file=self.log_base_path + self.PREDICTION_PATH +
+                self.PREDICTION_NAME.format(epoch=best_epoch),
+            ).post_process()
 
             return self.log_base_path + self.MODEL_PATH + \
                 self.MODEL_NAME.format(epoch=best_epoch)
