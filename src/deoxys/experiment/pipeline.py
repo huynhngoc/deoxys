@@ -1,6 +1,7 @@
 from .single_experiment import Experiment
 from ..model.callbacks import PredictionCheckpoint
 from .postprocessor import PostProcessor
+from ..utils import load_json_config
 
 from deoxys_vis import plot_log_performance_from_csv, mask_prediction, read_csv
 
@@ -238,7 +239,9 @@ class ExperimentPipeline(Experiment):
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
                 run_test=False
-            ).get_best_model(monitor)
+            ).post_processors.get_best_model(monitor)
+
+        print('loading model', path_to_model)
 
         return self.from_file(path_to_model)
 
@@ -281,5 +284,42 @@ class ExperimentPipeline(Experiment):
                     true_mask=true_mask[i],
                     pred_mask=pred_mask[i],
                     title=f'Slice {i:03d} - Patient {image_id}, DSC {score}')
+
+        return self
+
+    def run_external(self, dataset_filename,
+                     monitor='', post_processor_class=None,
+                     recipe='auto', analysis_base_path='',
+                     map_meta_data='patient_idx,slice_idx',
+                     main_meta_data=''):
+        new_dataset_params = load_json_config(dataset_filename)
+        if self.post_processors is None:
+            pp = self._initalize_post_processors(
+                post_processor_class=post_processor_class,
+                analysis_base_path=analysis_base_path,
+                map_meta_data=map_meta_data,
+                main_meta_data=main_meta_data,
+                run_test=True,
+                new_dataset_params=new_dataset_params
+            )
+        else:
+            pp = self.post_processors
+            pp.run_test = True
+            pp.update_data_reader(new_dataset_params)
+
+        self.model._data_reader = pp.data_reader
+
+        log_base_path = self.temp_base_path
+
+        test_path = log_base_path + self.TEST_OUTPUT_PATH
+
+        if not os.path.exists(test_path):
+            os.makedirs(test_path)
+
+        score = self.model.evaluate_test(verbose=1)
+        print(score)
+        filepath = test_path + self.PREDICT_TEST_NAME
+
+        self._predict_test(filepath)
 
         return self

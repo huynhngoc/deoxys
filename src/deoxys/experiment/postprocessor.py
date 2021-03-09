@@ -8,7 +8,9 @@ import numpy as np
 import h5py
 import pandas as pd
 import os
+from time import time
 import shutil
+import matplotlib.pyplot as plt
 
 
 class H5Metric:
@@ -475,6 +477,83 @@ class H5MergePatches:
         df.to_csv(self.save_file, index=False)
 
 
+class AnalysisPerEpoch:
+    _markers = ['o-', 'v-', '^-', '<-', '>-',
+                '1-', '2-', 's-', 'p-', 'P-',
+                '*-', '+-', 'x-', 'D-', 'd-'] * 10 + ['--']
+
+    def __init__(self, save_path, log_file_templates, epochs,
+                 map_column='patient idx', monitor='', model_name=''):
+        self.save_path = save_path
+        self.log_file_templates = log_file_templates
+        self.epochs = epochs
+        self.map_column = map_column
+        self.monitor = monitor
+        self.model_name = model_name or save_path.split('/')[-2]
+
+    def post_process(self):
+        patient_dice_per_epoch = []
+        monitor = self.monitor
+        epochs = self.epochs
+        map_column = self.map_column
+        for epoch in epochs:
+            # load each log file
+            data = pd.read_csv(self.log_file_templates.format(epoch))
+
+            # metric column
+            if not monitor:
+                monitor = data.columns[-1]
+
+            patient_dice_per_epoch.append(data[monitor].values)
+
+        # Plot dice per epoch
+        patient_idx = data[map_column].values
+
+        # print(patient_dice_per_epoch)
+        all_data = np.vstack(patient_dice_per_epoch)
+
+        df = pd.DataFrame(all_data, columns=patient_idx)
+        df.index = epochs
+        df.index.name = 'epoch'
+        # df['mean'] = df.mean(axis=1)
+        df['mean'] = df[[pid for pid in patient_idx]].mean(axis=1)
+        best_epoch = df['mean'].idxmax()
+        best_metric = df['mean'].max()
+
+        plt.figure(figsize=(10, 8))
+        df.plot(style=self._markers[:len(patient_idx) + 1], ax=plt.gca())
+        plt.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+        plt.title(
+            f'Model {self.model_name}' +
+            f'\nBest Epoch {best_epoch} - Mean {monitor} {best_metric:.6f}')
+        plt.savefig(self.save_path + '/dice_per_epoch.png')
+        plt.savefig(self.save_path + '/dice_per_epoch.pdf')
+        plt.close('all')
+
+        # save to csv
+        df.to_csv(self.save_path + '/dice_per_epoch.csv')
+
+        violin_df = df[df.columns[:-1]]
+        group_df = violin_df.reset_index().melt(
+            id_vars=violin_df.columns[:-len(patient_idx)],
+            var_name=map_column, value_name=monitor)
+
+        def Q1(x):
+            return x.quantile(0.25)
+
+        def Q3(x):
+            return x.quantile(0.75)
+
+        def to_int(x):
+            return x.astype(int)
+
+        group_df.groupby('epoch').agg(
+            {monitor: ['min', Q1, 'median', Q3, 'max', 'mean', 'std']})
+
+        with open(self.save_path + '/val_summary.txt') as f:
+            f.write(str(group_df))
+
+
 class PostProcessor:
     MODEL_PATH = '/model'
     MODEL_NAME = '/model.{epoch:03d}.h5'
@@ -499,7 +578,7 @@ class PostProcessor:
                  temp_base_path='',
                  analysis_base_path='',
                  map_meta_data=None, main_meta_data='',
-                 run_test=False):
+                 run_test=False, new_dataset_params=None):
         self.temp_base_path = temp_base_path
         self.log_base_path = log_base_path
         self.analysis_base_path = analysis_base_path or log_base_path
@@ -510,16 +589,7 @@ class PostProcessor:
         if not os.path.exists(self.analysis_base_path + self.PREDICTION_PATH):
             os.mkdir(self.analysis_base_path + self.PREDICTION_PATH)
 
-        model_path = log_base_path + self.MODEL_PATH
-
-        sample_model_filename = model_path + '/' + os.listdir(model_path)[0]
-
-        with h5py.File(sample_model_filename, 'r') as f:
-            config = f.attrs['deoxys_config']
-            config = load_json_config(config)
-
-        self.dataset_filename = config['dataset_params']['config']['filename']
-        self.data_reader = load_data(config['dataset_params'])
+        self.update_data_reader(new_dataset_params)
 
         self.temp_prediction_path = temp_base_path + self.PREDICTION_PATH
         predicted_files = os.listdir(self.temp_prediction_path)
@@ -540,6 +610,26 @@ class PostProcessor:
             self.main_meta_data = self.map_meta_data[0]
 
         self.run_test = run_test
+
+    def update_data_reader(self, new_dataset_params):
+        model_path = self.log_base_path + self.MODEL_PATH
+
+        sample_model_filename = model_path + '/' + os.listdir(model_path)[0]
+
+        with h5py.File(sample_model_filename, 'r') as f:
+            config = f.attrs['deoxys_config']
+            config = load_json_config(config)
+        dataset_params = config['dataset_params']
+        # update until level 2
+        if new_dataset_params is not None:
+            for key in new_dataset_params:
+                if key in dataset_params:
+                    dataset_params[key].update(new_dataset_params[key])
+                else:
+                    dataset_params[key] = new_dataset_params[key]
+
+        self.dataset_filename = dataset_params['config']['filename']
+        self.data_reader = load_data(dataset_params)
 
     def map_2d_meta_data(self):
         print('mapping 2d meta data')
@@ -603,7 +693,24 @@ class PostProcessor:
             map_folder = self.log_base_path + self.SINGLE_MAP_PATH
 
             main_log_folder = self.log_base_path + self.MAP_PATH
-            os.rename(map_folder, main_log_folder)
+            try:
+                os.rename(map_folder, main_log_folder)
+            except Exception as e:
+                print(e)
+                os.rename(main_log_folder,
+                          main_log_folder + '-' + str(time()))
+                os.rename(map_folder, main_log_folder)
+
+            for epoch in self.epochs:
+                H5Transform3d(
+                    ref_file=self.temp_base_path + self.PREDICTION_PATH +
+                    self.PREDICTION_NAME.format(epoch=epoch),
+                    map_file=main_log_folder +
+                    self.MAP_NAME.format(epoch=epoch),
+                    map_column=self.main_meta_data,
+                    merge_file=self.log_base_path + self.PREDICTION_PATH +
+                    self.PREDICTION_NAME.format(epoch=epoch),
+                ).post_process()
         else:
             test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
             map_filename = test_folder + self.TEST_SINGLE_MAP_NAME
@@ -772,26 +879,26 @@ class PostProcessor:
 
         res_df.to_csv(self.log_base_path + '/log_new.csv', index=False)
 
-        if not os.path.exists(self.analysis_base_path + self.PREDICTION_PATH +
-                              self.PREDICTION_NAME.format(epoch=best_epoch)):
-            # no merging 2d slices or patches needed, copy the file from
-            # temp folder to main folder
-            # shutil.copy(self.temp_base_path + self.PREDICTION_PATH +
-            #             self.PREDICTION_NAME.format(epoch=best_epoch),
-            #             self.log_base_path + self.PREDICTION_PATH +
-            #             self.PREDICTION_NAME.format(epoch=best_epoch))
+        # if not os.path.exists(self.analysis_base_path + self.PREDICTION_PATH +
+        #                       self.PREDICTION_NAME.format(epoch=best_epoch)):
+        #     # no merging 2d slices or patches needed, copy the file from
+        #     # temp folder to main folder
+        #     # shutil.copy(self.temp_base_path + self.PREDICTION_PATH +
+        #     #             self.PREDICTION_NAME.format(epoch=best_epoch),
+        #     #             self.log_base_path + self.PREDICTION_PATH +
+        #     #             self.PREDICTION_NAME.format(epoch=best_epoch))
 
-            H5Transform3d(
-                ref_file=self.temp_base_path + self.PREDICTION_PATH +
-                self.PREDICTION_NAME.format(epoch=best_epoch),
-                map_file=results_path.format(epoch=best_epoch),
-                map_column=self.main_meta_data,
-                merge_file=self.log_base_path + self.PREDICTION_PATH +
-                self.PREDICTION_NAME.format(epoch=best_epoch),
-            ).post_process()
+        #     H5Transform3d(
+        #         ref_file=self.temp_base_path + self.PREDICTION_PATH +
+        #         self.PREDICTION_NAME.format(epoch=best_epoch),
+        #         map_file=results_path.format(epoch=best_epoch),
+        #         map_column=self.main_meta_data,
+        #         merge_file=self.log_base_path + self.PREDICTION_PATH +
+        #         self.PREDICTION_NAME.format(epoch=best_epoch),
+        #     ).post_process()
 
-            return self.log_base_path + self.MODEL_PATH + \
-                self.MODEL_NAME.format(epoch=best_epoch)
+        #     return self.log_base_path + self.MODEL_PATH + \
+        #         self.MODEL_NAME.format(epoch=best_epoch)
 
         if keep_best_only:
             for epoch in epochs:
