@@ -160,17 +160,19 @@ class ExperimentPipeline(Experiment):
 
         return self
 
-    def _initalize_post_processors(self, post_processor_class=None,
-                                   analysis_base_path='',
-                                   map_meta_data='patient_idx,slice_idx',
-                                   main_meta_data='', run_test=False):
+    def _initialize_post_processors(self, post_processor_class=None,
+                                    analysis_base_path='',
+                                    map_meta_data='patient_idx,slice_idx',
+                                    main_meta_data='', run_test=False,
+                                    new_dataset_params=None):
         if post_processor_class is None:
             pp = PostProcessor(
                 self.log_base_path,
                 temp_base_path=self.temp_base_path,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
-                main_meta_data=main_meta_data, run_test=run_test
+                main_meta_data=main_meta_data, run_test=run_test,
+                new_dataset_params=new_dataset_params
             )
         else:
             pp = post_processor_class(
@@ -178,7 +180,8 @@ class ExperimentPipeline(Experiment):
                 temp_base_path=self.temp_base_path,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
-                main_meta_data=main_meta_data, run_test=run_test
+                main_meta_data=main_meta_data, run_test=run_test,
+                new_dataset_params=new_dataset_params
             )
 
         return pp
@@ -188,7 +191,7 @@ class ExperimentPipeline(Experiment):
                               map_meta_data='patient_idx,slice_idx',
                               main_meta_data='', run_test=False):
         if self.post_processors is None:
-            pp = self._initalize_post_processors(
+            pp = self._initialize_post_processors(
                 post_processor_class=post_processor_class,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
@@ -220,7 +223,7 @@ class ExperimentPipeline(Experiment):
                         main_meta_data=''):
 
         if self.post_processors is None:
-            pp = self._initalize_post_processors(
+            pp = self._initialize_post_processors(
                 post_processor_class=post_processor_class,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
@@ -232,7 +235,9 @@ class ExperimentPipeline(Experiment):
 
         try:
             path_to_model = pp.get_best_model(monitor)
-        except Exception:
+        except Exception as e:
+            print("Error while getting best model:", e)
+            print("Apply post processing on validation data first")
             path_to_model = self.apply_post_processors(
                 post_processor_class=post_processor_class,
                 analysis_base_path=analysis_base_path,
@@ -294,7 +299,7 @@ class ExperimentPipeline(Experiment):
                      main_meta_data=''):
         new_dataset_params = load_json_config(dataset_filename)
         if self.post_processors is None:
-            pp = self._initalize_post_processors(
+            pp = self._initialize_post_processors(
                 post_processor_class=post_processor_class,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,

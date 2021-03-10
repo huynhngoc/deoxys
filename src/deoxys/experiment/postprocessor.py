@@ -590,11 +590,18 @@ class PostProcessor:
             os.mkdir(self.analysis_base_path + self.PREDICTION_PATH)
 
         self.update_data_reader(new_dataset_params)
+        try:
+            temp_prediction_path = temp_base_path + self.PREDICTION_PATH
+            predicted_files = os.listdir(temp_prediction_path)
 
-        self.temp_prediction_path = temp_base_path + self.PREDICTION_PATH
-        predicted_files = os.listdir(self.temp_prediction_path)
-
-        self.epochs = [int(filename[-6:-3]) for filename in predicted_files]
+            self.epochs = [int(filename[-6:-3])
+                           for filename in predicted_files]
+        except Exception as e:
+            print("Error while getting epochs by temp folder:, e)
+            print("Using post-process log files as alternative")
+            log_files = os.listdir(self.log_base_path + self.MAP_PATH)
+            self.epochs = [int(filename[-7:-4])
+                           for filename in log_files]
 
         if map_meta_data:
             if type(map_meta_data) == str:
@@ -696,7 +703,8 @@ class PostProcessor:
             try:
                 os.rename(map_folder, main_log_folder)
             except Exception as e:
-                print(e)
+                print("Files exist:", e)
+                print("Copying new logs file")
                 os.rename(main_log_folder,
                           main_log_folder + '-' + str(time()))
                 os.rename(map_folder, main_log_folder)
@@ -903,18 +911,26 @@ class PostProcessor:
         if keep_best_only:
             for epoch in epochs:
                 if epoch != best_epoch:
-                    os.remove(self.analysis_base_path + self.PREDICTION_PATH +
-                              self.PREDICTION_NAME.format(epoch=epoch))
+                    predicted_file = self.analysis_base_path + \
+                        self.PREDICTION_PATH + \
+                        self.PREDICTION_NAME.format(epoch=epoch)
+                    if os.path.exists(predicted_file):
+                        os.remove(predicted_file)
                 elif self.log_base_path != self.analysis_base_path:
                     # move the best prediction to main folder
-                    shutil.copy(
-                        self.analysis_base_path + self.PREDICTION_PATH +
-                        self.PREDICTION_NAME.format(epoch=epoch),
-                        self.log_base_path + self.PREDICTION_PATH +
-                        self.PREDICTION_NAME.format(epoch=epoch))
+                    if os.path.exists(self.analysis_base_path +
+                                      self.PREDICTION_PATH +
+                                      self.PREDICTION_NAME.format(epoch=epoch)
+                                      ):
+                        shutil.copy(
+                            self.analysis_base_path + self.PREDICTION_PATH +
+                            self.PREDICTION_NAME.format(epoch=epoch),
+                            self.log_base_path + self.PREDICTION_PATH +
+                            self.PREDICTION_NAME.format(epoch=epoch))
 
-                    os.remove(self.analysis_base_path + self.PREDICTION_PATH +
-                              self.PREDICTION_NAME.format(epoch=epoch))
+                        os.remove(self.analysis_base_path +
+                                  self.PREDICTION_PATH +
+                                  self.PREDICTION_NAME.format(epoch=epoch))
         elif self.log_base_path != self.analysis_base_path:
             # Copy the best prediction to the main folder
             shutil.copy(self.analysis_base_path + self.PREDICTION_PATH +
