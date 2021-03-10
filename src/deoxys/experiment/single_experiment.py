@@ -253,7 +253,7 @@ class Experiment:
 
         return self
 
-    def _predict_test(self, filepath, use_original_image):
+    def _predict_test(self, filepath, use_original_image=False):
         data_info = self.model.data_reader.test_generator.description
         total_size = np.product(
             data_info[0]['shape']) * data_info[0]['total'] / 1e9

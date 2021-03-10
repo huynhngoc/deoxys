@@ -597,7 +597,7 @@ class PostProcessor:
             self.epochs = [int(filename[-6:-3])
                            for filename in predicted_files]
         except Exception as e:
-            print("Error while getting epochs by temp folder:, e)
+            print("Error while getting epochs by temp folder:", e)
             print("Using post-process log files as alternative")
             log_files = os.listdir(self.log_base_path + self.MAP_PATH)
             self.epochs = [int(filename[-7:-4])
