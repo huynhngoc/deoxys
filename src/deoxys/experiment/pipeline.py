@@ -165,6 +165,7 @@ class ExperimentPipeline(Experiment):
                                     map_meta_data='patient_idx,slice_idx',
                                     main_meta_data='', run_test=False,
                                     new_dataset_params=None):
+        print("Initializing postprocessor")
         if post_processor_class is None:
             pp = PostProcessor(
                 self.log_base_path,
@@ -230,6 +231,7 @@ class ExperimentPipeline(Experiment):
                 main_meta_data=main_meta_data,
                 run_test=False
             )
+            self.post_processors = pp
         else:
             pp = self.post_processors
 
@@ -307,6 +309,7 @@ class ExperimentPipeline(Experiment):
                 run_test=True,
                 new_dataset_params=new_dataset_params
             )
+            self.post_processors = pp
         else:
             pp = self.post_processors
             pp.run_test = True
