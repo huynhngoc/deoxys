@@ -57,10 +57,10 @@ class ExperimentPipeline(Experiment):
                 predicted_image_title_name=predicted_image_title_name,
                 img_name=img_name)
 
-        prediciton_path = self.log_base_path + self.PREDICTION_PATH
+        prediction_path = self.log_base_path + self.PREDICTION_PATH
 
         if (self.post_processors is not None) and os.path.exists(
-                prediciton_path):
+                prediction_path):
             print('\nCreating prediction images...')
 
             images_list = self.post_processors.get_best_performance_images(
@@ -68,6 +68,7 @@ class ExperimentPipeline(Experiment):
                 best_num=best_num,
                 worst_num=worst_num
             )
+            print(images_list)
             for item in images_list:
                 filename = item['file_name']
 

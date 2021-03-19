@@ -602,7 +602,7 @@ class DenseModelLoader(Vnet):
         return concatenate(final_concat)
 
 
-class ResNetModelLoader(BaseModelLoader):
+class ResNetModelLoader(Vnet):
     def load(self):
         """
         Load the voxresnet neural network (2d and 3d)
