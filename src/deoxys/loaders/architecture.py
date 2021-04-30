@@ -5,7 +5,8 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 from ..keras.models import Model as KerasModel
-from ..keras.layers import Input, concatenate, Lambda, Add, Activation
+from ..keras.layers import Input, concatenate, Lambda, \
+    Add, Activation, Multiply
 from ..utils import is_keras_standalone
 from tensorflow import image
 import tensorflow as tf
@@ -14,7 +15,7 @@ from ..model.layers import layer_from_config
 from ..utils import deep_copy
 
 
-multi_input_layers = ['Add', 'Concatenate']
+multi_input_layers = ['Add', 'Concatenate', 'Multiply']
 
 
 class BaseModelLoader:

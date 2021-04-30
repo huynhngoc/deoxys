@@ -827,7 +827,7 @@ class PostProcessor:
                 save_file=main_result_file_name,
                 patch_size=self.data_reader.patch_size,
                 overlap=self.data_reader.overlap,
-                folds=self.data_reader.val_folds,
+                folds=self.data_reader.test_folds,
                 fold_prefix='',
                 original_input_dataset=self.data_reader.x_name,
                 original_target_dataset=self.data_reader.y_name,
