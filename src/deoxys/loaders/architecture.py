@@ -16,6 +16,7 @@ from ..utils import deep_copy
 
 
 multi_input_layers = ['Add', 'Concatenate', 'Multiply']
+resize_input_layers = ['Concatenate']
 
 
 class BaseModelLoader:
@@ -652,8 +653,9 @@ class ResNetModelLoader(Vnet):
 
                         else:
                             inputs.append(saved_input[input_name])
-                            size_factors = saved_input[
-                                input_name].get_shape().as_list()[1:-1]
+                            if layer['class_name'] in resize_input_layers:
+                                size_factors = saved_input[
+                                    input_name].get_shape().as_list()[1:-1]
 
                     if layer['class_name'] in multi_input_layers:
                         connected_input = inputs
