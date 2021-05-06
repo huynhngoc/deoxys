@@ -15,8 +15,8 @@ from ..model.layers import layer_from_config
 from ..utils import deep_copy
 
 
-multi_input_layers = ['Add', 'Concatenate', 'Multiply']
-resize_input_layers = ['Concatenate']
+multi_input_layers = ['Add', 'AddResize', 'Concatenate', 'Multiply']
+resize_input_layers = ['Concatenate', 'AddResize']
 
 
 class BaseModelLoader:
@@ -620,7 +620,7 @@ class ResNetModelLoader(Vnet):
             Does not support video and time-series image inputs
         """
         layers = [Input(**self._input_params)]
-        saved_input = {}
+        saved_input = {'input': layers[0]}
 
         for i, layer in enumerate(self._layers):
             if 'inputs' in layer:
