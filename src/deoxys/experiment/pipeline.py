@@ -295,11 +295,11 @@ class ExperimentPipeline(Experiment):
 
         return self
 
-    def run_external(self, dataset_filename,
-                     monitor='', post_processor_class=None,
-                     recipe='auto', analysis_base_path='',
-                     map_meta_data='patient_idx,slice_idx',
-                     main_meta_data=''):
+    def load_new_dataset(self, dataset_filename,
+                         monitor='', post_processor_class=None,
+                         analysis_base_path='',
+                         map_meta_data='patient_idx,slice_idx',
+                         main_meta_data='', run_test=False):
         new_dataset_params = load_json_config(dataset_filename)
         if self.post_processors is None:
             pp = self._initialize_post_processors(
@@ -307,7 +307,7 @@ class ExperimentPipeline(Experiment):
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
-                run_test=True,
+                run_test=run_test,
                 new_dataset_params=new_dataset_params
             )
             self.post_processors = pp
@@ -317,6 +317,24 @@ class ExperimentPipeline(Experiment):
             pp.update_data_reader(new_dataset_params)
 
         self.model._data_reader = pp.data_reader
+        if self.model.config:
+            self.model.config['dataset_params'] = pp.dataset_params
+
+        return self
+
+    def run_external(self, dataset_filename,
+                     monitor='', post_processor_class=None,
+                     analysis_base_path='',
+                     map_meta_data='patient_idx,slice_idx',
+                     main_meta_data=''):
+        # load external dataset into model, with run_test=True
+        self.load_new_dataset(
+            dataset_filename,
+            monitor=monitor, post_processor_class=post_processor_class,
+            analysis_base_path=analysis_base_path,
+            map_meta_data=map_meta_data,
+            main_meta_data=main_meta_data, run_test=True
+        )
 
         log_base_path = self.temp_base_path
 
