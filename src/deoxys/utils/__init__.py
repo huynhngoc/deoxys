@@ -17,6 +17,7 @@ from .data_utils import *
 
 KERAS_STANDALONE = None
 TENSORFLOW_EAGER_MODE = None
+ITER_PER_EPOCH = None
 
 
 def deep_copy(obj):
@@ -50,3 +51,18 @@ def is_default_tf_eager_mode():
             not is_keras_standalone()) and tf.__version__.startswith('2.')
 
     return TENSORFLOW_EAGER_MODE
+
+
+def number_of_iteration():
+    global ITER_PER_EPOCH
+    if ITER_PER_EPOCH is None:
+        ITER_PER_EPOCH = 0
+
+        if 'ITER_PER_EPOCH' in os.environ:
+            iter_num = os.environ.get('ITER_PER_EPOCH')
+            try:
+                ITER_PER_EPOCH = int(iter_num)
+            except ValueError:
+                print('Invalid number ITER_PER_EPOCH.'
+                      'Using actual number of batches')
+    return ITER_PER_EPOCH

@@ -16,7 +16,7 @@ from ..keras.models import \
     model_from_json as keras_model_from_json, \
     load_model as keras_load_model, Model as KerasModel, \
     clone_model
-from ..utils import is_default_tf_eager_mode
+from ..utils import is_default_tf_eager_mode, number_of_iteration
 
 from ..keras import backend as K
 
@@ -208,7 +208,11 @@ class Model:
 
         params = self._get_train_params(self._fit_param_keys, **kwargs)
         train_data_gen = self._data_reader.train_generator
-        train_steps_per_epoch = train_data_gen.total_batch
+
+        if number_of_iteration():
+            train_steps_per_epoch = number_of_iteration()
+        else:
+            train_steps_per_epoch = train_data_gen.total_batch
 
         val_data_gen = self._data_reader.val_generator
         val_steps_per_epoch = val_data_gen.total_batch
