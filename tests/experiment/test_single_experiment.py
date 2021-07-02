@@ -90,7 +90,7 @@ def test_run_test():
 
 
 def test_run_pipeline():
-    ex = ExperimentPipeline(
+    ExperimentPipeline(
         log_base_path='../../hn_perf/2d_xs'
     ).from_full_config(
         'tests/json/sample_dataset_xs_config_diff_size.json'
@@ -107,5 +107,27 @@ def test_run_pipeline():
     ).run_test(
     ).apply_post_processors(
         map_meta_data='patient_idx',
-        run_test=True
+        run_test=True,
+        recipe='2d'
     ).plot_3d_test_images(best_num=1, worst_num=1)
+
+
+def test_run_pipeline_3d():
+    ExperimentPipeline(
+        log_base_path='../../hn_perf/3d_xs'
+    ).from_full_config(
+        'tests/json/sample_dataset_xs_3d_full.json'
+    ).run_experiment(
+        train_history_log=True,
+        model_checkpoint_period=1,
+        prediction_checkpoint_period=1,
+        epochs=1
+    ).apply_post_processors(
+        map_meta_data='patient_idx'
+    ).load_best_model(
+    ).run_test(
+    ).apply_post_processors(
+        map_meta_data='patient_idx',
+        run_test=True,
+        recipe='3d'
+    )

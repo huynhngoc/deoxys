@@ -204,16 +204,45 @@ class ExperimentPipeline(Experiment):
             pp = self.post_processors
             pp.run_test = run_test
 
-        if recipe == 'auto':
-            if '2d' in self.log_base_path:
+        if type(recipe) == str:
+            if recipe == 'auto':
+                print('Automatically applying postprocessor '
+                      'based on log folder name')
+                if '2d' in self.log_base_path:
+                    pp_recipe = '2d'
+                elif 'patch' in self.log_base_path:
+                    pp_recipe = 'patch'
+                elif '3d' in self.log_base_path:
+                    pp_recipe = '3d'
+                else:
+                    print('Cannot determine recipe, no postprocessors applied')
+            else:
+                pp_recipe = recipe
+
+            if pp_recipe == '2d':
+                print('Applying postprocesesor to 2d images')
                 pp.map_2d_meta_data().calculate_fscore_single(
                 ).merge_2d_slice().calculate_fscore()
-            elif 'patch' in self.log_base_path:
+            elif pp_recipe == 'patch':
+                print('Applying postprocesesor to image patches')
                 pp.merge_3d_patches().calculate_fscore()
-            elif '3d' in self.log_base_path:
+            elif pp_recipe == '3d':
+                print('Applying postprocesesor to 3d images')
                 pp.map_2d_meta_data().calculate_fscore_single_3d()
             else:
-                print('Cannot determine recipe, no postprocessors applied')
+                print('No postprocessors for recipe', pp_recipe)
+        elif '__iter__' in dir(recipe):
+            print('Running customized recipe.')
+            for func_name in recipe:
+                try:
+                    getattr(pp, func_name)()
+                except AttributeError:
+                    print(func_name, 'is not implemented in', type(pp))
+                except Exception as e:
+                    print('Error while calling function '
+                          f'{func_name} in {type(pp)}:', e)
+        else:
+            print('Cannot determine recipe.')
 
         self.post_processors = pp
 

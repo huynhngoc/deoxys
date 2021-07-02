@@ -327,7 +327,7 @@ class H5Transform3d:
                 with h5py.File(self.merge_file, 'a') as mf:
                     mf[self.predicted].create_dataset(
                         curr_name, data=img, compression="gzip")
-        else:
+        else:  # pragma: no cover
             inputs = self.inputs[0].split('/')[-1]
             target = self.target[0].split('/')[-1]
             predicted = self.predicted[0].split('/')[-1]
@@ -374,7 +374,7 @@ class H5Transform3d:
         # df.to_csv(self.save_file, index=False)
 
 
-class H5MergePatches:
+class H5MergePatches:  # pragma: no cover
     def __init__(self, ref_file, predicted_file,
                  map_column, merge_file, save_file,
                  patch_size, overlap,
@@ -477,7 +477,7 @@ class H5MergePatches:
         df.to_csv(self.save_file, index=False)
 
 
-class AnalysisPerEpoch:
+class AnalysisPerEpoch:  # pragma: no cover
     _markers = ['o-', 'v-', '^-', '<-', '>-',
                 '1-', '2-', 's-', 'p-', 'P-',
                 '*-', '+-', 'x-', 'D-', 'd-'] * 10 + ['--']
@@ -596,7 +596,7 @@ class PostProcessor:
 
             self.epochs = [int(filename[-6:-3])
                            for filename in predicted_files]
-        except Exception as e:
+        except Exception as e:   # pragma: no cover
             print("Error while getting epochs by temp folder:", e)
             print("Using post-process log files as alternative")
             try:
@@ -677,8 +677,8 @@ class PostProcessor:
         return self
 
     def calculate_fscore_single(self):
-        print('calculating dice score per items in val set')
         if not self.run_test:
+            print('calculating dice score per items in val set')
             predicted_path = self.temp_base_path + \
                 self.PREDICTION_PATH + self.PREDICTION_NAME
             map_folder = self.log_base_path + self.SINGLE_MAP_PATH
@@ -689,6 +689,7 @@ class PostProcessor:
                     map_filename.format(epoch=epoch)
                 ).post_process()
         else:
+            print('calculating dice score per items in test set')
             predicted_path = self.temp_base_path + \
                 self.TEST_OUTPUT_PATH + self.PREDICT_TEST_NAME
             test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
@@ -731,8 +732,14 @@ class PostProcessor:
             map_filename = test_folder + self.TEST_SINGLE_MAP_NAME
 
             main_result_file_name = test_folder + self.TEST_MAP_NAME
-
-            os.rename(map_filename, main_result_file_name)
+            try:
+                os.rename(map_filename, main_result_file_name)
+            except Exception as e:
+                print("Files exist:", e)
+                print("Copying new result file")
+                os.rename(main_result_file_name,
+                          main_result_file_name + '-' + str(time()) + '.csv')
+                os.rename(map_filename, main_result_file_name)
 
             H5Transform3d(
                 ref_file=self.temp_base_path + self.TEST_OUTPUT_PATH +
@@ -785,7 +792,7 @@ class PostProcessor:
 
         return self
 
-    def merge_3d_patches(self):
+    def merge_3d_patches(self):  # pragma: no cover
         print('merge 3d patches to 3d images')
         if not self.run_test:
             predicted_path = self.temp_base_path + \
