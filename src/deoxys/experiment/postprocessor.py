@@ -113,6 +113,8 @@ class H5CalculateFScore(H5Metric):
         reduce_ax = tuple(range(1, size))
 
         y_pred = (y_pred > self.threshold).astype(y_pred.dtype)
+        if y_pred.ndim - y_true.ndim == 1 and y_pred.shape[-1] == 1:
+            y_pred = y_pred[..., 0]
 
         true_positive = np.sum(y_pred * y_true, axis=reduce_ax)
         target_positive = np.sum(y_true, axis=reduce_ax)
