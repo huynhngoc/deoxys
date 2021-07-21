@@ -146,7 +146,11 @@ class H5MetaDataMapping:
         for fold in self.folds:
             with h5py.File(self.ref_file, 'r') as f:
                 for dataset_name in self.dataset_names:
-                    data[dataset_name].extend(f[fold][dataset_name][:])
+                    meta_data = f[fold][dataset_name][:]
+                    dtype = meta_data.dtype.name
+                    if 'int' not in dtype and 'float' not in dtype:
+                        meta_data = meta_data.astype(str)
+                    data[dataset_name].extend(meta_data)
 
         df = pd.DataFrame(data)
         df.to_csv(self.save_file, index=False)
