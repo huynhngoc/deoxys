@@ -630,8 +630,8 @@ class PostProcessor:
 
         logger_path = self.log_base_path + self.LOG_FILE
         if os.path.isfile(logger_path):
-            df = read_csv(logger_path, index_col='epoch',
-                          usecols=['epoch', monitor])
+            df = read_csv(logger_path, usecols=['epoch', monitor])
+            df['epoch'] = df['epoch'] + 1
             # only compare models that were saved
             min_df = df[df['epoch'].isin(epochs)].min()
             min_epoch = df[df['epoch'].isin(epochs)].idxmin()
@@ -646,7 +646,7 @@ class PostProcessor:
         else:
             warnings.warn('No log files to check for best model')
 
-        print('best epoch:', best_epoch, 'Score:', val)
+        print('Best epoch:', best_epoch, f', with {monitor}={val}')
 
         return best_epoch
 
