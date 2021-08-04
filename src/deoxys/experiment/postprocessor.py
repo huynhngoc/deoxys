@@ -3,6 +3,7 @@ from ..utils import load_json_config
 
 
 from deoxys_image.patch_sliding import get_patch_indice
+from deoxys_vis import read_csv
 
 import numpy as np
 import h5py
@@ -11,6 +12,7 @@ import os
 from time import time
 import shutil
 import matplotlib.pyplot as plt
+import warnings
 
 
 class H5Metric:
@@ -568,6 +570,112 @@ class PostProcessor:
     PREDICTION_NAME = '/prediction.{epoch:03d}.h5'
     LOG_FILE = '/logs.csv'
     PERFORMANCE_PATH = '/performance'
+    TEST_OUTPUT_PATH = '/test'
+    PREDICT_TEST_NAME = '/prediction_test.h5'
+
+    def __init__(self, log_base_path='logs',
+                 temp_base_path='',
+                 analysis_base_path='',
+                 run_test=False, new_dataset_params=None):
+        self.temp_base_path = temp_base_path
+        self.log_base_path = log_base_path
+
+        self.update_data_reader(new_dataset_params)
+
+        try:
+            model_path = log_base_path + self.MODEL_PATH
+            model_files = os.listdir(model_path)
+
+            self.epochs = [int(filename[-6:-3])
+                           for filename in model_files]
+        except Exception as e:   # pragma: no cover
+            print('No saved models', e)
+            warnings.warn('load_best_model does not work')
+
+        if len(self.epochs) == 0:
+            print('No saved models in', model_path)
+            warnings.warn('load_best_model does not work')
+
+        self.run_test = run_test
+
+    def update_data_reader(self, new_dataset_params):
+        model_path = self.log_base_path + self.MODEL_PATH
+
+        sample_model_filename = model_path + '/' + os.listdir(model_path)[0]
+
+        with h5py.File(sample_model_filename, 'r') as f:
+            config = f.attrs['deoxys_config']
+            config = load_json_config(config)
+        dataset_params = config['dataset_params']
+        # update until level 2
+        if new_dataset_params is not None:
+            for key in new_dataset_params:
+                if key in dataset_params:
+                    dataset_params[key].update(new_dataset_params[key])
+                else:
+                    dataset_params[key] = new_dataset_params[key]
+
+        self.dataset_filename = dataset_params['config']['filename']
+        self.data_reader = load_data(dataset_params)
+        self.dataset_params = dataset_params
+
+    def _best_epoch_from_raw_log(self, monitor='', mode='max'):
+        print(F'Finding best model based on the {mode}imum {monitor} from '
+              'raw logs')
+
+        epochs = self.epochs
+        if len(epochs) == 0:
+            print('No saved models in', self.log_base_path)
+            raise Exception('load_best_model does not work')
+
+        logger_path = self.log_base_path + self.LOG_FILE
+        if os.path.isfile(logger_path):
+            df = read_csv(logger_path, index_col='epoch',
+                          usecols=['epoch', monitor])
+            # only compare models that were saved
+            min_df = df[df['epoch'].isin(epochs)].min()
+            min_epoch = df[df['epoch'].isin(epochs)].idxmin()
+            max_df = df[df['epoch'].isin(epochs)].max()
+            max_epoch = df[df['epoch'].isin(epochs)].idxmax()
+            if mode == 'min':
+                val = min_df[monitor]
+                best_epoch = min_epoch[monitor] + 1
+            else:
+                val = max_df[monitor]
+                best_epoch = max_epoch[monitor] + 1
+        else:
+            warnings.warn('No log files to check for best model')
+
+        print('best epoch:', best_epoch, 'Score:', val)
+
+        return best_epoch
+
+    def get_best_model(self, monitor='', mode='max',
+                       keep_best_only=True):   # pragma: no cover
+        best_epoch = self._best_epoch_from_raw_log(monitor, mode)
+
+        epochs = self.epochs
+
+        for epoch in epochs:
+            if epoch == best_epoch or not keep_best_only:
+                shutil.copy(
+                    self.temp_base_path + self.PREDICTION_PATH +
+                    self.PREDICTION_NAME.format(epoch=epoch),
+                    self.log_base_path + self.PREDICTION_PATH +
+                    self.PREDICTION_NAME.format(epoch=epoch))
+
+        return self.log_base_path + self.MODEL_PATH + \
+            self.MODEL_NAME.format(epoch=best_epoch)
+
+
+class SegmentationPostProcessor(PostProcessor):
+    MODEL_PATH = '/model'
+    MODEL_NAME = '/model.{epoch:03d}.h5'
+    BEST_MODEL_PATH = '/best'
+    PREDICTION_PATH = '/prediction'
+    PREDICTION_NAME = '/prediction.{epoch:03d}.h5'
+    LOG_FILE = '/logs.csv'
+    PERFORMANCE_PATH = '/performance'
     PREDICTED_IMAGE_PATH = '/images'
     TEST_OUTPUT_PATH = '/test'
     PREDICT_TEST_NAME = '/prediction_test.h5'
@@ -630,26 +738,26 @@ class PostProcessor:
 
         self.run_test = run_test
 
-    def update_data_reader(self, new_dataset_params):
-        model_path = self.log_base_path + self.MODEL_PATH
+    # def update_data_reader(self, new_dataset_params):
+    #     model_path = self.log_base_path + self.MODEL_PATH
 
-        sample_model_filename = model_path + '/' + os.listdir(model_path)[0]
+    #     sample_model_filename = model_path + '/' + os.listdir(model_path)[0]
 
-        with h5py.File(sample_model_filename, 'r') as f:
-            config = f.attrs['deoxys_config']
-            config = load_json_config(config)
-        dataset_params = config['dataset_params']
-        # update until level 2
-        if new_dataset_params is not None:
-            for key in new_dataset_params:
-                if key in dataset_params:
-                    dataset_params[key].update(new_dataset_params[key])
-                else:
-                    dataset_params[key] = new_dataset_params[key]
+    #     with h5py.File(sample_model_filename, 'r') as f:
+    #         config = f.attrs['deoxys_config']
+    #         config = load_json_config(config)
+    #     dataset_params = config['dataset_params']
+    #     # update until level 2
+    #     if new_dataset_params is not None:
+    #         for key in new_dataset_params:
+    #             if key in dataset_params:
+    #                 dataset_params[key].update(new_dataset_params[key])
+    #             else:
+    #                 dataset_params[key] = new_dataset_params[key]
 
-        self.dataset_filename = dataset_params['config']['filename']
-        self.data_reader = load_data(dataset_params)
-        self.dataset_params = dataset_params
+    #     self.dataset_filename = dataset_params['config']['filename']
+    #     self.data_reader = load_data(dataset_params)
+    #     self.dataset_params = dataset_params
 
     def map_2d_meta_data(self):
         print('mapping 2d meta data')
@@ -885,51 +993,40 @@ class PostProcessor:
 
         return self
 
-    def get_best_model(self, monitor='', keep_best_only=True):
+    def get_best_model(self, monitor='', mode='max', keep_best_only=True,
+                       use_raw_log=False):
         print('finding best model')
 
         epochs = self.epochs
 
-        res_df = pd.DataFrame(epochs, columns=['epochs'])
+        if use_raw_log:
+            best_epoch = self._best_epoch_from_raw_log(monitor, mode)
 
-        results = []
-        results_path = self.log_base_path + self.MAP_PATH + self.MAP_NAME
+        else:
+            res_df = pd.DataFrame(epochs, columns=['epochs'])
 
-        for epoch in epochs:
-            df = pd.read_csv(results_path.format(epoch=epoch))
-            if not monitor:
-                monitor = df.columns[-1]
+            results = []
+            results_path = self.log_base_path + self.MAP_PATH + self.MAP_NAME
 
-            results.append(df[monitor].mean())
+            for epoch in epochs:
+                df = pd.read_csv(results_path.format(epoch=epoch))
+                if not monitor:
+                    monitor = df.columns[-1]
 
-        res_df[monitor] = results
-        best_epoch = epochs[res_df[monitor].argmax()]
+                results.append(df[monitor].mean())
 
-        res_df.to_csv(self.log_base_path + '/log_new.csv', index=False)
+            res_df[monitor] = results
+            if mode == 'max':
+                best_epoch = epochs[res_df[monitor].argmax()]
+            else:
+                best_epoch = epochs[res_df[monitor].argmin()]
 
-        # if not os.path.exists(
-        #         self.analysis_base_path + self.PREDICTION_PATH +
-        #         self.PREDICTION_NAME.format(epoch=best_epoch)):
-        #     # no merging 2d slices or patches needed, copy the file from
-        #     # temp folder to main folder
-        #     # shutil.copy(self.temp_base_path + self.PREDICTION_PATH +
-        #     #             self.PREDICTION_NAME.format(epoch=best_epoch),
-        #     #             self.log_base_path + self.PREDICTION_PATH +
-        #     #             self.PREDICTION_NAME.format(epoch=best_epoch))
+            res_df.to_csv(self.log_base_path + '/log_new.csv', index=False)
 
-        #     H5Transform3d(
-        #         ref_file=self.temp_base_path + self.PREDICTION_PATH +
-        #         self.PREDICTION_NAME.format(epoch=best_epoch),
-        #         map_file=results_path.format(epoch=best_epoch),
-        #         map_column=self.main_meta_data,
-        #         merge_file=self.log_base_path + self.PREDICTION_PATH +
-        #         self.PREDICTION_NAME.format(epoch=best_epoch),
-        #     ).post_process()
-
-        #     return self.log_base_path + self.MODEL_PATH + \
-        #         self.MODEL_NAME.format(epoch=best_epoch)
+        print('Best epoch:', best_epoch)
 
         if keep_best_only:
+            print('Keep best results only. Deleting prediction files...')
             for epoch in epochs:
                 if epoch != best_epoch:
                     predicted_file = self.analysis_base_path + \

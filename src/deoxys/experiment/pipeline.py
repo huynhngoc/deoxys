@@ -1,6 +1,6 @@
 from .single_experiment import Experiment
 from ..model.callbacks import PredictionCheckpoint
-from .postprocessor import PostProcessor
+from .postprocessor import SegmentationPostProcessor
 from ..utils import load_json_config
 
 from deoxys_vis import plot_log_performance_from_csv, mask_prediction, read_csv
@@ -168,7 +168,7 @@ class ExperimentPipeline(Experiment):
                                     new_dataset_params=None):
         print("Initializing postprocessor")
         if post_processor_class is None:
-            pp = PostProcessor(
+            pp = SegmentationPostProcessor(
                 self.log_base_path,
                 temp_base_path=self.temp_base_path,
                 analysis_base_path=analysis_base_path,
@@ -251,7 +251,7 @@ class ExperimentPipeline(Experiment):
     def load_best_model(self, monitor='', post_processor_class=None,
                         recipe='auto', analysis_base_path='',
                         map_meta_data='patient_idx,slice_idx',
-                        main_meta_data=''):
+                        main_meta_data='', **kwargs):
 
         if self.post_processors is None:
             pp = self._initialize_post_processors(
@@ -266,7 +266,7 @@ class ExperimentPipeline(Experiment):
             pp = self.post_processors
 
         try:
-            path_to_model = pp.get_best_model(monitor)
+            path_to_model = pp.get_best_model(monitor, **kwargs)
         except Exception as e:
             print("Error while getting best model:", e)
             print("Apply post processing on validation data first")
@@ -276,7 +276,7 @@ class ExperimentPipeline(Experiment):
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
                 run_test=False
-            ).post_processors.get_best_model(monitor)
+            ).post_processors.get_best_model(monitor, **kwargs)
 
         print('loading model', path_to_model)
 
