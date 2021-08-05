@@ -598,6 +598,223 @@ class ImageAugmentation3D(ImageAugmentation2D):
         )
 
 
+class ClassificationImageAugmentation2D(ImageAugmentation2D):
+    r"""
+        Apply transformation in 2d input images for augmentation
+        in classification.
+        Check `ClassificationImageAugmentation3D` for augmentation on 3d images
+
+        Parameters
+        ----------
+        rotation_range : int, optional
+            range of the angle rotation, in degree, by default 0 (no rotation)
+        rotation_chance : float, optional
+            probability to apply rotation transformation to an image,
+            by default 0.2
+        zoom_range : float, list, tuple optional
+            the range of zooming, zooming in when the number is less than 1,
+            and zoom out when the number if larger than 1.
+            If a `float`, then it is the range between that number and 1,
+            by default 1 (no zooming)
+        zoom_chance : float, optional
+            probability to apply zoom transformation to an image,
+            by default 0.2
+        shift_range : tuple or list, optional
+            the range of translation in each axis, by default None (no shifts)
+        shift_chance : float, optional
+            probability to apply translation transformation to an image,
+            by default 0.1
+        flip_axis : int, tuple, list, optional
+            flip by one or more axis (in the single image) with a probability
+            of 0.5, by default None (no flipping).
+            `flip_axis=0` means the image will be flipped vertically, while
+            `flip_axis=1` means the image will be flipped horizontally.
+        brightness_range : float, tuple, list, optional
+            range of the brightness portion,
+            based on the max intensity value of each channel.
+            For example, when the max intensity value of one channel is 1.0,
+            and the brightness is chaned by 1.2, then every pixel in that
+            channel will increase the intensity value by 0.2.
+
+            .. math:: 0.2 = 1.0 \cdot (1.2 - 1)
+
+            By default 1 (no changes in brightness)
+        brightness_channel : int, tuple, list, optional
+            the channel(s) to apply changes in brightness,
+            by default None (apply to all channels)
+        brightness_chance : float, optional
+            probability to apply brightness change transform to an image,
+            by default 0.1
+        contrast_range : float, tuple, list, optional
+            range of the contrast portion,
+            (the histogram range is scaled up or down).
+            By default 1 (no changes in contrast)
+        contrast_channel : int, tuple, list, optional
+            the channel(s) to apply changes in contrast,
+            by default None (apply to all channels)
+        contrast_chance : float, optional
+            probability to apply contrast change transform to an image,
+            by default 0.1
+        noise_variance : float, tuple, list, optional
+            range of the noise variance
+            when adding Gaussian noise to the image,
+            by default 0 (no adding noise)
+        noise_channel : int, tuple, list, optional
+            the channel(s) to apply Gaussian noise,
+            by default None (apply to all channels)
+        noise_chance : float, optional
+            probability to apply gaussian noise to an image,
+            by default 0.1
+        blur_range : int, tuple, list, optional
+            range of the blur sigma
+            when applying the Gaussian filter to the image,
+            by default 0 (no blur)
+        blur_channel :int, tuple, list, optional
+            the channel(s) to apply Gaussian blur,
+            by default None (apply to all channels)
+        blur_chance : float, optional
+            probability to apply gaussian blur to an image,
+            by default 0.1
+        fill_mode : str, optional
+            the fill mode in affine transformation
+            (rotation, zooming, shifting / translation),
+            one of {'reflect', 'constant', 'nearest', 'mirror', 'wrap'},
+            by default 'constant'
+        cval : int, optional
+            When rotation, or zooming, or shifting is applied to the image,
+            `cval` is the value to fill past edges of input
+            if `fill_mode` is 'constant'.
+            By default 0
+        """
+
+    def transform(self, images, targets):
+        """
+        Apply augmentation to a batch of images
+
+        Parameters
+        ----------
+        images : np.array
+            the image batch
+        targets : np.array, optional
+            the target batch, by default None
+
+        Returns
+        -------
+        np.array
+            the transformed images batch (and target)
+        """
+        images = self.augmentation_obj.transform(images)
+        return images, targets
+
+
+class ClassificationImageAugmentation3D(ImageAugmentation3D):
+    r"""
+        Apply transformation in 3d input images for augmentation
+        in classification.
+
+        Parameters
+        ----------
+        rotation_range : int, optional
+            range of the angle rotation, in degree, by default 0 (no rotation)
+        rotation_chance : float, optional
+            probability to apply rotation transformation to an image,
+            by default 0.2
+        zoom_range : float, list, tuple optional
+            the range of zooming, zooming in when the number is less than 1,
+            and zoom out when the number if larger than 1.
+            If a `float`, then it is the range between that number and 1,
+            by default 1 (no zooming)
+        zoom_chance : float, optional
+            probability to apply zoom transformation to an image,
+            by default 0.2
+        shift_range : tuple or list, optional
+            the range of translation in each axis, by default None (no shifts)
+        shift_chance : float, optional
+            probability to apply translation transformation to an image,
+            by default 0.1
+        flip_axis : int, tuple, list, optional
+            flip by one or more axis (in the single image) with a probability
+            of 0.5, by default None (no flipping).
+            `flip_axis=0` means the image will be flipped vertically, while
+            `flip_axis=1` means the image will be flipped horizontally.
+        brightness_range : float, tuple, list, optional
+            range of the brightness portion,
+            based on the max intensity value of each channel.
+            For example, when the max intensity value of one channel is 1.0,
+            and the brightness is chaned by 1.2, then every pixel in that
+            channel will increase the intensity value by 0.2.
+
+            .. math:: 0.2 = 1.0 \cdot (1.2 - 1)
+
+            By default 1 (no changes in brightness)
+        brightness_channel : int, tuple, list, optional
+            the channel(s) to apply changes in brightness,
+            by default None (apply to all channels)
+        brightness_chance : float, optional
+            probability to apply brightness change transform to an image,
+            by default 0.1
+        contrast_range : float, tuple, list, optional
+            range of the contrast portion,
+            (the histogram range is scaled up or down).
+            By default 1 (no changes in contrast)
+        contrast_channel : int, tuple, list, optional
+            the channel(s) to apply changes in contrast,
+            by default None (apply to all channels)
+        contrast_chance : float, optional
+            probability to apply contrast change transform to an image,
+            by default 0.1
+        noise_variance : float, tuple, list, optional
+            range of the noise variance
+            when adding Gaussian noise to the image,
+            by default 0 (no adding noise)
+        noise_channel : int, tuple, list, optional
+            the channel(s) to apply Gaussian noise,
+            by default None (apply to all channels)
+        noise_chance : float, optional
+            probability to apply gaussian noise to an image,
+            by default 0.1
+        blur_range : int, tuple, list, optional
+            range of the blur sigma
+            when applying the Gaussian filter to the image,
+            by default 0 (no blur)
+        blur_channel :int, tuple, list, optional
+            the channel(s) to apply Gaussian blur,
+            by default None (apply to all channels)
+        blur_chance : float, optional
+            probability to apply gaussian blur to an image,
+            by default 0.1
+        fill_mode : str, optional
+            the fill mode in affine transformation
+            (rotation, zooming, shifting / translation),
+            one of {'reflect', 'constant', 'nearest', 'mirror', 'wrap'},
+            by default 'constant'
+        cval : int, optional
+            When rotation, or zooming, or shifting is applied to the image,
+            `cval` is the value to fill past edges of input
+            if `fill_mode` is 'constant'.
+            By default 0
+        """
+
+    def transform(self, images, targets):
+        """
+        Apply augmentation to a batch of images
+
+        Parameters
+        ----------
+        images : np.array
+            the image batch
+        targets : np.array, optional
+            the target batch, by default None
+
+        Returns
+        -------
+        np.array
+            the transformed images batch (and target)
+        """
+        images = self.augmentation_obj.transform(images)
+        return images, targets
+
+
 class KerasImagePreprocessorX(BasePreprocessor):
     """Apply keras image augmentation to the input images
     """
@@ -706,6 +923,14 @@ class Preprocessors(metaclass=Singleton):
                 ImageAffineTransformPreprocessor,
             'ImageAugmentation2D': ImageAugmentation2D,
             'ImageAugmentation3D': ImageAugmentation3D,
+            'ClassificationImageAugmentation2D':
+                ClassificationImageAugmentation2D,
+            'ClassificationImageAugmentation3D':
+                ClassificationImageAugmentation3D,
+            'ClassImageAugmentation2D':
+                ClassificationImageAugmentation2D,
+            'ClassImageAugmentation3D':
+                ClassificationImageAugmentation3D,
             'SingleChannelPreprocessor': SingleChannelPreprocessor,
             'KerasImagePreprocessorX': KerasImagePreprocessorX,
             'KerasImagePreprocessorY': KerasImagePreprocessorY

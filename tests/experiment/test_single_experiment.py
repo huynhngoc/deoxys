@@ -81,12 +81,12 @@ def test_continue_experiment():
 
 
 def test_run_test():
-    exp = Experiment(
+    Experiment(
         log_base_path='../../oxford_perf/logs',
         best_model_monitors=['val_loss', 'val_accuracy']
     ).from_file(
         'tests/h5_files/model.002.h5'
-    ).run_test(masked_images=[i for i in range(10)])
+    ).run_test(masked_images=[i for i in range(3)])
 
 
 def test_run_pipeline():
@@ -102,8 +102,9 @@ def test_run_pipeline():
     ).apply_post_processors(
         map_meta_data='patient_idx'
     ).plot_prediction(
-        masked_images=[i for i in range(10)], best_num=1, worst_num=1
+        masked_images=[i for i in range(3)], best_num=1, worst_num=1
     ).load_best_model(
+        monitor='val_dice', use_raw_log=True
     ).run_test(
     ).apply_post_processors(
         map_meta_data='patient_idx',
@@ -130,4 +131,25 @@ def test_run_pipeline_3d():
         map_meta_data='patient_idx',
         run_test=True,
         recipe='3d'
+    )
+
+
+def test_run_pipeline_3d_patch():
+    ExperimentPipeline(
+        log_base_path='../../hn_perf/3d_xs_patch'
+    ).from_full_config(
+        'tests/json/sample_dataset_xs_3d_patch.json'
+    ).run_experiment(
+        train_history_log=True,
+        model_checkpoint_period=1,
+        prediction_checkpoint_period=1,
+        epochs=1
+    ).apply_post_processors(
+        map_meta_data='patient_idx'
+    ).load_best_model(
+    ).run_test(
+    ).apply_post_processors(
+        map_meta_data='patient_idx',
+        run_test=True,
+        recipe='patch'
     )
