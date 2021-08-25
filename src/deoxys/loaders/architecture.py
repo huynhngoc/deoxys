@@ -628,6 +628,7 @@ class ResNetModelLoader(Vnet):
                     inputs = []
                     size_factors = None
                     for input_name in layer['inputs']:
+                        # resize based on the first input
                         if size_factors:
                             if size_factors == saved_input[
                                     input_name].get_shape().as_list()[1:-1]:
@@ -651,12 +652,24 @@ class ResNetModelLoader(Vnet):
                                         "Image shape is not supported ")
                             inputs.append(next_input)
 
-                        else:
+                        else:  # set resize signal
                             inputs.append(saved_input[input_name])
-                            if layer['class_name'] in resize_input_layers:
+
+                            # Based on the class_name, determine resize or not
+                            # No resize is required for multi-input class.
+                            # Example: Add, Multiple
+                            # Concatenate and Addresize requires inputs
+                            # # of the same shapes.
+                            # Convolutional layers with multiple inputs
+                            # # have hidden concatenation, so resize is also
+                            # # required.
+                            layer_class = layer['class_name']
+                            if layer_class in resize_input_layers or \
+                                    layer_class not in multi_input_layers:
                                 size_factors = saved_input[
                                     input_name].get_shape().as_list()[1:-1]
 
+                    # No concatenation for multi-input classes
                     if layer['class_name'] in multi_input_layers:
                         connected_input = inputs
                     else:
