@@ -17,7 +17,7 @@ deoxys
     :target: https://github.com/psf/black
 
 
-Keras-based framework for deep-learning in Cancer Tumor Delineation
+Framework for running deep-learning experiments with emphasis on cancer tumor auto-segmentation.
 
 
 * Free software: MIT license

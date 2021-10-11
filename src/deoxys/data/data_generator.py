@@ -41,15 +41,16 @@ class DataGenerator:
         -------
         list of dictionary
             List of information
-            ```
-            [{
-                'shape': (128, 128, 2),
-                'total': 100
-            },{
-                'shape': (256, 256, 2),
-                'total': 100
-            }]
-            ```
+            ::
+
+                [{
+                    'shape': (128, 128, 2),
+                    'total': 100
+                },{
+                    'shape': (256, 256, 2),
+                    'total': 100
+                }]
+
         """
         return None
 

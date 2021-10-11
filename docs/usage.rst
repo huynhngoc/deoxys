@@ -12,6 +12,17 @@ Table of contents
 .. contents::
 
 
+Quickstart
+==========
+Deep learning for auto-segmentation tasks
+---------------------------------------------
+
+TBD
+
+Other deep learning tasks
+---------------------------------------------
+TBD
+
 Configure and run experiment
 ============================
 
@@ -20,7 +31,7 @@ The dataset files
 
 The HDF5 file format
 ^^^^^^^^^^^^^^^^^^^^
-Current, the *deoxys* framework only support files in HDF5 format for ease of compression and data transfer. You can read more about the format `here <https://portal.hdfgroup.org/display/HDF5/HDF5>`_.
+Current, the *deoxys* framework only support files in HDF5 format for ease of compression and data transfer. You can read more about the format `here <https://portal.hdfgroup.org/display/HDF5/HDF5>`__.
 
 If you do not want to know everything about HDF5 format in depth, here is an important quote from the documentation.
 
@@ -33,6 +44,7 @@ The *HDF5 dataset* contains the data, while the *HDF5 group* contains the *HDF d
 
 To check the content of your HDF5 file, you can use the following python script
 ::
+
     import h5py
 
     def print_detail(file_name):
@@ -137,13 +149,15 @@ Create your own dataset
 ^^^^^^^^^^^^^^^^^^^^^^^
 In the case you are not provided with a prepared dataset file, or you want to customize your dataset, here is an example python script to create your own dataset
 ::
+
     import h5py
 
     # First gather your data as np.array
     # get_train_data, get_val_data and get_test_data are just example code for you to understand to process
-    train_X, train_y = get_train_data()
-    val_X, val_y = get_val_data()
-    test_X, test_y = get_test_data()
+    # meta_data can be the patient IDs, the slide IDs or any other information about the data
+    train_X, train_y, train_pids = get_train_data()
+    val_X, val_y, val_pids = get_val_data()
+    test_X, test_y, test_pids = get_test_data()
 
     # Next get the shape of your data
     dim1, dim2, num_channel = train_X.shape[1:]
@@ -157,6 +171,8 @@ In the case you are not provided with a prepared dataset file, or you want to cu
         train_group.create_dataset('y', data=train_y, dtype='f4',
                                     chunks=(1, img_dim1, img_dim2, 1),
                                     compression='lzf')
+        train_group.create_dataset('patient_idx', data=train_pids)
+
         val_group = f.create_group('val')
         val_group.create_dataset('x', data=val_X, dtype='f4',
                                     chunks=(1, img_dim1, img_dim2, num_channel),
@@ -164,6 +180,7 @@ In the case you are not provided with a prepared dataset file, or you want to cu
         val_group.create_dataset('y', data=val_y, dtype='f4',
                                     chunks=(1, img_dim1, img_dim2, 1),
                                     compression='lzf')
+        val_group.create_dataset('patient_idx', data=val_pids)
 
         test_group = f.create_group('test')
         test_group.create_dataset('x', data=test_X, dtype='f4',
@@ -172,14 +189,17 @@ In the case you are not provided with a prepared dataset file, or you want to cu
         test_group.create_dataset('y', data=test_y, dtype='f4',
                                     chunks=(1, img_dim1, img_dim2, 1),
                                     compression='lzf')
+        test_group.create_dataset('patient_idx', data=test_pids)
 
-In the case you want to create a kfold structure::
+In the case you want to create a kfold structure
+::
+
     import h5py
 
     # First define a function to gather your data and split your data into folds
     def get_fold(index):
         # process your data here
-        return X, y
+        return X, y, pids
 
     # Either hard-code these values or use the first fold to get these values
     dim1, dim2, num_channel = get_fold(0)[0][1:]
@@ -188,13 +208,14 @@ In the case you want to create a kfold structure::
     for i in range(num_folds):
         with h5py.File(filename, 'a') as f:
             group = f.create_group(f'fold_{i}')
-            data_x, data_y = get_fold(i)
+            data_x, data_y, pids = get_fold(i)
             group.create_dataset('x', data=data_x, dtype='f4',
                                     chunks=(1, img_dim1, img_dim2, num_channel),
                                     compression='lzf')
             group.create_dataset('y', data=data_y, dtype='f4',
                                     chunks=(1, img_dim1, img_dim2, 1),
                                     compression='lzf')
+            group.create_dataset('patient_idx', data=pids)
 
 The configurable JSON file
 ---------------------------
@@ -240,14 +261,14 @@ The configuration file should contains the following 5 objects: `dataset_params`
 
 
 
-* ``dataset_params``: contains the configuration for the datareader object, (check the list of DataReaders `here <https://deoxys.readthedocs.io/en/latest/data.html#module-deoxys.data.data_reader>`_. It is recommended that you use the `H5Reader`
-* ``input_params``: put the required parameters for the `Input layer <https://keras.io/api/layers/core_layers/input/>`_ here, usually, the shape of the input image
-* ``model_params``: put the required parameters for the ``compile`` function of the `model <https://keras.io/api/models/model_training_apis/>`_ in here. Most of the time, you only need to define:
+* ``dataset_params``: contains the configuration for the datareader object, (check the list of DataReaders `here <https://deoxys.readthedocs.io/en/latest/data.html#module-deoxys.data.data_reader>`__. It is recommended that you use the `H5Reader`
+* ``input_params``: put the required parameters for the `Input layer <https://keras.io/api/layers/core_layers/input/>`__ here, usually, the shape of the input image
+* ``model_params``: put the required parameters for the ``compile`` function of the `model <https://keras.io/api/models/model_training_apis/>`__ in here. Most of the time, you only need to define:
 
     * the ``optimizer``: either str or JSON object, check the list of `Optimizers <https://keras.io/api/optimizers/#core-optimizer-api>`_
-    * the ``loss`` function: either str or JSON object, check the list of Loss functions, in `keras <https://keras.io/api/losses/#available-losses>`_ and in in `deoxys <https://deoxys.readthedocs.io/en/latest/model.html#module-deoxys.model.losses>`_
-    * the ``metrics`` list: list of str or JSON objects, check the list of Metrics, in `keras <https://keras.io/api/metrics/#available-metrics>`_ and in `deoxys <https://deoxys.readthedocs.io/en/latest/model.html#module-deoxys.model.metrics>`_
-* ``train_params``: put the parameters for the `fit` function of the Model in here. Most of the time, you only need to define the list of ``callbacks``, check the list callbacks in `keras <https://keras.io/api/callbacks/#available-callbacks>`_ and in `deoxys <https://deoxys.readthedocs.io/en/latest/model.html#module-deoxys.model.callbacks>`_.
+    * the ``loss`` function: either str or JSON object, check the list of Loss functions, in `keras <https://keras.io/api/losses/#available-losses>`__ and in in `deoxys <https://deoxys.readthedocs.io/en/latest/model.html#module-deoxys.model.losses>`__
+    * the ``metrics`` list: list of str or JSON objects, check the list of Metrics, in `keras <https://keras.io/api/metrics/#available-metrics>`__ and in `deoxys <https://deoxys.readthedocs.io/en/latest/model.html#module-deoxys.model.metrics>`__
+* ``train_params``: put the parameters for the `fit` function of the Model in here. Most of the time, you only need to define the list of ``callbacks``, check the list callbacks in `keras <https://keras.io/api/callbacks/#available-callbacks>`__ and in `deoxys <https://deoxys.readthedocs.io/en/latest/model.html#module-deoxys.model.callbacks>`__.
 
     Note that number of epoch, x and y params, as well as callbacks for logging the performance and save models/prediction are already handled while you run your experiment. You should use callbacks relating to stopping the model (EarlyStopping) or changing the learning rate (ReduceLROnPlateau) here.
 * ``architecture``: configure your architecture here. You should create the architecture using the helper functions. Then modify the resulting JSON (For example, adding more layers to the base architecture).
@@ -600,7 +621,12 @@ You should put the shape of your images **after** preprocessing in here.
 .. code-block:: JSON
 
     {
-        "dataset_params": { ...
+        "dataset_params": {
+            "class_name": "ReaderClassName",
+            "config": {
+                "param1": "value1",
+                "param2": "value2"
+            }
         },
         "input_params": {
             "shape": [
@@ -612,3 +638,151 @@ You should put the shape of your images **after** preprocessing in here.
     }
 
 Check the content of your hdf5 file to get the exact shape. **Note: remember to remove the number of items (the first number).**
+
+
+Running your experiments
+--------------------------------------------
+When you have your dataset files and configuration files ready, you can run the experiments
+::
+
+    from deoxys.experiment import Experiment
+
+    if __name__ == '__main__':
+
+        Experiment(
+            log_base_path='path_to_log_folder'
+        ).from_full_config(
+            'path_to_config_file'
+        ).run_experiment(
+            train_history_log=True,
+            model_checkpoint_period=1, # interval of epochs to make a copy of the model
+            prediction_checkpoint_period=1, # interval of epochs to save validation results
+            epochs=50 # number of epochs to run
+        ).plot_performance().plot_prediction(
+            masked_images=[i for i in range(42)] # plot 42 first images in validation set
+        )
+
+
+You can also parameterize the log folder, config file path and number of epochs.
+::
+
+    # filename: experiment.py
+
+    from deoxys.experiment import Experiment
+    import argparse
+
+    if __name__ == '__main__':
+        parser = argparse.ArgumentParser()
+        parser.add_argument("config_file")
+        parser.add_argument("log_folder")
+
+        parser.add_argument("--epochs", default=50, type=int)
+        parser.add_argument("--model_checkpoint_period", default=5, type=int)
+        parser.add_argument("--prediction_checkpoint_period", default=5, type=int)
+
+
+        args, unknown = parser.parse_known_args()
+
+        print('training from configuration', args.config_file,
+            'and saving log files to', args.log_folder)
+
+        exp = Experiment(
+            log_base_path=args.log_folder
+        ).from_full_config(
+            args.config_file
+        ).run_experiment(
+            train_history_log=True,
+            model_checkpoint_period=args.model_checkpoint_period,
+            prediction_checkpoint_period=args.prediction_checkpoint_period,
+            epochs=args.epochs,
+        ).plot_performance().plot_prediction(
+            masked_images=[i for i in range(42)] # plot 42 first images in validation set
+        )
+
+
+Run the file in terminal
+
+.. code-block:: bash
+
+    python experiment.py path_to_config_file path_to_log_folder --epochs 50 --model_checkpoint_period 10 --prediction_checkpoint_period 10
+
+
+This is an easy way to test your deep learning models with different configurations, or different image modalities, or different preprocessing methods.
+
+
+Running your experiment pipeline
+--------------------------------------------
+If you are running the experiments a virtual machine or HPC system, it's best to use the experiment pipeline with post-processing.
+The log folder will then contain the Dice score of each patient in the validation set in each training interval (``prediction_checkpoint_period``)
+
+::
+
+    # filename: experiment.py
+    # some naming convention to setup the post-processing type
+    # if log folder contains '2d', 2d post-processors will run after the experiments
+    # if log folder contains '3d', 3d post-processors will run after the experiments
+    # if log folder contains 'patch', 3d patches post-processors will run after the experiments
+    # the meta data in this experiment is the patient id
+    # anything in the temp folder and analyis folder are safe to delete after the experiment finished
+
+    from deoxys.experiment import ExperimentPipeline
+    import argparse
+
+    if __name__ == '__main__':
+        parser = argparse.ArgumentParser()
+        parser.add_argument("config_file")
+        parser.add_argument("log_folder")
+        parser.add_argument("--temp_folder", default='', type=str)
+        parser.add_argument("--analysis_folder",
+                            default='', type=str)
+        parser.add_argument("--epochs", default=200, type=int)
+        parser.add_argument("--model_checkpoint_period", default=5, type=int)
+        parser.add_argument("--prediction_checkpoint_period", default=5, type=int)
+        parser.add_argument("--meta", default='patient_idx', type=str)
+        parser.add_argument("--monitor", default='', type=str)
+
+        args, unknown = parser.parse_known_args()
+
+        if 'patch' in args.log_folder:
+            analysis_folder = args.analysis_folder
+        else:
+            analysis_folder = ''
+
+        if '2d' in args.log_folder:
+            meta = args.meta
+        else:
+            meta = args.meta.split(',')[0]
+
+        print('training from configuration', args.config_file,
+            'and saving log files to', args.log_folder)
+        print('Unprocesssed prediciton are saved to', args.temp_folder)
+        if analysis_folder:
+            print('Intermediate processed files for merging patches are saved to',
+                analysis_folder)
+
+        exp = ExperimentPipeline(
+            log_base_path=args.log_folder,
+            temp_base_path=args.temp_folder
+        ).from_full_config(
+            args.config_file
+        ).run_experiment(
+            train_history_log=True,
+            model_checkpoint_period=args.model_checkpoint_period,
+            prediction_checkpoint_period=args.prediction_checkpoint_period,
+            epochs=args.epochs,
+        ).apply_post_processors(
+            recipe='auto',
+            analysis_base_path=analysis_folder,
+            map_meta_data=meta,
+        ).plot_performance().plot_prediction(
+            masked_images=[], best_num=2, worst_num=2
+        ).load_best_model(monitor=args.monitor)
+        if analysis_folder:
+            exp.plot_prediction(best_num=2, worst_num=2)
+
+
+Run the file using the parameters
+
+.. code-block:: bash
+
+    python experiment.py path_to_config_file path_to_log_folder --epochs 200 --model_checkpoint_period 10 --prediction_checkpoint_period 10 --temp_folder path_to_temp_folder --analysis_folder path_to_analysis_folder
