@@ -160,7 +160,11 @@ class Model:
                     batch_x, batch_y = next(
                         self.data_reader.train_generator.generate())
                     group = saved_model.create_group('deoxys')
-                    group.create_dataset('batch_x', data=batch_x)
+                    if type(batch_x) == list:
+                        for i, batch_x_ in enumerate(batch_x):
+                            group.create_dataset(f'batch_x_{i}', data=batch_x_)
+                    else:
+                        group.create_dataset('batch_x', data=batch_x)
                     group.create_dataset('batch_y', data=batch_y)
 
     def fit(self, *args, **kwargs):
@@ -217,11 +221,11 @@ class Model:
         val_data_gen = self._data_reader.val_generator
         val_steps_per_epoch = val_data_gen.total_batch
 
-        return self.fit_generator(train_data_gen.generate(),
-                                  steps_per_epoch=train_steps_per_epoch,
-                                  validation_data=val_data_gen.generate(),
-                                  validation_steps=val_steps_per_epoch,
-                                  **params)
+        return self.fit(train_data_gen.generate(),
+                        steps_per_epoch=train_steps_per_epoch,
+                        validation_data=val_data_gen.generate(),
+                        validation_steps=val_steps_per_epoch,
+                        **params)
 
     def evaluate_train(self, **kwargs):  # pragma: no cover
         """
@@ -897,6 +901,15 @@ def load_model(filename, **kwargs):
                 if 'batch_x' in hf['deoxys'] and 'batch_y' in hf['deoxys']:
                     model_kwargs['sample_data'] = (hf['deoxys']['batch_x'][:],
                                                    hf['deoxys']['batch_y'][:])
+                elif 'batch_y' in hf['deoxys']:
+                    batch_y = hf['deoxys']['batch_y'][:]
+                    batch_x = []
+                    for key in hf['deoxys'].keys:
+                        if 'batch_x' in key:
+                            i = int(key[-1])
+                            assert i == len(batch_x)
+                            batch_x.append(hf['deoxys'][f'batch_x_{i}'])
+                    model_kwargs['sample_data'] = (batch_x, batch_y)
 
             # User input will overwrites all existing args
             model_kwargs.update(kwargs)
