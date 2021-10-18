@@ -246,6 +246,9 @@ class PredictionCheckpoint(DeoxysModelCallback):
 
                     for _ in range(val_gen.total_batch):
                         next_x, next_y = next(data_gen)
+                        # handle multiple inputs
+                        if type(next_x) == list:
+                            next_x = next_x[0]
                         if x is None:
                             x = next_x
                             y = next_y
@@ -282,7 +285,9 @@ class PredictionCheckpoint(DeoxysModelCallback):
                     hf.create_dataset('predicted',
                                       shape=target_shape, chunks=target_chunks,
                                       compression='gzip')
-
+                # handle multiple inputs
+                if type(next_x) == list:
+                    next_x = next_x[0]
                 with h5py.File(filepath, 'a') as hf:
                     next_index = len(next_x)
                     hf['x'][:next_index] = next_x
@@ -292,6 +297,10 @@ class PredictionCheckpoint(DeoxysModelCallback):
                 for _ in range(val_gen.total_batch - 1):
                     next_x, next_y = next(data_gen)
                     predicted = self.deoxys_model.predict(next_x, verbose=1)
+
+                    # handle multiple inputs
+                    if type(next_x) == list:
+                        next_x = next_x[0]
 
                     curr_index = next_index
                     next_index = curr_index + len(next_x)
@@ -333,6 +342,9 @@ class PredictionCheckpoint(DeoxysModelCallback):
                                           chunks=target_chunks,
                                           compression='gzip')
 
+                    # handle multiple inputs
+                    if type(next_x) == list:
+                        next_x = next_x[0]
                     with h5py.File(filepath, 'a') as hf:
                         next_index = len(next_x)
                         hf[f'{curr_info_idx:02d}/x'][:next_index] = next_x
@@ -344,6 +356,10 @@ class PredictionCheckpoint(DeoxysModelCallback):
                         next_x, next_y = next(data_gen)
                         predicted = self.deoxys_model.predict(
                             next_x, verbose=1)
+
+                        # handle multiple inputs
+                        if type(next_x) == list:
+                            next_x = next_x[0]
 
                         curr_index = next_index
                         next_index = curr_index + len(next_x)

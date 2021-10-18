@@ -7,7 +7,7 @@ def load_json_config(*args):
     for arg in args:
         if arg is None:
             data.append(arg)
-        elif type(arg) == dict:
+        elif type(arg) == dict or type(arg) == list:
             data.append(arg)
         elif type(arg) == str:
             try:
