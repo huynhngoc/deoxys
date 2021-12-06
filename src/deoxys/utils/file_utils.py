@@ -61,6 +61,9 @@ def file_finder(filename, callback=None, **kwargs):   # pragma: no cover
     # use callback to perform customized actions
     elif callable(callback):
         return callback(**kwargs)
+    # use environment variable
+    elif os.environ.get('DATASET_FILENAME', None):
+        return os.environ.get('DATASET_FILENAME', None)
     # default behavior
     else:
         # Choose between ignoring the file or enter a new filename

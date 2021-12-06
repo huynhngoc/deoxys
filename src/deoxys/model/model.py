@@ -896,6 +896,8 @@ def load_model(filename, **kwargs):
                     model_kwargs['data_reader'] = load_data(
                         config['dataset_params'])
 
+                model_kwargs['config'] = config
+
             # take the sample data
             if 'deoxys' in hf.keys():
                 if 'batch_x' in hf['deoxys'] and 'batch_y' in hf['deoxys']:

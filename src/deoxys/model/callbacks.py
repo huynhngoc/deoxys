@@ -176,7 +176,7 @@ class PredictionCheckpoint(DeoxysModelCallback):
     Predict test in every number of epochs
     """
 
-    _max_size = 1
+    _max_size = os.environ.get('MAX_SAVE_STEP_GB', 1)
 
     def __init__(self, filepath=None, period=1, use_original=False,
                  dbclient=None, session=None):

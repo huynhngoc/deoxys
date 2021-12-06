@@ -348,6 +348,8 @@ class ExperimentPipeline(Experiment):
         self.model._data_reader = pp.data_reader
         if self.model.config:
             self.model.config['dataset_params'] = pp.dataset_params
+        else:
+            self.model.config = pp.model_config
 
         return self
 

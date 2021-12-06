@@ -1,5 +1,5 @@
 from ..loaders import load_data
-from ..utils import load_json_config
+from ..utils import load_json_config, file_finder
 
 
 from deoxys_image.patch_sliding import get_patch_indice
@@ -97,6 +97,8 @@ class H5Metric:
 
 
 class H5CalculateFScore(H5Metric):
+    name = 'f1_score'
+
     def __init__(self, ref_file, save_file, metric_name='f1_score',
                  predicted_dataset='predicted',
                  target_dataset='y', batch_size=4, beta=1, threshold=None,
@@ -126,6 +128,107 @@ class H5CalculateFScore(H5Metric):
         fb_denominator = (
             (self.beta ** 2) * target_positive + predicted_positive + eps
         )
+
+        return fb_numerator / fb_denominator
+
+
+class H5CalculatePrecision(H5Metric):
+    name = 'precision'
+
+    def __init__(self, ref_file, save_file, metric_name='f1_score',
+                 predicted_dataset='predicted',
+                 target_dataset='y', batch_size=4, threshold=None,
+                 map_file=None, map_column=None):
+        super().__init__(ref_file, save_file, metric_name,
+                         predicted_dataset,
+                         target_dataset, batch_size,
+                         map_file, map_column)
+        self.threshold = 0.5 if threshold is None else threshold
+
+    def calculate_metrics(self, y_true, y_pred, **kwargs):
+        assert len(y_true) == len(y_pred), "Shape not match"
+        eps = 1e-8
+        size = len(y_true.shape)
+        reduce_ax = tuple(range(1, size))
+
+        y_pred = (y_pred > self.threshold).astype(y_pred.dtype)
+        if y_pred.ndim - y_true.ndim == 1 and y_pred.shape[-1] == 1:
+            y_pred = y_pred[..., 0]
+
+        true_positive = np.sum(y_pred * y_true, axis=reduce_ax)
+        # target_positive = np.sum(y_true, axis=reduce_ax)
+        predicted_positive = np.sum(y_pred, axis=reduce_ax)
+
+        fb_numerator = true_positive + eps
+        fb_denominator = predicted_positive + eps
+
+        return fb_numerator / fb_denominator
+
+
+class H5CalculateRecall(H5Metric):
+    name = 'recall'
+
+    def __init__(self, ref_file, save_file, metric_name='f1_score',
+                 predicted_dataset='predicted',
+                 target_dataset='y', batch_size=4, beta=1, threshold=None,
+                 map_file=None, map_column=None):
+        super().__init__(ref_file, save_file, metric_name,
+                         predicted_dataset,
+                         target_dataset, batch_size,
+                         map_file, map_column)
+        self.threshold = 0.5 if threshold is None else threshold
+        self.beta = beta
+
+    def calculate_metrics(self, y_true, y_pred, **kwargs):
+        assert len(y_true) == len(y_pred), "Shape not match"
+        eps = 1e-8
+        size = len(y_true.shape)
+        reduce_ax = tuple(range(1, size))
+
+        y_pred = (y_pred > self.threshold).astype(y_pred.dtype)
+        if y_pred.ndim - y_true.ndim == 1 and y_pred.shape[-1] == 1:
+            y_pred = y_pred[..., 0]
+
+        true_positive = np.sum(y_pred * y_true, axis=reduce_ax)
+        target_positive = np.sum(y_true, axis=reduce_ax)
+        # predicted_positive = np.sum(y_pred, axis=reduce_ax)
+
+        fb_numerator = true_positive + eps
+        fb_denominator = target_positive + eps
+
+        return fb_numerator / fb_denominator
+
+
+class H5CalculateFPR(H5Metric):
+    name = 'FPR'
+
+    def __init__(self, ref_file, save_file, metric_name='f1_score',
+                 predicted_dataset='predicted',
+                 target_dataset='y', batch_size=4, beta=1, threshold=None,
+                 map_file=None, map_column=None):
+        super().__init__(ref_file, save_file, metric_name,
+                         predicted_dataset,
+                         target_dataset, batch_size,
+                         map_file, map_column)
+        self.threshold = 0.5 if threshold is None else threshold
+        self.beta = beta
+
+    def calculate_metrics(self, y_true, y_pred, **kwargs):
+        assert len(y_true) == len(y_pred), "Shape not match"
+        eps = 1e-8
+        size = len(y_true.shape)
+        reduce_ax = tuple(range(1, size))
+
+        y_pred = (y_pred > self.threshold).astype(y_pred.dtype)
+        if y_pred.ndim - y_true.ndim == 1 and y_pred.shape[-1] == 1:
+            y_pred = y_pred[..., 0]
+
+        true_positive = np.sum(y_pred * y_true, axis=reduce_ax)
+        target_negative = np.sum(1 - y_true, axis=reduce_ax)
+        predicted_positive = np.sum(y_pred, axis=reduce_ax)
+
+        fb_numerator = predicted_positive - true_positive + eps  # FP
+        fb_denominator = target_negative + eps
 
         return fb_numerator / fb_denominator
 
@@ -615,9 +718,12 @@ class PostProcessor:
                 else:
                     dataset_params[key] = new_dataset_params[key]
 
-        self.dataset_filename = dataset_params['config']['filename']
+        self.dataset_filename = file_finder(
+            dataset_params['config']['filename'])
         self.data_reader = load_data(dataset_params)
         self.dataset_params = dataset_params
+
+        self.model_config = config
 
     def _best_epoch_from_raw_log(self, monitor='', mode='max'):
         print(F'Finding best model based on the {mode}imum {monitor} from '
@@ -687,6 +793,18 @@ class SegmentationPostProcessor(PostProcessor):
 
     TEST_SINGLE_MAP_NAME = '/single_result.csv'
     TEST_MAP_NAME = '/result.csv'
+
+    METRIC_NAME_MAP = {
+        'f1_score': H5CalculateFScore,
+        'dice': H5CalculateFScore,
+        'dice_score': H5CalculateFScore,
+        'fbeta': H5CalculateFScore,
+        'recall': H5CalculateRecall,
+        'sensitivity': H5CalculateRecall,
+        'TPR': H5CalculateRecall,
+        'precision': H5CalculatePrecision,
+        'FPR': H5CalculateFPR
+    }
 
     def __init__(self, log_base_path='logs',
                  temp_base_path='',
@@ -992,6 +1110,50 @@ class SegmentationPostProcessor(PostProcessor):
             ).post_process()
 
         return self
+
+    def _get_metric_class(self, metric):
+        return self.METRIC_NAME_MAP.get(metric)
+
+    def calculate_metrics(self, metrics=None, metrics_kwargs=None):
+        if '__iter__' not in dir(metrics):
+            metrics = [metrics]
+
+        if '__iter__' not in dir(metrics_kwargs):
+            metrics_kwargs = [metrics_kwargs]
+
+        for metric, kwargs in zip(metrics, metrics_kwargs):
+            if type(metric) == str:
+                metric = self._get_metric_class(metric)
+
+            if not kwargs:
+                kwargs = {}
+
+            print(f'calculating {metric.name} per 3d image')
+            if not self.run_test:
+                merge_path = self.analysis_base_path + \
+                    self.PREDICTION_PATH + self.PREDICTION_NAME
+
+                main_log_folder = self.log_base_path + self.MAP_PATH
+                main_log_filename = main_log_folder + self.MAP_NAME
+
+                for epoch in self.epochs:
+                    metric(
+                        merge_path.format(epoch=epoch),
+                        main_log_filename.format(epoch=epoch),
+                        map_file=main_log_filename.format(epoch=epoch),
+                        map_column=self.main_meta_data
+                    ).post_process()
+            else:
+                test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
+                merge_path = test_folder + self.PREDICT_TEST_NAME
+                main_result_file_name = test_folder + self.TEST_MAP_NAME
+
+                metric(
+                    merge_path,
+                    main_result_file_name,
+                    map_file=main_result_file_name,
+                    map_column=self.main_meta_data
+                ).post_process()
 
     def get_best_model(self, monitor='', mode='max', keep_best_only=True,
                        use_raw_log=False):

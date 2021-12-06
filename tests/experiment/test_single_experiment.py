@@ -106,6 +106,7 @@ def test_run_pipeline():
     ).load_best_model(
         monitor='val_dice', use_raw_log=True
     ).run_test(
+        masked_images=[i for i in range(3)]
     ).apply_post_processors(
         map_meta_data='patient_idx',
         run_test=True,
