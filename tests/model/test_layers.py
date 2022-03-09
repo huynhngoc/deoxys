@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
-from deoxys.keras.layers import Layer as KerasLayer
+from tensorflow.keras.layers import Layer as KerasLayer
 from deoxys.model.layers import Layers
 from deoxys.customize import register_layer, unregister_layer, custom_layer
 from deoxys.utils import Singleton

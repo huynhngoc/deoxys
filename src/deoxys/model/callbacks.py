@@ -4,8 +4,8 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
-from ..keras.utils import deserialize_keras_object
-from ..keras.callbacks import *
+from tensorflow.keras.utils import deserialize_keras_object
+from tensorflow.keras.callbacks import *
 
 import warnings
 import numpy as np
@@ -224,18 +224,17 @@ class PredictionCheckpoint(DeoxysModelCallback):
                 predicted = self.deoxys_model.predict_val(verbose=1)
 
                 # Create the h5 file
-                hf = h5py.File(filepath, 'w')
-                hf.create_dataset('predicted', data=predicted,
-                                  compression="gzip")
-                hf.close()
+                with h5py.File(filepath, 'w') as hf:
+                    hf.create_dataset('predicted', data=predicted,
+                                      compression="gzip")
 
                 if self.use_original:
                     original_data = self.deoxys_model.data_reader.original_val
 
                     for key, val in original_data.items():
-                        hf = h5py.File(filepath, 'a')
-                        hf.create_dataset(key, data=val, compression="gzip")
-                        hf.close()
+                        with h5py.File(filepath, 'a') as hf:
+                            hf.create_dataset(
+                                key, data=val, compression="gzip")
                 else:
                     # Create data from val_generator
                     x = None

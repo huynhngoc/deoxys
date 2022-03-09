@@ -6,8 +6,9 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 import pytest
 import numpy as np
-from deoxys.keras import backend as K
-from deoxys.keras.losses import Loss
+from tensorflow.keras import backend as K
+import tensorflow as tf
+from tensorflow.keras.losses import Loss
 from deoxys.model.losses import Losses, BinaryFbetaLoss, ModifiedDiceLoss
 from deoxys.customize import register_loss, \
     unregister_loss, custom_loss
@@ -116,11 +117,11 @@ def test_binary_fbeta_loss():
         ]
     ]
 
-    true = K.constant(true)
-    pred = K.constant(pred)
-    tp = K.constant([2, 4, 6, 5])
-    fp = K.constant([0, 0, 1, 1])
-    fn = K.constant([1, 1, 1, 0])
+    true = tf.constant(true, K.floatx())
+    pred = tf.constant(pred, K.floatx())
+    tp = tf.constant([2, 4, 6, 5], K.floatx())
+    fp = tf.constant([0, 0, 1, 1], K.floatx())
+    fn = tf.constant([1, 1, 1, 0], K.floatx())
 
     eps = 1e-8
 
@@ -186,11 +187,11 @@ def test_dice_loss():
         ]
     ]
 
-    true = K.constant(true)
-    pred = K.constant(pred)
-    tp = K.constant([2, 4, 6, 5])
-    fp = K.constant([0, 0, 1, 1])
-    fn = K.constant([1, 1, 1, 0])
+    true = tf.constant(true, K.floatx())
+    pred = tf.constant(pred, K.floatx())
+    tp = tf.constant([2, 4, 6, 5], K.floatx())
+    fp = tf.constant([0, 0, 1, 1], K.floatx())
+    fn = tf.constant([1, 1, 1, 0], K.floatx())
 
     eps = 1e-8
 

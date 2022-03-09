@@ -6,8 +6,9 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 import pytest
 import numpy as np
-from deoxys.keras import backend as K
-from deoxys.keras.metrics import Metric
+import tensorflow as tf
+from tensorflow.keras.metrics import Metric
+from tensorflow.keras import backend as K
 from deoxys.model.metrics import Metrics, BinaryFbeta, Fbeta, Dice
 from deoxys.customize import register_metric, \
     unregister_metric, custom_metric
@@ -116,8 +117,8 @@ def test_binary_fbeta_metric():
         ]
     ]
 
-    true = K.constant(true)
-    pred = K.constant(pred)
+    true = tf.constant(true, K.floatx())
+    pred = tf.constant(pred, K.floatx())
     tp = 17
     fp = 2
     fn = 3
@@ -132,16 +133,16 @@ def test_binary_fbeta_metric():
 
     beta = 1
     metric = BinaryFbeta(beta=beta)
-    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, tp, fp, fn))
+    assert np.isclose(metric(true, pred).numpy(), fscore(beta, tp, fp, fn))
 
     beta = 2
     metric = BinaryFbeta(beta=beta)
-    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, tp, fp, fn))
+    assert np.isclose(metric(true, pred).numpy(), fscore(beta, tp, fp, fn))
 
     metric = BinaryFbeta(beta=beta)
     metric.update_state(true, pred)
     assert np.isclose(
-        K.eval(metric.result()),
+        metric.result().numpy(),
         fscore(beta, tp, fp, fn))
 
 
@@ -192,8 +193,8 @@ def test_fbeta_metric():
         ]
     ]
 
-    true = K.constant(true)
-    pred = K.constant(pred)
+    true = tf.constant(true, dtype=K.floatx())
+    pred = tf.constant(pred, dtype=K.floatx())
 
     values = [{'tp': 2,
                'fp': 0,
@@ -223,28 +224,28 @@ def test_fbeta_metric():
 
     beta = 1
     metric = Fbeta(beta=beta)
-    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, values))
+    assert np.isclose(metric(true, pred).numpy(), fscore(beta, values))
 
     beta = 2
     metric = Fbeta(beta=beta)
-    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, values))
+    assert np.isclose(metric(true, pred).numpy(), fscore(beta, values))
 
     beta = 1
     metric = Fbeta(beta=beta)
     assert np.isclose(
-        K.eval(metric(true, pred, sample_weight=[1, 1, 0, 0])),
+        metric(true, pred, sample_weight=[1, 1, 0, 0]).numpy(),
         fscore(beta, values[:2]))
 
     beta = 2
     metric = Fbeta(beta=beta)
     assert np.isclose(
-        K.eval(metric(true, pred, sample_weight=[1, 1, 2, 1])),
+        metric(true, pred, sample_weight=[1, 1, 2, 1]).numpy(),
         fscore(beta, values + values[2:3]))
 
     metric = Fbeta(beta=beta)
     metric.update_state(true, pred, sample_weight=[1, 1, 2, 1])
     assert np.isclose(
-        K.eval(metric.result()),
+        metric.result().numpy(),
         fscore(beta, values + values[2:3]))
 
 
@@ -295,8 +296,8 @@ def test_dice_metric():
         ]
     ]
 
-    true = K.constant(true)
-    pred = K.constant(pred)
+    true = tf.constant(true, K.floatx())
+    pred = tf.constant(pred, K.floatx())
 
     values = [{'tp': 2,
                'fp': 0,
@@ -326,26 +327,26 @@ def test_dice_metric():
 
     beta = 1
     metric = Dice(beta=beta)
-    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, values))
+    assert np.isclose(metric(true, pred).numpy(), fscore(beta, values))
 
     beta = 2
     metric = Dice(beta=beta)
-    assert np.isclose(K.eval(metric(true, pred)), fscore(beta, values))
+    assert np.isclose(metric(true, pred).numpy(), fscore(beta, values))
 
     beta = 1
     metric = Dice(beta=beta)
     assert np.isclose(
-        K.eval(metric(true, pred, sample_weight=[1, 1, 0, 0])),
+        metric(true, pred, sample_weight=[1, 1, 0, 0]).numpy(),
         fscore(beta, values[:2]))
 
     beta = 2
     metric = Dice(beta=beta)
     assert np.isclose(
-        K.eval(metric(true, pred, sample_weight=[1, 1, 2, 1])),
+        metric(true, pred, sample_weight=[1, 1, 2, 1]).numpy(),
         fscore(beta, values + values[2:3]))
 
     metric = Dice(beta=beta)
     metric.update_state(true, pred, sample_weight=[1, 1, 2, 1])
     assert np.isclose(
-        K.eval(metric.result()),
+        metric.result().numpy(),
         fscore(beta, values + values[2:3]))

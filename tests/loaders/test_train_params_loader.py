@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
-from deoxys.keras.callbacks import CSVLogger, ModelCheckpoint, \
+from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint, \
     TerminateOnNaN
 from deoxys.loaders import load_train_params
 from deoxys.utils import read_file, load_json_config

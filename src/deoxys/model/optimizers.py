@@ -4,7 +4,7 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
-from ..keras.optimizers import Optimizer, deserialize
+from tensorflow.keras.optimizers import Optimizer, deserialize
 from ..utils import Singleton
 
 
