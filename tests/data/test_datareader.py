@@ -56,7 +56,7 @@ def h5file():
         group.create_dataset('target', data=target[start: end])
 
     hf.close()
-    yield filename
+    yield copy(filename)
     teardown(filename)
 
 
@@ -75,7 +75,7 @@ def h5file_unique():
             group.create_dataset('input', data=data[start: end])
             group.create_dataset('target', data=target[start: end])
 
-    yield filename
+    yield copy(filename)
     teardown(filename)
 
 
@@ -94,7 +94,7 @@ def h5file_modified():
         group.create_dataset('target', data=target[start: end])
 
     hf.close()
-    yield filename
+    yield copy(filename)
 
     teardown(filename)
 
@@ -107,7 +107,7 @@ def h5file_nogroups():
 
     hf = h5py.File(filename, 'w')
     hf.close()
-    yield filename
+    yield copy(filename)
 
     teardown(filename)
 
@@ -143,7 +143,7 @@ def h5file_invalid():
         group.create_dataset('z', data=target[start: end])
 
     hf.close()
-    yield filename
+    yield copy(filename)
 
     teardown(filename)
 

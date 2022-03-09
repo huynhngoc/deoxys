@@ -8,6 +8,7 @@ import pytest
 import h5py
 import os
 import numpy as np
+from copy import copy
 from deoxys.loaders import load_data
 from deoxys.customize import custom_preprocessor
 from deoxys.data import BasePreprocessor, HDF5Reader, H5Reader
@@ -48,7 +49,7 @@ def h5file():
         group.create_dataset('target', data=target[start: end])
 
     hf.close()
-    yield filename
+    yield copy(filename)
     teardown(filename)
 
 

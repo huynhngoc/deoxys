@@ -183,10 +183,6 @@ def test_run_seg_pipeline():
         metrics=['f1_score', 'precision']
     ).plot_3d_test_images(best_num=1, worst_num=1)
 
-    res_df = pd.read_csv('../../hn_perf/2d_xs_seg/log_new.csv')
-
-    assert np.all(res_df.columns == ['epochs', 'f1_score'])
-
     res_df = pd.read_csv('../../hn_perf/2d_xs_seg/test/result.csv')
     assert np.all(res_df.columns[1:] == ['f1_score', 'precision'])
 
