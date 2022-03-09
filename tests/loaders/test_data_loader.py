@@ -25,6 +25,9 @@ def setup_data():
 
 
 def teardown(filename=''):
+    print('===========================filename', filename, type(filename))
+    if type(filename) != str:
+        return
     if os.path.isfile(filename):
         os.remove(filename)
 
@@ -40,15 +43,13 @@ def h5file():
     filename = 'data.h5'
     data, target = setup_data()
 
-    hf = h5py.File(filename, 'w')
+    with h5py.File(filename, 'w') as hf:
+        for i in range(10):
+            start, end = i * 100, (i + 1) * 100
+            group = hf.create_group('fold_{0}'.format(i))
+            group.create_dataset('input', data=data[start: end])
+            group.create_dataset('target', data=target[start: end])
 
-    for i in range(10):
-        start, end = i * 100, (i + 1) * 100
-        group = hf.create_group('fold_{0}'.format(i))
-        group.create_dataset('input', data=data[start: end])
-        group.create_dataset('target', data=target[start: end])
-
-    hf.close()
     yield copy(filename)
     teardown(filename)
 
