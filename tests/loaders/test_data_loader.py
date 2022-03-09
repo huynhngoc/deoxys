@@ -8,7 +8,7 @@ import pytest
 import h5py
 import os
 import numpy as np
-from copy import copy
+from copy import deepcopy as copy
 from deoxys.loaders import load_data
 from deoxys.customize import custom_preprocessor
 from deoxys.data import BasePreprocessor, HDF5Reader, H5Reader
