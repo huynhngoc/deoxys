@@ -46,6 +46,7 @@ def teardown(filename=''):
 def h5file():
     # Create standardized h5 file with 10 folds, named fold_x
     filename = VALID_H5_FILE
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>filename', filename)
     data, target = setup_data()
 
     hf = h5py.File(filename, 'w')
@@ -57,7 +58,9 @@ def h5file():
         group.create_dataset('target', data=target[start: end])
 
     hf.close()
+    print('<<<<<<<<<<<<<<<<<<>>>>>>>filename', filename)
     yield copy(filename)
+    print('<<<<<<<<<<<<<<<<<<=======filename', filename)
     teardown(filename)
 
 
