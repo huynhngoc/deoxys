@@ -160,7 +160,7 @@ def test_run_pipeline_3d_patch():
 
 def test_run_seg_pipeline():
     SegmentationExperimentPipeline(
-        log_base_path='../../hn_perf/2d_xs'
+        log_base_path='../../hn_perf/2d_xs_seg'
     ).from_full_config(
         'tests/json/sample_dataset_xs_config_diff_size.json'
     ).run_experiment(
@@ -183,17 +183,17 @@ def test_run_seg_pipeline():
         metrics=['f1_score', 'precision']
     ).plot_3d_test_images(best_num=1, worst_num=1)
 
-    res_df = pd.read_csv('../../hn_perf/2d_xs/log_new.csv')
+    res_df = pd.read_csv('../../hn_perf/2d_xs_seg/log_new.csv')
 
     assert np.all(res_df.columns == ['epochs', 'f1_score'])
 
-    res_df = pd.read_csv('../../hn_perf/2d_xs/test/result.csv')
+    res_df = pd.read_csv('../../hn_perf/2d_xs_seg/test/result.csv')
     assert np.all(res_df.columns[1:] == ['f1_score', 'precision'])
 
 
 def test_run_seg_pipeline_3d():
     SegmentationExperimentPipeline(
-        log_base_path='../../hn_perf/3d_xs'
+        log_base_path='../../hn_perf/3d_xs_seg'
     ).from_full_config(
         'tests/json/sample_dataset_xs_3d_full.json'
     ).run_experiment(
@@ -215,16 +215,16 @@ def test_run_seg_pipeline_3d():
         metrics=['f1_score', 'TPR']
     )
 
-    res_df = pd.read_csv('../../hn_perf/3d_xs/log_new.csv')
+    res_df = pd.read_csv('../../hn_perf/3d_xs_seg/log_new.csv')
     assert np.all(res_df.columns == ['epochs', 'f1_score', 'f2_score'])
 
-    res_df = pd.read_csv('../../hn_perf/3d_xs/test/result.csv')
+    res_df = pd.read_csv('../../hn_perf/3d_xs_seg/test/result.csv')
     assert np.all(res_df.columns[1:] == ['f1_score', 'recall'])
 
 
 def test_run_seg_pipeline_3d_patch():
     SegmentationExperimentPipeline(
-        log_base_path='../../hn_perf/3d_xs_patch'
+        log_base_path='../../hn_perf/3d_xs_patch_seg'
     ).from_full_config(
         'tests/json/sample_dataset_xs_3d_patch.json'
     ).run_experiment(
@@ -249,10 +249,10 @@ def test_run_seg_pipeline_3d_patch():
         metrics=['f1_score', 'recall', 'precision']
     )
 
-    res_df = pd.read_csv('../../hn_perf/3d_xs_patch/log_new.csv')
+    res_df = pd.read_csv('../../hn_perf/3d_xs_patch_seg/log_new.csv')
     assert np.all(res_df.columns == [
                   'epochs', 'fbeta', 'recall',
                   'precision', 'false_positive_rate'])
 
-    res_df = pd.read_csv('../../hn_perf/3d_xs_patch/test/result.csv')
+    res_df = pd.read_csv('../../hn_perf/3d_xs_patch_seg/test/result.csv')
     assert np.all(res_df.columns[1:] == ['f1_score', 'recall', 'precision'])

@@ -587,7 +587,8 @@ class DenseModelLoader(Vnet):
         dense_layers = [connected_input]
         final_concat = []
         for i in range(layer_num):
-            next_tensor = layer_from_config(layer)
+            next_tensor = layer_from_config(
+                {k: v for k, v in layer.items() if k != 'name'})
             if len(dense_layers) == 1:
                 next_layer = next_tensor(connected_input)
             else:
