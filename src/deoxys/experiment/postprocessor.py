@@ -99,11 +99,12 @@ class H5Metric:
 class H5CalculateFScore(H5Metric):
     name = 'f1_score'
 
-    def __init__(self, ref_file, save_file, metric_name='f1_score',
+    def __init__(self, ref_file, save_file, metric_name='',
                  predicted_dataset='predicted',
                  target_dataset='y', batch_size=4, beta=1, threshold=None,
                  map_file=None, map_column=None):
-        super().__init__(ref_file, save_file, metric_name,
+        super().__init__(ref_file, save_file,
+                         metric_name or self.__class__.name,
                          predicted_dataset,
                          target_dataset, batch_size,
                          map_file, map_column)
@@ -135,11 +136,12 @@ class H5CalculateFScore(H5Metric):
 class H5CalculatePrecision(H5Metric):
     name = 'precision'
 
-    def __init__(self, ref_file, save_file, metric_name='f1_score',
+    def __init__(self, ref_file, save_file, metric_name='',
                  predicted_dataset='predicted',
                  target_dataset='y', batch_size=4, threshold=None,
                  map_file=None, map_column=None):
-        super().__init__(ref_file, save_file, metric_name,
+        super().__init__(ref_file, save_file,
+                         metric_name or self.__class__.name,
                          predicted_dataset,
                          target_dataset, batch_size,
                          map_file, map_column)
@@ -168,11 +170,12 @@ class H5CalculatePrecision(H5Metric):
 class H5CalculateRecall(H5Metric):
     name = 'recall'
 
-    def __init__(self, ref_file, save_file, metric_name='f1_score',
+    def __init__(self, ref_file, save_file, metric_name='',
                  predicted_dataset='predicted',
                  target_dataset='y', batch_size=4, beta=1, threshold=None,
                  map_file=None, map_column=None):
-        super().__init__(ref_file, save_file, metric_name,
+        super().__init__(ref_file, save_file,
+                         metric_name or self.__class__.name,
                          predicted_dataset,
                          target_dataset, batch_size,
                          map_file, map_column)
@@ -202,11 +205,12 @@ class H5CalculateRecall(H5Metric):
 class H5CalculateFPR(H5Metric):
     name = 'FPR'
 
-    def __init__(self, ref_file, save_file, metric_name='f1_score',
+    def __init__(self, ref_file, save_file, metric_name='',
                  predicted_dataset='predicted',
                  target_dataset='y', batch_size=4, beta=1, threshold=None,
                  map_file=None, map_column=None):
-        super().__init__(ref_file, save_file, metric_name,
+        super().__init__(ref_file, save_file,
+                         metric_name or self.__class__.name,
                          predicted_dataset,
                          target_dataset, batch_size,
                          map_file, map_column)
@@ -856,27 +860,6 @@ class SegmentationPostProcessor(PostProcessor):
 
         self.run_test = run_test
 
-    # def update_data_reader(self, new_dataset_params):
-    #     model_path = self.log_base_path + self.MODEL_PATH
-
-    #     sample_model_filename = model_path + '/' + os.listdir(model_path)[0]
-
-    #     with h5py.File(sample_model_filename, 'r') as f:
-    #         config = f.attrs['deoxys_config']
-    #         config = load_json_config(config)
-    #     dataset_params = config['dataset_params']
-    #     # update until level 2
-    #     if new_dataset_params is not None:
-    #         for key in new_dataset_params:
-    #             if key in dataset_params:
-    #                 dataset_params[key].update(new_dataset_params[key])
-    #             else:
-    #                 dataset_params[key] = new_dataset_params[key]
-
-    #     self.dataset_filename = dataset_params['config']['filename']
-    #     self.data_reader = load_data(dataset_params)
-    #     self.dataset_params = dataset_params
-
     def map_2d_meta_data(self):
         print('mapping 2d meta data')
         if not self.run_test:
@@ -1115,10 +1098,12 @@ class SegmentationPostProcessor(PostProcessor):
         return self.METRIC_NAME_MAP.get(metric)
 
     def calculate_metrics(self, metrics=None, metrics_kwargs=None):
-        if '__iter__' not in dir(metrics):
+        if type(metrics) == str:
             metrics = [metrics]
 
-        if '__iter__' not in dir(metrics_kwargs):
+        if not metrics_kwargs:
+            metrics_kwargs = [{} for _ in metrics]
+        if type(metrics_kwargs) == dict:
             metrics_kwargs = [metrics_kwargs]
 
         for metric, kwargs in zip(metrics, metrics_kwargs):
@@ -1141,7 +1126,8 @@ class SegmentationPostProcessor(PostProcessor):
                         merge_path.format(epoch=epoch),
                         main_log_filename.format(epoch=epoch),
                         map_file=main_log_filename.format(epoch=epoch),
-                        map_column=self.main_meta_data
+                        map_column=self.main_meta_data,
+                        **kwargs
                     ).post_process()
             else:
                 test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
@@ -1152,8 +1138,100 @@ class SegmentationPostProcessor(PostProcessor):
                     merge_path,
                     main_result_file_name,
                     map_file=main_result_file_name,
-                    map_column=self.main_meta_data
+                    map_column=self.main_meta_data,
+                    **kwargs
                 ).post_process()
+
+    def calculate_metrics_single(self, metrics=None, metrics_kwargs=None):
+        if type(metrics) == str:
+            metrics = [metrics]
+
+        if not metrics_kwargs:
+            metrics_kwargs = [{} for _ in metrics]
+        if type(metrics_kwargs) == dict:
+            metrics_kwargs = [metrics_kwargs]
+
+        for metric, kwargs in zip(metrics, metrics_kwargs):
+            if type(metric) == str:
+                metric = self._get_metric_class(metric)
+
+            if not kwargs:
+                kwargs = {}
+
+            if not self.run_test:
+                print(f'calculating {metric.name} per items in val set')
+                predicted_path = self.temp_base_path + \
+                    self.PREDICTION_PATH + self.PREDICTION_NAME
+                map_folder = self.log_base_path + self.SINGLE_MAP_PATH
+                map_filename = map_folder + self.SINGLE_MAP_NAME
+                for epoch in self.epochs:
+                    metric(
+                        predicted_path.format(epoch=epoch),
+                        map_filename.format(epoch=epoch),
+                        **kwargs
+                    ).post_process()
+            else:
+                print(
+                    f'calculating {metric.name} per items in test set')
+                predicted_path = self.temp_base_path + \
+                    self.TEST_OUTPUT_PATH + self.PREDICT_TEST_NAME
+                test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
+                map_filename = test_folder + self.TEST_SINGLE_MAP_NAME
+
+                metric(
+                    predicted_path,
+                    map_filename,
+                    **kwargs
+                ).post_process()
+
+        return self
+
+    def calculate_metrics_single_3d(self, metrics=None, metrics_kwargs=None):
+        self.calculate_metrics_single(metrics, metrics_kwargs)
+        if not self.run_test:
+            map_folder = self.log_base_path + self.SINGLE_MAP_PATH
+
+            main_log_folder = self.log_base_path + self.MAP_PATH
+            try:
+                os.rename(map_folder, main_log_folder)
+            except Exception as e:
+                print("Files exist:", e)
+                print("Copying new logs file")
+                os.rename(main_log_folder,
+                          main_log_folder + '-' + str(time()))
+                os.rename(map_folder, main_log_folder)
+
+            for epoch in self.epochs:
+                H5Transform3d(
+                    ref_file=self.temp_base_path + self.PREDICTION_PATH +
+                    self.PREDICTION_NAME.format(epoch=epoch),
+                    map_file=main_log_folder +
+                    self.MAP_NAME.format(epoch=epoch),
+                    map_column=self.main_meta_data,
+                    merge_file=self.log_base_path + self.PREDICTION_PATH +
+                    self.PREDICTION_NAME.format(epoch=epoch),
+                ).post_process()
+        else:
+            test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
+            map_filename = test_folder + self.TEST_SINGLE_MAP_NAME
+
+            main_result_file_name = test_folder + self.TEST_MAP_NAME
+            try:
+                os.rename(map_filename, main_result_file_name)
+            except Exception as e:
+                print("Files exist:", e)
+                print("Copying new result file")
+                os.rename(main_result_file_name,
+                          main_result_file_name + '-' + str(time()) + '.csv')
+                os.rename(map_filename, main_result_file_name)
+
+            H5Transform3d(
+                ref_file=self.temp_base_path + self.TEST_OUTPUT_PATH +
+                self.PREDICT_TEST_NAME,
+                map_file=main_result_file_name,
+                map_column=self.main_meta_data,
+                merge_file=test_folder + self.PREDICT_TEST_NAME,
+            ).post_process()
 
     def get_best_model(self, monitor='', mode='max', keep_best_only=True,
                        use_raw_log=False):
@@ -1167,17 +1245,24 @@ class SegmentationPostProcessor(PostProcessor):
         else:
             res_df = pd.DataFrame(epochs, columns=['epochs'])
 
-            results = []
+            results = None
             results_path = self.log_base_path + self.MAP_PATH + self.MAP_NAME
 
             for epoch in epochs:
                 df = pd.read_csv(results_path.format(epoch=epoch))
-                if not monitor:
-                    monitor = df.columns[-1]
+                if results is None:
+                    if not monitor:
+                        monitor = df.columns[-1]
+                    column_names = [
+                        col_name for col_name in df.columns if col_name not in self.map_meta_data]
+                    results = {col_name: [] for col_name in column_names}
 
-                results.append(df[monitor].mean())
+                for col_name in column_names:
+                    results[col_name].append(df[col_name].mean())
 
-            res_df[monitor] = results
+            for col_name in column_names:
+                res_df[col_name] = results[col_name]
+
             if mode == 'max':
                 best_epoch = epochs[res_df[monitor].argmax()]
             else:

@@ -191,7 +191,10 @@ class ExperimentPipeline(Experiment):
     def apply_post_processors(self, post_processor_class=None,
                               recipe='auto', analysis_base_path='',
                               map_meta_data='patient_idx,slice_idx',
-                              main_meta_data='', run_test=False):
+                              main_meta_data='', run_test=False,
+                              metrics=None):
+        if not metrics:
+            metrics = 'f1_score'
         if self.post_processors is None:
             pp = self._initialize_post_processors(
                 post_processor_class=post_processor_class,
@@ -272,6 +275,7 @@ class ExperimentPipeline(Experiment):
             print("Apply post processing on validation data first")
             path_to_model = self.apply_post_processors(
                 post_processor_class=post_processor_class,
+                recipe=recipe,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
@@ -379,5 +383,156 @@ class ExperimentPipeline(Experiment):
         filepath = test_path + self.PREDICT_TEST_NAME
 
         self._predict_test(filepath)
+
+        return self
+
+
+class SegmentationExperimentPipeline(ExperimentPipeline):
+    def apply_post_processors(self, post_processor_class=None,
+                              recipe='auto', analysis_base_path='',
+                              map_meta_data='patient_idx,slice_idx',
+                              main_meta_data='', run_test=False,
+                              metrics=None, metrics_kwargs=None):
+        if not metrics:
+            metrics = 'f1_score'
+        if self.post_processors is None:
+            pp = self._initialize_post_processors(
+                post_processor_class=post_processor_class or SegmentationPostProcessor,
+                analysis_base_path=analysis_base_path,
+                map_meta_data=map_meta_data,
+                main_meta_data=main_meta_data,
+                run_test=run_test
+            )
+        else:
+            pp = self.post_processors
+            pp.run_test = run_test
+
+        if type(recipe) == str:
+            if recipe == 'auto':
+                print('Automatically applying postprocessor '
+                      'based on log folder name')
+                if '2d' in self.log_base_path:
+                    pp_recipe = '2d'
+                elif 'patch' in self.log_base_path:
+                    pp_recipe = 'patch'
+                elif '3d' in self.log_base_path:
+                    pp_recipe = '3d'
+                else:
+                    print('Cannot determine recipe, no postprocessors applied')
+            else:
+                pp_recipe = recipe
+
+            if pp_recipe == '2d':
+                print('Applying postprocesesor to 2d images')
+                pp.map_2d_meta_data().calculate_metrics_single(
+                    metrics=metrics, metrics_kwargs=metrics_kwargs
+                ).merge_2d_slice().calculate_metrics(
+                    metrics=metrics, metrics_kwargs=metrics_kwargs
+                )
+            elif pp_recipe == 'patch':
+                print('Applying postprocesesor to image patches')
+                pp.merge_3d_patches().calculate_metrics(
+                    metrics=metrics, metrics_kwargs=metrics_kwargs
+                )
+            elif pp_recipe == '3d':
+                print('Applying postprocesesor to 3d images')
+                pp.map_2d_meta_data().calculate_metrics_single_3d(
+                    metrics=metrics, metrics_kwargs=metrics_kwargs
+                )
+            else:
+                print('No postprocessors for recipe', pp_recipe)
+        elif '__iter__' in dir(recipe):
+            print('Running customized recipe.')
+            for func_name in recipe:
+                try:
+                    getattr(pp, func_name)()
+                except AttributeError:
+                    print(func_name, 'is not implemented in', type(pp))
+                except Exception as e:
+                    print('Error while calling function '
+                          f'{func_name} in {type(pp)}:', e)
+        else:
+            print('Cannot determine recipe.')
+
+        self.post_processors = pp
+
+        return self
+
+    def load_best_model(self, monitor='', post_processor_class=None,
+                        recipe='auto', analysis_base_path='',
+                        map_meta_data='patient_idx,slice_idx',
+                        main_meta_data='', metrics=None, metrics_kwargs=None,
+                        **kwargs):
+
+        if self.post_processors is None:
+            pp = self._initialize_post_processors(
+                post_processor_class=post_processor_class,
+                analysis_base_path=analysis_base_path,
+                map_meta_data=map_meta_data,
+                main_meta_data=main_meta_data,
+                run_test=False
+            )
+            self.post_processors = pp
+        else:
+            pp = self.post_processors
+
+        try:
+            path_to_model = pp.get_best_model(monitor, **kwargs)
+        except Exception as e:
+            print("Error while getting best model:", e)
+            print("Apply post processing on validation data first")
+            path_to_model = self.apply_post_processors(
+                post_processor_class=post_processor_class,
+                recipe=recipe,
+                analysis_base_path=analysis_base_path,
+                map_meta_data=map_meta_data,
+                main_meta_data=main_meta_data,
+                run_test=False,
+                metrics=metrics, metrics_kwargs=kwargs
+            ).post_processors.get_best_model(monitor, **kwargs)
+
+        print('loading model', path_to_model)
+
+        return self.from_file(path_to_model)
+
+    def plot_3d_test_images(self, monitor='', best_num=2, worst_num=2):
+        if self.post_processors is None:
+            print('No post processors to handle this function')
+            return self
+        pp = self.post_processors
+        info = pp.get_best_performance_images_test_set(
+            monitor=monitor, best_num=best_num, worst_num=worst_num)
+
+        test_path = self.log_base_path + self.TEST_OUTPUT_PATH
+        filename = test_path + self.PREDICT_TEST_NAME
+
+        for image_id, score in zip(info['ids'], info['values']):
+            base_image_name = f'x/{image_id}'
+            truth_image_name = f'y/{image_id}'
+            predicted_image_name = f'predicted/{image_id}'
+
+            images_path_single = test_path + '/' + str(image_id)
+            if not os.path.exists(images_path_single):
+                os.mkdir(images_path_single)
+
+            with h5py.File(filename, 'r') as f:
+                images = f[base_image_name][:]
+                true_mask = f[truth_image_name][:]
+                pred_mask = f[predicted_image_name][:]
+
+            print('plotting 3d images...', images_path_single)
+            mask_prediction(images_path_single + '.html',
+                            image=images,
+                            true_mask=true_mask,
+                            pred_mask=pred_mask,
+                            title=f'Patient {image_id}, DSC {score}')
+            print('plotting 2d images...')
+            for i in range(len(images)):
+                mask_prediction(
+                    images_path_single + f'/{i:03d}.png',
+                    image=images[i],
+                    true_mask=true_mask[i],
+                    pred_mask=pred_mask[i],
+                    title=f'Slice {i:03d} - Patient {image_id}, DSC {score}')
 
         return self

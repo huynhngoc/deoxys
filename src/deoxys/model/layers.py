@@ -75,6 +75,10 @@ def layer_from_config(config):
     if 'config' not in config:
         # auto add empty config for layer with only class_name
         config['config'] = {}
+
+    if 'name' not in config['config'] and 'name' in config:
+        config['config']['name'] = config['name']
+
     return model_from_config(
         config,
         custom_objects={**Layers().layers,
