@@ -129,8 +129,7 @@ class H5GenericMetric:
         self.index_col_name = index_col_name
 
         self.input_filenames = sorted(
-            [os.path.join(input_folder, f)
-             for f in os.listdir(input_folder) if f.endswith('.h5')])
+            [f for f in os.listdir(input_folder) if f.endswith('.h5')])
         if index_col_fn is None:
             self.index_col = self.input_filenames
         else:
@@ -145,7 +144,8 @@ class H5GenericMetric:
 
     def get_data(self):
         for filename in self.input_filenames:
-            with h5py.File(filename, 'r') as f:
+            with h5py.File(
+                    os.path.join(self.input_folder, filename), 'r') as f:
                 predicted = f[self.predicted][:]
                 target = f[self.target][:]
             if predicted.ndim - target.ndim == 1 and predicted.shape[-1] == 1:
@@ -161,14 +161,20 @@ class H5GenericMetric:
                 self.output_file, index_col=0)
             try:
                 df[self.metric_name] = self.scores
-            except Exception:
+            except Exception:  # pragma: no cover
                 # if shape mismatch
-                # first check if column exists, if no, create one
-                # if yes, update with new values
-                if self.metric_name not in df.columns:
-                    df[self.metric_name] = np.zeros(df.shape[0])
-                for i, index_val in enumerate(self.index_col):
-                    df[df.index == index_val][self.metric_name] = self.scores[i]
+                print('Shape mismatched. Try replacing with new value.')
+                # if there are more files, create new set of files
+                if len(self.scores) > df.shape[0]:
+                    df = pd.DataFrame(self.scores, columns=[self.metric_name],
+                                      index=self.index_col)
+                else:
+                    # else first check if column exists, if no, create one
+                    # if yes, update with new values
+                    if self.metric_name not in df.columns:
+                        df[self.metric_name] = np.zeros(df.shape[0])
+                    for i, index_val in enumerate(self.index_col):
+                        df[df.index == index_val][self.metric_name] = self.scores[i]
         else:
             df = pd.DataFrame(self.scores, columns=[self.metric_name],
                               index=self.index_col)
@@ -223,13 +229,10 @@ class H5SklearnMetric(H5GenericMetric):
     def calculate_metrics(self, targets, predictions):
         if self.process_fn is not None:
             targets, predictions = self.process_fn(targets, predictions)
-        from sklearn.metrics import roc_auc_score
-        print(targets, predictions)
-        res = self.metric_obj._score_func(
+
+        return self.metric_obj._score_func(
             targets,
             predictions)
-        print(res, self.metric_obj)
-        return res
 
 
 class H5Metric:
@@ -1670,6 +1673,9 @@ class DefaultPostProcessor(PostProcessor):
             test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
             output_path = test_folder + self.PREDICT_TEST_NAME
 
+            if not os.path.exists(test_folder):
+                os.makedirs(test_folder)
+
             H5GenericMetaMapping(
                 ref_file=self.dataset_filename,
                 source_file=predicted_path,
@@ -1745,7 +1751,7 @@ class DefaultPostProcessor(PostProcessor):
                         metric_obj=metric,
                         process_fn=process_fn,
                         metric_name=metric_name,
-                        index_col_name='epoch',
+                        index_col_name='epochs',
                         index_col_fn=filename_to_epoch,
                     ).post_process()
                 else:
@@ -1754,7 +1760,7 @@ class DefaultPostProcessor(PostProcessor):
                         output_file,
                         metric_obj=metric,
                         metric_name=metric_name,
-                        index_col_name='epoch',
+                        index_col_name='epochs',
                         index_col_fn=filename_to_epoch,
                     ).post_process()
 
@@ -1768,14 +1774,14 @@ class DefaultPostProcessor(PostProcessor):
                         output_file,
                         metric_obj=metric,
                         process_fn=process_fn,
-                        metric_name=metric_name
+                        metric_name=kwargs.get('metric_name', metric_name)
                     ).post_process()
                 else:
                     H5KerasMetric(
                         test_folder,
                         output_file,
                         metric_obj=metric,
-                        metric_name=metric_name
+                        metric_name=kwargs.get('metric_name', metric_name)
                     ).post_process()
 
         return self
@@ -1792,6 +1798,8 @@ class DefaultPostProcessor(PostProcessor):
             res_df = pd.DataFrame(epochs, columns=['epochs'])
 
             res_df = pd.read_csv(self.log_base_path + '/log_new.csv')
+
+            epochs = res_df['epochs']
 
             if mode == 'max':
                 best_epoch = epochs[res_df[monitor].argmax()]

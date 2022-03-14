@@ -1,3 +1,4 @@
+from cProfile import run
 from .single_experiment import Experiment
 from ..model.callbacks import PredictionCheckpoint
 from .postprocessor import DefaultPostProcessor, SegmentationPostProcessor
@@ -480,7 +481,7 @@ class SegmentationExperimentPipeline(ExperimentPipeline):
 
         if self.post_processors is None:
             pp = self._initialize_post_processors(
-                post_processor_class=post_processor_class,
+                post_processor_class=post_processor_class or self.DEFAULT_PP,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
@@ -613,7 +614,7 @@ class DefaultExperimentPipeline(ExperimentPipeline):
         return self
 
     def load_best_model(self, monitor='', post_processor_class=None,
-                        recipe='auto', analysis_base_path='',
+                        recipe='auto',
                         map_meta_data='patient_idx,slice_idx',
                         main_meta_data='', metrics=None, metrics_kwargs=None,
                         metrics_sources='', process_functions=None,
@@ -621,8 +622,7 @@ class DefaultExperimentPipeline(ExperimentPipeline):
 
         if self.post_processors is None:
             pp = self._initialize_post_processors(
-                post_processor_class=post_processor_class,
-                analysis_base_path=analysis_base_path,
+                post_processor_class=post_processor_class or self.DEFAULT_PP,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
                 run_test=False
@@ -639,11 +639,10 @@ class DefaultExperimentPipeline(ExperimentPipeline):
             path_to_model = self.apply_post_processors(
                 post_processor_class=post_processor_class,
                 recipe=recipe,
-                analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
                 run_test=False,
-                metrics=metrics, metrics_kwargs=kwargs,
+                metrics=metrics, metrics_kwargs=metrics_kwargs,
                 metrics_sources=metrics_sources,
                 process_functions=process_functions
             ).post_processors.get_best_model(monitor, **kwargs)
