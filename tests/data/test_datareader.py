@@ -8,7 +8,7 @@ import pytest
 import h5py
 import os
 import numpy as np
-from copy import copy
+from copy import deepcopy as copy
 from deoxys.data import DataReaders, DataReader, HDF5Reader, H5Reader, \
     datareader_from_config, BasePreprocessor
 from deoxys.customize import register_datareader, \

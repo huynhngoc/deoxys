@@ -7,7 +7,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 import numpy as np
 from deoxys_image import normalize, apply_affine_transform, apply_flip
 from deoxys_image import ImageAugmentation
-from deoxys.keras.preprocessing import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from ..utils import Singleton
 
 

@@ -1,10 +1,11 @@
 from ..loaders import load_data
 from ..utils import load_json_config, file_finder
-
+from ..model.metrics import metric_from_config
 
 from deoxys_image.patch_sliding import get_patch_indice
 from deoxys_vis import read_csv
 
+import tensorflow as tf
 import numpy as np
 import h5py
 import pandas as pd
@@ -12,7 +13,226 @@ import os
 from time import time
 import shutil
 import matplotlib.pyplot as plt
+from sklearn.metrics._scorer import get_scorer
 import warnings
+
+
+class H5GenericMetaMapping:
+    def __init__(self, ref_file, source_file, save_file,
+                 folds, fold_prefix='fold',
+                 predicted_dataset='predicted',
+                 target_dataset='y',
+                 dataset_names=None
+                 ):
+        """
+        Calculate metrics for classification and regression models
+
+        Parameters
+        ----------
+        ref_file : str
+            path to HDF5 dataset file
+        source_file : str
+            path to HDF5 dataset file containing the raw results for mapping
+        save_file : str
+            h5 output name w meta data
+        folds : list
+            list of folds number/name from reference dataset file
+        fold_prefix: str
+            prefix of fold name
+        metric_name : str, optional
+            by default 'score'
+        predicted_dataset : str, optional
+            dataset containing the predicted data in the source H5 file,
+            by default 'predicted'
+        target_dataset : str, optional
+            dataset containing the target/true data in the source H5 file,
+            by default 'y'
+        dataset_names : list
+            list of dataset names containing the meta data
+        """
+        self.ref_file = ref_file
+        self.source_file = source_file
+        self.save_file = save_file
+
+        if fold_prefix:
+            self.folds = ['{}_{}'.format(
+                fold_prefix, fold) for fold in folds]
+        else:
+            self.folds = folds
+
+        self.dataset_names = dataset_names
+
+        self.predicted = predicted_dataset
+        self.target = target_dataset
+
+        with h5py.File(source_file, 'r') as f:
+            keys = list(f.keys())
+
+        if target_dataset not in keys:
+            self.predicted = [f'{key}/{predicted_dataset}' for key in keys]
+            self.target = [f'{key}/{target_dataset}' for key in keys]
+
+    def post_process(self, **kwargs):
+        data = {dataset_name: [] for dataset_name in self.dataset_names}
+        # get meta data
+        for fold in self.folds:
+            with h5py.File(self.ref_file, 'r') as f:
+                for dataset_name in self.dataset_names:
+                    meta_data = f[fold][dataset_name][:]
+                    dtype = meta_data.dtype.name
+                    if 'int' not in dtype and 'float' not in dtype:
+                        meta_data = meta_data.astype(str)
+                    data[dataset_name].extend(meta_data)
+        # create h5 file with meta data
+        with h5py.File(self.save_file, 'w') as f:
+            for name, val in data.items():
+                f.create_dataset(name, data=val, compression='gzip')
+
+        # consistent input shape, save all to save_file
+        if type(self.predicted) == str:
+            with h5py.File(self.source_file, 'r') as f:
+                target = f[self.target][:]
+            with h5py.File(self.save_file, 'a') as sf:
+                sf.create_dataset(self.target, data=target, compression='gzip')
+
+            with h5py.File(self.source_file, 'r') as f:
+                prediction = f[self.predicted][:]
+            with h5py.File(self.save_file, 'a') as sf:
+                sf.create_dataset(
+                    self.predicted, data=prediction, compression='gzip')
+        else:  # pragma: no cover
+            # handle multi shape input
+            target = []
+            prediction = []
+            for target_name, predict_name in zip(self.target, self.predicted):
+                with h5py.File(self.source_file, 'r') as f:
+                    target.append(f[target_name][:])
+                    prediction.append(f[predict_name][:])
+            target = np.concatenate(target, axis=0)
+            prediction = np.concatenate(prediction, axis=0)
+
+            with h5py.File(self.save_file, 'a') as sf:
+                sf.create_dataset(
+                    self.target[0].split('/')[-1],
+                    data=target, compression='gzip')
+                sf.create_dataset(
+                    self.predicted[0].split('/')[-1],
+                    data=prediction, compression='gzip')
+
+
+class H5GenericMetric:
+    def __init__(self, input_folder, output_file, metric_name='score',
+                 index_col_name='filename', index_col_fn=None,
+                 predicted_dataset='predicted', target_dataset='y'):
+        self.metric_name = metric_name
+        self.input_folder = input_folder
+        self.index_col_name = index_col_name
+
+        self.input_filenames = sorted(
+            [f for f in os.listdir(input_folder) if f.endswith('.h5')])
+        if index_col_fn is None:
+            self.index_col = self.input_filenames
+        else:
+            self.index_col = [index_col_fn(f) for f in self.input_filenames]
+
+        self.output_file = output_file
+
+        self.predicted = predicted_dataset
+        self.target = target_dataset
+
+        self.scores = []
+
+    def get_data(self):
+        for filename in self.input_filenames:
+            with h5py.File(
+                    os.path.join(self.input_folder, filename), 'r') as f:
+                predicted = f[self.predicted][:]
+                target = f[self.target][:]
+            if predicted.ndim - target.ndim == 1 and predicted.shape[-1] == 1:
+                predicted = predicted[..., 0]
+            yield target, predicted
+
+    def update_score(self, score):
+        self.scores.append(score)
+
+    def save_score(self):
+        if os.path.isfile(self.output_file):
+            df = pd.read_csv(
+                self.output_file, index_col=0)
+            try:
+                df[self.metric_name] = self.scores
+            except Exception:  # pragma: no cover
+                # if shape mismatch
+                print('Shape mismatched. Try replacing with new value.')
+                # if there are more files, create new set of files
+                if len(self.scores) > df.shape[0]:
+                    df = pd.DataFrame(self.scores, columns=[self.metric_name],
+                                      index=self.index_col)
+                else:
+                    # else first check if column exists, if no, create one
+                    # if yes, update with new values
+                    if self.metric_name not in df.columns:
+                        df[self.metric_name] = np.zeros(df.shape[0])
+                    for i, index_val in enumerate(self.index_col):
+                        df[df.index == index_val][self.metric_name] = self.scores[i]
+        else:
+            df = pd.DataFrame(self.scores, columns=[self.metric_name],
+                              index=self.index_col)
+
+        df.to_csv(self.output_file, index_label=self.index_col_name)
+
+    def post_process(self, **kwargs):
+        for targets, prediction in self.get_data():
+            scores = self.calculate_metrics(
+                targets, prediction, **kwargs)
+            self.update_score(scores)
+
+        self.save_score()
+
+    def calculate_metrics(self, targets, predictions, **kwargs):
+        raise NotImplementedError
+
+
+class H5KerasMetric(H5GenericMetric):
+    def __init__(self, input_folder, output_file, metric_obj,
+                 metric_name='score',
+                 index_col_name='filename', index_col_fn=None,
+                 predicted_dataset='predicted', target_dataset='y'):
+        super().__init__(input_folder, output_file,
+                         metric_name=metric_name,
+                         index_col_name=index_col_name, index_col_fn=index_col_fn,
+                         predicted_dataset=predicted_dataset,
+                         target_dataset=target_dataset)
+        self.metric_obj = metric_obj
+
+    def calculate_metrics(self, targets, predictions):
+        # reset state before calculating the metric
+        self.metric_obj.reset_state()
+        return self.metric_obj(
+            tf.convert_to_tensor(targets),
+            tf.convert_to_tensor(predictions)).numpy()
+
+
+class H5SklearnMetric(H5GenericMetric):
+    def __init__(self, input_folder, output_file, metric_obj, process_fn=None,
+                 metric_name='score',
+                 index_col_name='filename', index_col_fn=None,
+                 predicted_dataset='predicted', target_dataset='y'):
+        super().__init__(input_folder, output_file,
+                         metric_name=metric_name,
+                         index_col_name=index_col_name, index_col_fn=index_col_fn,
+                         predicted_dataset=predicted_dataset,
+                         target_dataset=target_dataset)
+        self.metric_obj = metric_obj
+        self.process_fn = process_fn
+
+    def calculate_metrics(self, targets, predictions):
+        if self.process_fn is not None:
+            targets, predictions = self.process_fn(targets, predictions)
+
+        return self.metric_obj._score_func(
+            targets,
+            predictions)
 
 
 class H5Metric:
@@ -92,7 +312,7 @@ class H5Metric:
 
         self.save_score()
 
-    def calculate_metrics(targets, predictions, **kwargs):
+    def calculate_metrics(self, targets, predictions, **kwargs):
         raise NotImplementedError
 
 
@@ -1142,6 +1362,8 @@ class SegmentationPostProcessor(PostProcessor):
                     **kwargs
                 ).post_process()
 
+        return self
+
     def calculate_metrics_single(self, metrics=None, metrics_kwargs=None):
         if type(metrics) == str:
             metrics = [metrics]
@@ -1232,6 +1454,8 @@ class SegmentationPostProcessor(PostProcessor):
                 map_column=self.main_meta_data,
                 merge_file=test_folder + self.PREDICT_TEST_NAME,
             ).post_process()
+
+        return self
 
     def get_best_model(self, monitor='', mode='max', keep_best_only=True,
                        use_raw_log=False):
@@ -1356,3 +1580,243 @@ class SegmentationPostProcessor(PostProcessor):
         # take out each column first, then use `values`
         return {'ids': df[self.main_meta_data].values[indice],
                 'values': df[monitor].values[indice]}
+
+
+class DefaultPostProcessor(PostProcessor):
+    MODEL_PATH = '/model'
+    MODEL_NAME = '/model.{epoch:03d}.h5'
+    BEST_MODEL_PATH = '/best'
+    PREDICTION_PATH = '/prediction'
+    PREDICTION_NAME = '/prediction.{epoch:03d}.h5'
+    LOG_FILE = '/logs.csv'
+    PERFORMANCE_PATH = '/performance'
+    PREDICTED_IMAGE_PATH = '/images'
+    TEST_OUTPUT_PATH = '/test'
+    PREDICT_TEST_NAME = '/prediction_test.h5'
+    # SINGLE_MAP_PATH = '/single_map'
+    # SINGLE_MAP_NAME = '/logs.{epoch:03d}.csv'
+
+    MAP_PATH = '/logs'
+    MAP_NAME = '/logs.{epoch:03d}.csv'
+
+    # TEST_SINGLE_MAP_NAME = '/single_result.csv'
+    TEST_MAP_NAME = '/result.csv'
+
+    METRIC_NAME_MAP = {
+    }
+
+    def __init__(self, log_base_path='logs',
+                 temp_base_path='',
+                 map_meta_data=None, main_meta_data='',
+                 run_test=False, new_dataset_params=None):
+        self.temp_base_path = temp_base_path
+        self.log_base_path = log_base_path
+
+        self.update_data_reader(new_dataset_params)
+
+        try:
+            temp_prediction_path = temp_base_path + self.PREDICTION_PATH
+            predicted_files = os.listdir(temp_prediction_path)
+
+            self.epochs = [int(filename[-6:-3])
+                           for filename in predicted_files]
+        except Exception as e:   # pragma: no cover
+            print("Error while getting epochs by temp folder:", e)
+            print("Using epoch number from saved models")
+            try:
+                model_path = log_base_path + self.MODEL_PATH
+                model_files = os.listdir(model_path)
+                self.epochs = [int(filename[-7:-4])
+                               for filename in model_files]
+            except Exception as e:
+                print("Error while getting epochs by model files:", e)
+                print("Using dummy epochs as alternative.")
+                self.epochs = [5]
+                print("Post-process only works on test data.")
+
+        if map_meta_data:
+            if type(map_meta_data) == str:
+                self.map_meta_data = map_meta_data.split(',')
+            else:
+                self.map_meta_data = map_meta_data
+        else:
+            self.map_meta_data = ['patient_idx']
+
+        if main_meta_data:
+            self.main_meta_data = main_meta_data
+        else:
+            self.main_meta_data = self.map_meta_data[0]
+
+        self.run_test = run_test
+
+    def map_prediction_meta_data(self, **kwargs):
+        print('mapping meta data')
+        if not self.run_test:
+            predicted_path = self.temp_base_path + \
+                self.PREDICTION_PATH + self.PREDICTION_NAME
+            output_path = self.log_base_path + \
+                self.PREDICTION_PATH + self.PREDICTION_NAME
+
+            for epoch in self.epochs:
+                H5GenericMetaMapping(
+                    ref_file=self.dataset_filename,
+                    source_file=predicted_path.format(epoch=epoch),
+                    save_file=output_path.format(epoch=epoch),
+                    folds=self.data_reader.val_folds,
+                    fold_prefix='',
+                    dataset_names=self.map_meta_data,
+                    **kwargs
+                ).post_process()
+        else:
+            predicted_path = self.temp_base_path + \
+                self.TEST_OUTPUT_PATH + self.PREDICT_TEST_NAME
+            test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
+            output_path = test_folder + self.PREDICT_TEST_NAME
+
+            if not os.path.exists(test_folder):
+                os.makedirs(test_folder)
+
+            H5GenericMetaMapping(
+                ref_file=self.dataset_filename,
+                source_file=predicted_path,
+                save_file=output_path,
+                folds=self.data_reader.test_folds,
+                fold_prefix='',
+                dataset_names=self.map_meta_data,
+                **kwargs
+            ).post_process()
+
+        return self
+
+    def calculate_metrics(self, metrics=None, metrics_sources=None,
+                          metrics_kwargs=None, process_functions=None):
+        if not metrics:
+            metrics = ['accuracy_score']
+
+        if type(metrics) == str:
+            metrics = [metrics]
+
+        if not metrics_kwargs:
+            metrics_kwargs = [{} for _ in metrics]
+        if type(metrics_kwargs) == dict:
+            metrics_kwargs = [metrics_kwargs]
+
+        if not metrics_sources:
+            metrics_sources = ['sklearn' for _ in metrics]
+        if type(metrics_sources) == str:
+            metrics_sources = [metrics_sources for _ in metrics]
+
+        if not process_functions:
+            process_functions = [{} for _ in metrics]
+
+        def filename_to_epoch(filename):
+            try:
+                return int(filename[-6:-3])
+            except Exception:
+                return filename
+
+        for metric_name, source, kwargs, process_fn in zip(metrics,
+                                                           metrics_sources,
+                                                           metrics_kwargs,
+                                                           process_functions):
+            if not source:
+                source = 'sklearn'
+
+            if not kwargs:
+                kwargs = {}
+
+            if type(metric_name) == str:
+                # use sklearn metrics
+                if source == 'sklearn':
+                    metric = get_scorer(metric_name)
+                # use keras metric
+                else:
+                    metric = metric_from_config({
+                        'class_name': metric_name,
+                        'config': {
+                            name: val for name, val in kwargs.items()
+                            if name != 'metric_name'
+                        }
+                    })
+
+            print(f'calculating {metric_name}')
+            if not self.run_test:
+                input_folder = self.log_base_path + self.PREDICTION_PATH
+                output_file = self.log_base_path + '/log_new.csv'
+
+                if source == 'sklearn':
+                    H5SklearnMetric(
+                        input_folder,
+                        output_file,
+                        metric_obj=metric,
+                        process_fn=process_fn,
+                        metric_name=metric_name,
+                        index_col_name='epochs',
+                        index_col_fn=filename_to_epoch,
+                    ).post_process()
+                else:
+                    H5KerasMetric(
+                        input_folder,
+                        output_file,
+                        metric_obj=metric,
+                        metric_name=metric_name,
+                        index_col_name='epochs',
+                        index_col_fn=filename_to_epoch,
+                    ).post_process()
+
+            else:
+                test_folder = self.log_base_path + self.TEST_OUTPUT_PATH
+                output_file = test_folder + self.TEST_MAP_NAME
+
+                if source == 'sklearn':
+                    H5SklearnMetric(
+                        test_folder,
+                        output_file,
+                        metric_obj=metric,
+                        process_fn=process_fn,
+                        metric_name=kwargs.get('metric_name', metric_name)
+                    ).post_process()
+                else:
+                    H5KerasMetric(
+                        test_folder,
+                        output_file,
+                        metric_obj=metric,
+                        metric_name=kwargs.get('metric_name', metric_name)
+                    ).post_process()
+
+        return self
+
+    def get_best_model(self, monitor='', mode='max', keep_best_only=False,
+                       use_raw_log=False):
+        print('finding best model')
+        epochs = self.epochs
+
+        if use_raw_log:
+            best_epoch = self._best_epoch_from_raw_log(monitor, mode)
+
+        else:
+            res_df = pd.DataFrame(epochs, columns=['epochs'])
+
+            res_df = pd.read_csv(self.log_base_path + '/log_new.csv')
+
+            epochs = res_df['epochs']
+
+            if mode == 'max':
+                best_epoch = epochs[res_df[monitor].argmax()]
+            else:
+                best_epoch = epochs[res_df[monitor].argmin()]
+
+        print('Best epoch:', best_epoch)
+
+        if keep_best_only:
+            print('Keep best results only. Deleting prediction files...')
+            for epoch in epochs:
+                if epoch != best_epoch:
+                    predicted_file = self.log_base_path + \
+                        self.PREDICTION_PATH + \
+                        self.PREDICTION_NAME.format(epoch=epoch)
+                    if os.path.exists(predicted_file):
+                        os.remove(predicted_file)
+
+        return self.log_base_path + self.MODEL_PATH + \
+            self.MODEL_NAME.format(epoch=best_epoch)

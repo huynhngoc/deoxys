@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 import warnings
 
-from deoxys.keras.callbacks import CSVLogger
+from tensorflow.keras.callbacks import CSVLogger
 from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint, \
     DBLogger
 from ..model import model_from_full_config, model_from_config, load_model
@@ -262,17 +262,15 @@ class Experiment:
         if len(data_info) == 1 and total_size < self._max_size:
             predicted = self.model.predict_test(verbose=1)
             # Create the h5 file
-            hf = h5py.File(filepath, 'w')
-            hf.create_dataset('predicted', data=predicted)
-            hf.close()
+            with h5py.File(filepath, 'w') as hf:
+                hf.create_dataset('predicted', data=predicted)
 
             if use_original_image:
                 original_data = self.model.data_reader.original_test
 
                 for key, val in original_data.items():
-                    hf = h5py.File(filepath, 'a')
-                    hf.create_dataset(key, data=val)
-                    hf.close()
+                    with h5py.File(filepath, 'a') as hf:
+                        hf.create_dataset(key, data=val)
             else:
                 # Create data from test_generator
                 x = None
@@ -290,10 +288,9 @@ class Experiment:
                         x = np.concatenate((x, next_x))
                         y = np.concatenate((y, next_y))
 
-                hf = h5py.File(filepath, 'a')
-                hf.create_dataset('x', data=x)
-                hf.create_dataset('y', data=y)
-                hf.close()
+                with h5py.File(filepath, 'a') as hf:
+                    hf.create_dataset('x', data=x)
+                    hf.create_dataset('y', data=y)
 
         # for large data of same size, predict each chunk
         elif len(data_info) == 1:

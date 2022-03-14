@@ -6,8 +6,8 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 import pytest
 import numpy as np
-from deoxys.keras.models import Model
-from deoxys.keras.layers import Input, Dense, Flatten, Dropout, \
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense, Flatten, Dropout, \
     BatchNormalization, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, \
     Conv3D, Conv3DTranspose, MaxPooling3D
 from deoxys.loaders.architecture import BaseModelLoader, ModelLoaderFactory, \

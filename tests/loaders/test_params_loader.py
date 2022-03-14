@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
-from deoxys.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam
 from deoxys.loaders import load_params
 from deoxys.model.losses import BinaryFbetaLoss
 from deoxys.model.metrics import BinaryFbeta

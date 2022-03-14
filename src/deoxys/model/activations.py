@@ -4,8 +4,8 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
-from ..keras.layers import Activation
-from ..keras.activations import deserialize
+from tensorflow.keras.layers import Activation
+from tensorflow.keras.activations import deserialize
 from ..utils import Singleton
 
 

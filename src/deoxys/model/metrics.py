@@ -4,20 +4,17 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
-from ..utils import Singleton, is_keras_standalone
-from ..keras import backend as K
-from ..keras.metrics import Metric, deserialize
-
-if is_keras_standalone():
-    from keras.metrics import _ConfusionMatrixConditionCount
-    from keras.utils.metrics_utils \
-        import update_confusion_matrix_variables, parse_init_thresholds, \
-        ConfusionMatrix
-else:
-    from tensorflow.python.keras.metrics import _ConfusionMatrixConditionCount
-    from tensorflow.python.keras.utils.metrics_utils \
-        import update_confusion_matrix_variables, parse_init_thresholds, \
-        ConfusionMatrix
+from ..utils import Singleton
+# from ..keras import backend as K
+from tensorflow.keras.metrics import Metric, deserialize
+from tensorflow.python.keras.utils.generic_utils import to_list
+from tensorflow.python.keras import backend
+import tensorflow as tf
+import numpy as np
+from tensorflow.python.keras.metrics import _ConfusionMatrixConditionCount
+from tensorflow.python.keras.utils.metrics_utils \
+    import update_confusion_matrix_variables, parse_init_thresholds, \
+    ConfusionMatrix
 
 
 class Fbeta(Metric):
@@ -37,33 +34,34 @@ class Fbeta(Metric):
         reduce_ax = list(range(1, size))
         eps = 1e-8
 
-        y_true = K.cast(y_true, y_pred.dtype)
+        y_true = tf.cast(y_true, y_pred.dtype)
 
-        true_positive = K.sum(y_pred * y_true, axis=reduce_ax)
-        target_positive = K.sum(K.square(y_true), axis=reduce_ax)
-        predicted_positive = K.sum(
-            K.square(y_pred), axis=reduce_ax)
+        true_positive = tf.reduce_sum(y_pred * y_true, axis=reduce_ax)
+        target_positive = tf.reduce_sum(tf.square(y_true), axis=reduce_ax)
+        predicted_positive = tf.reduce_sum(
+            tf.square(y_pred), axis=reduce_ax)
 
         fb_numerator = (1 + self.beta ** 2) * true_positive + eps
         fb_denominator = (
             (self.beta ** 2) * target_positive + predicted_positive + eps
         )
         if sample_weight:
-            weight = K.cast(sample_weight, self.dtype)
-            total_ops = K.update_add(
-                self.total,
-                K.sum(weight * fb_numerator / fb_denominator))
+            weight = tf.cast(sample_weight, self.dtype)
+            # total_ops = K.update_add(
+            #     self.total,
+            #     tf.reduce_sum(weight * fb_numerator / fb_denominator))
+            self.total.assign_add(tf.reduce_sum(
+                weight * fb_numerator / fb_denominator))
         else:
-            total_ops = K.update_add(
-                self.total, K.sum(fb_numerator / fb_denominator))
+            # total_ops = K.update_add(
+            #     self.total, tf.reduce_sum(fb_numerator / fb_denominator))
+            self.total.assign_add(tf.reduce_sum(fb_numerator / fb_denominator))
 
-        count = K.sum(weight) if sample_weight else K.cast(
-            K.shape(y_pred)[0], y_pred.dtype)
+        count = tf.reduce_sum(weight) if sample_weight else tf.cast(
+            tf.shape(y_pred)[0], y_pred.dtype)
 
-        count_ops = K.update_add(self.count, count)
-
-        if is_keras_standalone():
-            return [total_ops, count_ops]
+        # count_ops = K.update_add(self.count, count)
+        self.count.assign_add(count)
 
     def result(self):
         return self.total / self.count
@@ -92,33 +90,37 @@ class Dice(Metric):
         reduce_ax = list(range(1, size))
         eps = 1e-8
 
-        # y_true = K.cast(y_true, y_pred.dtype)
-        y_pred = K.cast(y_pred > self.threshold, y_true.dtype)
+        y_true = tf.cast(y_true, y_pred.dtype)
+        y_pred = tf.cast(y_pred > self.threshold, y_true.dtype)
 
-        true_positive = K.sum(y_pred * y_true, axis=reduce_ax)
-        target_positive = K.sum(y_true, axis=reduce_ax)
-        predicted_positive = K.sum(y_pred, axis=reduce_ax)
+        true_positive = tf.reduce_sum(y_pred * y_true, axis=reduce_ax)
+        target_positive = tf.reduce_sum(y_true, axis=reduce_ax)
+        predicted_positive = tf.reduce_sum(y_pred, axis=reduce_ax)
 
         fb_numerator = (1 + self.beta ** 2) * true_positive + eps
         fb_denominator = (
             (self.beta ** 2) * target_positive + predicted_positive + eps
         )
         if sample_weight:
-            weight = K.cast(sample_weight, self.dtype)
-            total_ops = K.update_add(
-                self.total,
-                K.sum(weight * fb_numerator / fb_denominator))
+            weight = tf.cast(sample_weight, self.dtype)
+            # total_ops = K.update_add(
+            #     self.total,
+            #     tf.reduce_sum(weight * fb_numerator / fb_denominator))
+            self.total.assign_add(
+                tf.reduce_sum(weight * fb_numerator / fb_denominator)
+            )
         else:
-            total_ops = K.update_add(
-                self.total, K.sum(fb_numerator / fb_denominator))
+            # total_ops = K.update_add(
+            #     self.total, tf.reduce_sum(fb_numerator / fb_denominator))
+            self.total.assign_add(
+                tf.reduce_sum(fb_numerator / fb_denominator)
+            )
 
-        count = K.sum(weight) if sample_weight else K.cast(
-            K.shape(y_pred)[0], y_pred.dtype)
+        count = tf.reduce_sum(weight) if sample_weight else tf.cast(
+            tf.shape(y_pred)[0], y_pred.dtype)
 
-        count_ops = K.update_add(self.count, count)
-
-        if is_keras_standalone():
-            return [total_ops, count_ops]
+        # count_ops = K.update_add(self.count, count)
+        self.count.assign_add(count)
 
     def result(self):
         return self.total / self.count
@@ -130,7 +132,7 @@ class Dice(Metric):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-class BinaryFbeta(_ConfusionMatrixConditionCount):
+class BinaryFbeta(Metric):
     """
     Calculate the micro f1 score in the set of data
     """
@@ -139,7 +141,8 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
                  thresholds=None,
                  name='BinaryFbeta',
                  dtype=None, beta=1):
-        super(Metric, self).__init__(name=name, dtype=dtype)
+        # super(Metric, self).__init__(name=name, dtype=dtype)
+        super().__init__(name=name, dtype=dtype)
 
         self.init_thresholds = thresholds
         self.thresholds = parse_init_thresholds(
@@ -166,7 +169,7 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
     def update_state(self, y_true, y_pred, sample_weight=None):
         # https://github.com/tensorflow/tensorflow/issues/30711
         # Remove return statement in case tensorflow.keras
-        update = update_confusion_matrix_variables(
+        update_confusion_matrix_variables(
             {ConfusionMatrix.TRUE_POSITIVES: self.true_positives,
              ConfusionMatrix.TRUE_NEGATIVES: self.true_negatives,
              ConfusionMatrix.FALSE_POSITIVES: self.false_positives,
@@ -175,9 +178,6 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
             y_pred,
             thresholds=self.thresholds,
             sample_weight=sample_weight)
-
-        if is_keras_standalone():
-            return update
 
     def result(self):
         res = []
@@ -193,6 +193,11 @@ class BinaryFbeta(_ConfusionMatrixConditionCount):
         if len(res) == 1:
             return res[0]
         return res
+
+    def reset_state(self):
+        num_thresholds = len(to_list(self.thresholds))
+        backend.batch_set_value(
+            [(v, np.zeros((num_thresholds,))) for v in self.variables])
 
     def get_config(self):
         config = {'thresholds': self.init_thresholds}

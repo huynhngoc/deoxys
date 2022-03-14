@@ -11,14 +11,15 @@ import h5py
 import numpy as np
 from itertools import product
 
-from ..keras.models import \
+from tensorflow.keras.models import \
     model_from_config as keras_model_from_config, \
     model_from_json as keras_model_from_json, \
     load_model as keras_load_model, Model as KerasModel, \
     clone_model
-from ..utils import is_default_tf_eager_mode, number_of_iteration
+from ..utils import number_of_iteration
 
-from ..keras import backend as K
+# from ..keras import backend as K
+from tensorflow.keras import backend as K
 
 from ..loaders import load_architecture, load_params, \
     load_data, load_train_params
@@ -524,25 +525,14 @@ class Model:
             for i, filter_index in enumerate(list_index):
                 if verbose:
                     print('filter', filter_index)
-                if is_default_tf_eager_mode():
 
-                    with tf.GradientTape() as tape:
-                        outputs = activation_model(input_img_data[i])
-
-                        loss_value = self._get_gradient_loss(
-                            outputs, filter_index, loss_fn)
-
-                    grads = tape.gradient(loss_value, input_img_data[i])
-                else:  # pragma: no cover
-                    outputs = activation_model.output
+                with tf.GradientTape() as tape:
+                    outputs = activation_model(input_img_data[i])
 
                     loss_value = self._get_gradient_loss(
                         outputs, filter_index, loss_fn)
 
-                    gradient = K.gradients(loss_value, activation_model.input)
-
-                    grads = K.function(activation_model.input,
-                                       gradient)(input_img_data)[0]
+                grads = tape.gradient(loss_value, input_img_data[i])
 
                 normalized_grads = grads / \
                     (tf.sqrt(tf.reduce_mean(tf.square(grads))) + 1e-5)
@@ -550,24 +540,18 @@ class Model:
                 input_img_data[i].assign_add(normalized_grads * step_size)
 
         if len(input_img_data) > 1:
-            if is_default_tf_eager_mode():
-                return [K.get_value(input_img) for input_img in input_img_data]
-            else:  # pragma: no cover
-                return [K.eval(input_img) for input_img in input_img_data]
+            return [input_img.numpy() for input_img in input_img_data]
 
-        if is_default_tf_eager_mode():
-            return K.get_value(input_img_data[0])
-        else:  # pragma: no cover
-            return K.eval(input_img_data[0])
+        return input_img_data[0].numpy()
 
     def _get_backprop_loss(self, output, mode='max', output_index=0,
                            loss_fn=None):
         if mode == 'max':
-            loss = K.max(output, axis=-1)
+            loss = tf.reduce_max(output, axis=-1)
         elif mode == 'mean':
-            loss = K.mean(output, axis=-1)
+            loss = tf.reduce_mean(output, axis=-1)
         elif mode == 'min':
-            loss = K.min(output, axis=-1)
+            loss = tf.reduce_min(output, axis=-1)
         elif mode == 'one':
             loss = output[..., output_index]
         elif mode == 'all':
@@ -580,7 +564,7 @@ class Model:
         return loss
 
     def _max_filter_map(self, output):
-        return K.argmax(output, axis=-1)
+        return tf.argmax(output, axis=-1)
 
     def _backprop_eagerly(self, layer_name, images, mode='max',
                           output_index=0, loss_fn=None):
@@ -594,19 +578,7 @@ class Model:
 
         grads = tape.gradient(loss, img_tensor)
 
-        return K.get_value(grads)
-
-    def _backprop_symbolic(self, layer_name, images, mode='max',
-                           output_index=0, loss_fn=None):  # pragma: no cover
-        output = self.layers[layer_name].output
-
-        loss = self._get_backprop_loss(output, mode, output_index, loss_fn)
-
-        grads = K.gradients(loss, self.model.input)[0]
-
-        fn = K.function(self.model.input, grads)
-
-        return fn(images)
+        return grads.numpy()
 
     def backprop(self, layer_name, images, mode='max', output_index=0,
                  loss_fn=None):
@@ -646,78 +618,23 @@ class Model:
         numpy.array of images
             resulting images when performing backpropagation
         """
-        if is_default_tf_eager_mode():
-            grads = self._backprop_eagerly(
-                layer_name, images, mode, output_index, loss_fn)
-        else:  # pragma: no cover
-            grads = self._backprop_symbolic(
-                layer_name, images, mode, output_index, loss_fn)
+        grads = self._backprop_eagerly(
+            layer_name, images, mode, output_index, loss_fn)
         return grads
-
-    def _gradient_backprop(self, gradient_name, layer_name,
-                           images, mode, output_index,
-                           loss_fn=None):  # pragma: no cover
-        # save current weight
-        weights = self.model.get_weights()
-
-        with tf.Graph().as_default() as g:
-            with g.gradient_override_map({'Relu': gradient_name}):
-                tf.compat.v1.experimental.output_all_intermediates(True)
-                new_model = clone_model(self.model)
-                # Apply weights
-                new_model.set_weights(weights)
-
-                output = self._get_backprop_loss(
-                    new_model.get_layer(layer_name).output,
-                    mode, output_index, loss_fn)
-
-                # if mode == 'max':
-                #     output = K.max(new_model.get_layer(
-                #         layer_name).output, axis=-1)
-                # elif mode == 'one':
-                #     output = new_model.get_layer(
-                #         layer_name).output[..., output_index]
-                # elif mode == 'all':
-                #     output = new_model.get_layer(
-                #         layer_name).output
-                # elif loss_fn is not None:
-                #     output = loss_fn(new_model.get_layer(layer_name).output)
-                # else:
-                #     output = new_model.get_layer(
-                #         layer_name).output
-
-                grads = K.gradients(output, new_model.input)[0]
-
-                fn = K.function(new_model.input, grads)
-
-                grad_output = fn(images)
-
-            del new_model
-        del g
-
-        return grad_output
 
     def deconv(self, layer_name, images, mode='max',
                output_index=0, loss_fn=None):
-        if is_default_tf_eager_mode():
-            return self._gradient_backprop_eager(
-                _DeconvRelu, layer_name,
-                images, mode, output_index, loss_fn
-            )
-        else:  # pragma: no cover
-            return self._gradient_backprop('DeconvNet', layer_name,
-                                           images, mode, output_index, loss_fn)
+        return self._gradient_backprop_eager(
+            _DeconvRelu, layer_name,
+            images, mode, output_index, loss_fn
+        )
 
     def guided_backprop(self, layer_name, images, mode='max',
                         output_index=0, loss_fn=None):
-        if is_default_tf_eager_mode():
-            return self._gradient_backprop_eager(
-                _GuidedBackPropRelu, layer_name,
-                images, mode, output_index, loss_fn
-            )
-        else:  # pragma: no cover
-            return self._gradient_backprop('GuidedBackProp', layer_name,
-                                           images, mode, output_index, loss_fn)
+        return self._gradient_backprop_eager(
+            _GuidedBackPropRelu, layer_name,
+            images, mode, output_index, loss_fn
+        )
 
     def _gradient_backprop_eager(self, grad_fn, layer_name, images, mode='max',
                                  output_index=0, loss_fn=None):
@@ -748,7 +665,7 @@ class Model:
         del guided_model
         del new_model
 
-        return K.get_value(grads)
+        return grads.numpy()
 
     def max_filter(self, layer_name, images):
         """
@@ -955,7 +872,7 @@ def _BackProp(op, grad):
 
 @tf.custom_gradient
 def _GuidedBackPropRelu(x):
-    res = K.relu(x)
+    res = tf.nn.relu(x)
 
     def grad(dy):
         return dy * tf.cast(dy > 0., x.dtype) * tf.cast(x > 0., x.dtype)
@@ -965,7 +882,7 @@ def _GuidedBackPropRelu(x):
 
 @tf.custom_gradient
 def _DeconvRelu(x):
-    res = K.relu(x)
+    res = tf.nn.relu(x)
 
     def grad(dy):
         return dy * tf.cast(dy > 0., x.dtype)
@@ -975,7 +892,7 @@ def _DeconvRelu(x):
 
 @tf.custom_gradient
 def _BackPropRelu(x):
-    res = K.relu(x)
+    res = tf.nn.relu(x)
 
     def grad(dy):
         return dy * tf.cast(x > 0., x.dtype)

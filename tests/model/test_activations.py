@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
-from deoxys.keras.layers import Activation
+from tensorflow.keras.layers import Activation
 from deoxys.model.activations import Activations
 from deoxys.customize import register_activation, \
     unregister_activation, custom_activation

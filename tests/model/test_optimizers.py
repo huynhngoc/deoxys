@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
-from deoxys.keras.optimizers import Optimizer
+from tensorflow.keras.optimizers import Optimizer
 from deoxys.model.optimizers import Optimizers
 from deoxys.customize import register_optimizer, \
     unregister_optimizer, custom_optimizer

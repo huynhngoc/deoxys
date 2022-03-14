@@ -5,7 +5,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
-from deoxys.keras.callbacks import Callback
+from tensorflow.keras.callbacks import Callback
 from deoxys.model.callbacks import Callbacks
 from deoxys.customize import register_callback, \
     unregister_callback, custom_callback

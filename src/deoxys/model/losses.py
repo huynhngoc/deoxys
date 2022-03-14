@@ -5,19 +5,14 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import numpy as np
-
-from ..keras import backend as K
-from ..keras.losses import Loss, deserialize
-from ..utils import Singleton, is_keras_standalone
+import tensorflow as tf
+from tensorflow.keras.losses import Loss, deserialize
+from ..utils import Singleton
 
 
 class BinaryFbetaLoss(Loss):
     def __init__(self, reduction='auto', name="binary_fbeta", beta=1):
-        if is_keras_standalone():
-            # use Keras default reduction
-            super().__init__('sum_over_batch_size', name)
-        else:
-            super().__init__(reduction, name)
+        super().__init__(reduction, name)
 
         self.beta = beta
 
@@ -26,10 +21,10 @@ class BinaryFbetaLoss(Loss):
         reduce_ax = list(range(1, size))
         eps = 1e-8
 
-        true_positive = K.sum(prediction * target, axis=reduce_ax)
-        target_positive = K.sum(K.square(target), axis=reduce_ax)
-        predicted_positive = K.sum(
-            K.square(prediction), axis=reduce_ax)
+        true_positive = tf.reduce_sum(prediction * target, axis=reduce_ax)
+        target_positive = tf.reduce_sum(tf.square(target), axis=reduce_ax)
+        predicted_positive = tf.reduce_sum(
+            tf.square(prediction), axis=reduce_ax)
 
         fb_numerator = (1 + self.beta ** 2) * true_positive + eps
         fb_denominator = (
@@ -41,11 +36,7 @@ class BinaryFbetaLoss(Loss):
 
 class ModifiedDiceLoss(Loss):
     def __init__(self, reduction='auto', name="modified_dice_loss", beta=1):
-        if is_keras_standalone():
-            # use Keras default reduction
-            super().__init__('sum_over_batch_size', name)
-        else:
-            super().__init__(reduction, name)
+        super().__init__(reduction, name)
 
         self.beta = beta
 
@@ -54,9 +45,9 @@ class ModifiedDiceLoss(Loss):
         reduce_ax = list(range(1, size))
         eps = 1e-8
 
-        true_positive = K.sum(prediction * target, axis=reduce_ax)
-        target_positive = K.sum(target, axis=reduce_ax)
-        predicted_positive = K.sum(
+        true_positive = tf.reduce_sum(prediction * target, axis=reduce_ax)
+        target_positive = tf.reduce_sum(target, axis=reduce_ax)
+        predicted_positive = tf.reduce_sum(
             prediction, axis=reduce_ax)
 
         fb_numerator = (1 + self.beta ** 2) * true_positive + eps

@@ -6,7 +6,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 import h5py
 import numpy as np
-from deoxys.keras.preprocessing import ImageDataGenerator
+# from tensorflow.keras.preprocessing import ImageDataGenerator
 from .data_generator import DataGenerator, HDF5DataGenerator, \
     H5DataGenerator, H5PatchGenerator
 from ..utils import Singleton, file_finder

@@ -4,10 +4,9 @@ __author__ = "Ngoc Huynh Bao"
 __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
-from ..keras.models import Model as KerasModel
-from ..keras.layers import Input, concatenate, Lambda, \
+from tensorflow.keras.models import Model as KerasModel
+from tensorflow.keras.layers import Input, concatenate, Lambda, \
     Add, Activation, Multiply
-from ..utils import is_keras_standalone
 from tensorflow import image
 import tensorflow as tf
 
@@ -343,42 +342,16 @@ class UnetModelLoader(BaseModelLoader):
                 inputs = []
                 size_factors = None
                 for input_name in layer['inputs']:
-                    if is_keras_standalone():  # pragma: no cover
-                        # keras issue: convtranspose layer output shape are
-                        # (None, None, None, filters)
-                        if saved_input[
-                                input_name].get_shape() != saved_input[
-                                    input_name]._keras_shape:
-                            saved_input[input_name].set_shape(
-                                saved_input[input_name]._keras_shape)
-
                     if size_factors:
                         if size_factors == saved_input[
                                 input_name].get_shape().as_list()[1:-1]:
                             next_input = saved_input[input_name]
                         else:
                             if len(size_factors) == 2:
-                                if is_keras_standalone():  # pragma: no cover
-                                    # Create the resize function
-                                    def resize_tensor(
-                                            input_tensor, resize_fn, new_size):
-                                        return resize_fn(
-                                            input_tensor,
-                                            new_size,
-                                            method='bilinear')
-
-                                    # Put it in the lambda layer
-                                    next_input = Lambda(
-                                        resize_tensor,
-                                        arguments={
-                                            "resize_fn": image.resize,
-                                            "new_size": size_factors}
-                                    )(saved_input[input_name])
-                                else:
-                                    next_input = image.resize(
-                                        saved_input[input_name],
-                                        size_factors,
-                                        method='bilinear')
+                                next_input = image.resize(
+                                    saved_input[input_name],
+                                    size_factors,
+                                    method='bilinear')
                             else:
                                 raise NotImplementedError(
                                     "Resize 3D tensor not implemented")

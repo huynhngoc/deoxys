@@ -1,6 +1,7 @@
+from cProfile import run
 from .single_experiment import Experiment
 from ..model.callbacks import PredictionCheckpoint
-from .postprocessor import SegmentationPostProcessor
+from .postprocessor import DefaultPostProcessor, SegmentationPostProcessor
 from ..utils import load_json_config
 
 from deoxys_vis import plot_log_performance_from_csv, mask_prediction, read_csv
@@ -114,12 +115,15 @@ class ExperimentPipeline(Experiment):
 
         print('plotting 2d images...')
         for i in range(len(images)):
-            mask_prediction(
-                images_path_single + f'/{i:03d}.png',
-                image=images[i],
-                true_mask=true_mask[i],
-                pred_mask=pred_mask[i],
-                title=f'Slice {i:03d} - Patient {image_id}, DSC {score}')
+            try:
+                mask_prediction(
+                    images_path_single + f'/{i:03d}.png',
+                    image=images[i],
+                    true_mask=true_mask[i],
+                    pred_mask=pred_mask[i],
+                    title=f'Slice {i:03d} - Patient {image_id}, DSC {score}')
+            except Exception as e:
+                print(f'An error occurred while plotting slice {i:03d}...', e)
 
     def run_test(self, use_best_model=False,
                  masked_images=None,
@@ -162,28 +166,29 @@ class ExperimentPipeline(Experiment):
         return self
 
     def _initialize_post_processors(self, post_processor_class=None,
-                                    analysis_base_path='',
                                     map_meta_data='patient_idx,slice_idx',
                                     main_meta_data='', run_test=False,
-                                    new_dataset_params=None):
+                                    new_dataset_params=None, **kwargs):
         print("Initializing postprocessor")
         if post_processor_class is None:
             pp = SegmentationPostProcessor(
                 self.log_base_path,
                 temp_base_path=self.temp_base_path,
-                analysis_base_path=analysis_base_path,
+                # analysis_base_path=analysis_base_path, # moved to kwargs
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data, run_test=run_test,
-                new_dataset_params=new_dataset_params
+                new_dataset_params=new_dataset_params,
+                **kwargs
             )
         else:
             pp = post_processor_class(
                 self.log_base_path,
                 temp_base_path=self.temp_base_path,
-                analysis_base_path=analysis_base_path,
+                # analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data, run_test=run_test,
-                new_dataset_params=new_dataset_params
+                new_dataset_params=new_dataset_params,
+                **kwargs
             )
 
         return pp
@@ -312,19 +317,27 @@ class ExperimentPipeline(Experiment):
                 pred_mask = f[predicted_image_name][:]
 
             print('plotting 3d images...', images_path_single)
-            mask_prediction(images_path_single + '.html',
-                            image=images,
-                            true_mask=true_mask,
-                            pred_mask=pred_mask,
-                            title=f'Patient {image_id}, DSC {score}')
+            try:
+                mask_prediction(images_path_single + '.html',
+                                image=images,
+                                true_mask=true_mask,
+                                pred_mask=pred_mask,
+                                title=f'Patient {image_id}, DSC {score}')
+            except Exception as e:
+                print('An error occurred while plotting 3d images...', e)
             print('plotting 2d images...')
             for i in range(len(images)):
-                mask_prediction(
-                    images_path_single + f'/{i:03d}.png',
-                    image=images[i],
-                    true_mask=true_mask[i],
-                    pred_mask=pred_mask[i],
-                    title=f'Slice {i:03d} - Patient {image_id}, DSC {score}')
+                try:
+                    mask_prediction(
+                        images_path_single + f'/{i:03d}.png',
+                        image=images[i],
+                        true_mask=true_mask[i],
+                        pred_mask=pred_mask[i],
+                        title=f'Slice {i:03d} - Patient {image_id},' +
+                        ' DSC {score}')
+                except Exception as e:
+                    print(f'An error occurred while plotting slice {i:03d}...',
+                          e)
 
         return self
 
@@ -388,6 +401,8 @@ class ExperimentPipeline(Experiment):
 
 
 class SegmentationExperimentPipeline(ExperimentPipeline):
+    DEFAULT_PP = SegmentationPostProcessor
+
     def apply_post_processors(self, post_processor_class=None,
                               recipe='auto', analysis_base_path='',
                               map_meta_data='patient_idx,slice_idx',
@@ -397,7 +412,7 @@ class SegmentationExperimentPipeline(ExperimentPipeline):
             metrics = 'f1_score'
         if self.post_processors is None:
             pp = self._initialize_post_processors(
-                post_processor_class=post_processor_class or SegmentationPostProcessor,
+                post_processor_class=post_processor_class or self.DEFAULT_PP,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
@@ -466,7 +481,7 @@ class SegmentationExperimentPipeline(ExperimentPipeline):
 
         if self.post_processors is None:
             pp = self._initialize_post_processors(
-                post_processor_class=post_processor_class,
+                post_processor_class=post_processor_class or self.DEFAULT_PP,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
@@ -495,7 +510,7 @@ class SegmentationExperimentPipeline(ExperimentPipeline):
 
         return self.from_file(path_to_model)
 
-    def plot_3d_test_images(self, monitor='', best_num=2, worst_num=2):
+    def plot_3d_test_images(self, monitor='f1_score', best_num=2, worst_num=2):
         if self.post_processors is None:
             print('No post processors to handle this function')
             return self
@@ -521,18 +536,137 @@ class SegmentationExperimentPipeline(ExperimentPipeline):
                 pred_mask = f[predicted_image_name][:]
 
             print('plotting 3d images...', images_path_single)
-            mask_prediction(images_path_single + '.html',
-                            image=images,
-                            true_mask=true_mask,
-                            pred_mask=pred_mask,
-                            title=f'Patient {image_id}, DSC {score}')
+            try:
+                mask_prediction(images_path_single + '.html',
+                                image=images,
+                                true_mask=true_mask,
+                                pred_mask=pred_mask,
+                                title=f'Patient {image_id}, DSC {score}')
+            except Exception as e:
+                print('An error occurred while plotting 3d images...', e)
+
             print('plotting 2d images...')
             for i in range(len(images)):
-                mask_prediction(
-                    images_path_single + f'/{i:03d}.png',
-                    image=images[i],
-                    true_mask=true_mask[i],
-                    pred_mask=pred_mask[i],
-                    title=f'Slice {i:03d} - Patient {image_id}, DSC {score}')
+                try:
+                    mask_prediction(
+                        images_path_single + f'/{i:03d}.png',
+                        image=images[i],
+                        true_mask=true_mask[i],
+                        pred_mask=pred_mask[i],
+                        title=f'Slice {i:03d} - Patient {image_id},' +
+                        ' DSC {score}')
+                except Exception as e:
+                    print('An error occurred while plotting slice', i)
+                    print(e)
+
+        return self
+
+
+class DefaultExperimentPipeline(ExperimentPipeline):
+    DEFAULT_PP = DefaultPostProcessor
+
+    def apply_post_processors(self, post_processor_class=None,
+                              recipe='auto',
+                              map_meta_data='patient_idx',
+                              main_meta_data='', run_test=False,
+                              metrics=None, metrics_kwargs=None,
+                              metrics_sources='', process_functions=None):
+        if not metrics:
+            metrics = 'f1_score'
+        if self.post_processors is None:
+            pp = self._initialize_post_processors(
+                post_processor_class=post_processor_class or self.DEFAULT_PP,
+                map_meta_data=map_meta_data,
+                main_meta_data=main_meta_data,
+                run_test=run_test
+            )
+        else:
+            pp = self.post_processors
+            pp.run_test = run_test
+
+        if type(recipe) == str:
+            if recipe == 'auto':
+                print('Automatically applying postprocessor '
+                      'based on log folder name')
+                pp.map_prediction_meta_data().calculate_metrics(
+                    metrics=metrics, metrics_sources=metrics_sources,
+                    metrics_kwargs=metrics_kwargs,
+                    process_functions=process_functions
+                )
+            else:
+                print('Cannot determine recipe, no postprocessors applied')
+
+        elif '__iter__' in dir(recipe):
+            print('Running customized recipe.')
+            for func_name in recipe:
+                try:
+                    getattr(pp, func_name)()
+                except AttributeError:
+                    print(func_name, 'is not implemented in', type(pp))
+                except Exception as e:
+                    print('Error while calling function '
+                          f'{func_name} in {type(pp)}:', e)
+        else:
+            print('Cannot determine recipe.')
+
+        self.post_processors = pp
+
+        return self
+
+    def load_best_model(self, monitor='', post_processor_class=None,
+                        recipe='auto',
+                        map_meta_data='patient_idx,slice_idx',
+                        main_meta_data='', metrics=None, metrics_kwargs=None,
+                        metrics_sources='', process_functions=None,
+                        **kwargs):
+
+        if self.post_processors is None:
+            pp = self._initialize_post_processors(
+                post_processor_class=post_processor_class or self.DEFAULT_PP,
+                map_meta_data=map_meta_data,
+                main_meta_data=main_meta_data,
+                run_test=False
+            )
+            self.post_processors = pp
+        else:
+            pp = self.post_processors
+
+        try:
+            path_to_model = pp.get_best_model(monitor, **kwargs)
+        except Exception as e:
+            print("Error while getting best model:", e)
+            print("Apply post processing on validation data first")
+            path_to_model = self.apply_post_processors(
+                post_processor_class=post_processor_class,
+                recipe=recipe,
+                map_meta_data=map_meta_data,
+                main_meta_data=main_meta_data,
+                run_test=False,
+                metrics=metrics, metrics_kwargs=metrics_kwargs,
+                metrics_sources=metrics_sources,
+                process_functions=process_functions
+            ).post_processors.get_best_model(monitor, **kwargs)
+
+        print('loading model', path_to_model)
+
+        return self.from_file(path_to_model)
+
+    def run_test(self, use_best_model=False):
+
+        log_base_path = self.temp_base_path
+
+        test_path = log_base_path + self.TEST_OUTPUT_PATH
+
+        if not os.path.exists(test_path):
+            os.makedirs(test_path)
+
+        if use_best_model:
+            raise NotImplementedError
+        else:
+            score = self.model.evaluate_test(verbose=1)
+            print(score)
+            filepath = test_path + self.PREDICT_TEST_NAME
+
+            self._predict_test(filepath, use_original_image=False)
 
         return self

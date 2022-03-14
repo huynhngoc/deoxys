@@ -5,7 +5,8 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 
 
 import pytest
-from deoxys.experiment import Experiment, ExperimentPipeline, SegmentationExperimentPipeline
+from deoxys.experiment import Experiment, ExperimentPipeline, \
+    SegmentationExperimentPipeline, DefaultExperimentPipeline
 import pandas as pd
 import numpy as np
 
@@ -252,3 +253,45 @@ def test_run_seg_pipeline_3d_patch():
 
     res_df = pd.read_csv('../../hn_perf/3d_xs_patch_seg/test/result.csv')
     assert np.all(res_df.columns[1:] == ['f1_score', 'recall', 'precision'])
+
+
+def test_run_default_pipeline_3d():
+    def binarize(targets, predictions):
+        return targets, (predictions > 0.5).astype(targets.dtype)
+
+    DefaultExperimentPipeline(
+        log_base_path='../../hn_perf/3d_xs_df'
+    ).from_full_config(
+        'tests/json/sample_dataset_xs_3d_full_classification.json'
+    ).run_experiment(
+        train_history_log=True,
+        model_checkpoint_period=1,
+        prediction_checkpoint_period=1,
+        epochs=1
+    ).apply_post_processors(
+        map_meta_data='patient_idx',
+        metrics=['AUC', 'BinaryCrossentropy',
+                 'BinaryAccuracy', 'BinaryFbeta', 'roc_auc', 'f1'],
+        metrics_sources=['tf',  'tf', 'tf', 'tf', 'sklearn', 'sklearn'],
+        process_functions=[None, None, None, None, None, binarize]
+    ).load_best_model(
+        monitor='AUC', mode='max'
+    ).run_test(
+    ).apply_post_processors(
+        map_meta_data='patient_idx',
+        run_test=True,
+        recipe='auto',
+        metrics=['BinaryFbeta', 'BinaryFbeta'],
+        metrics_sources='tf',
+        metrics_kwargs=[{'metric_name': 'f1_score'},
+                        {'metric_name': 'f2_score', 'beta': 2}],
+    )
+
+    res_df = pd.read_csv('../../hn_perf/3d_xs_df/log_new.csv')
+    assert np.all(res_df.columns == ['epochs', 'AUC',
+                                     'BinaryCrossentropy',
+                                     'BinaryAccuracy', 'BinaryFbeta',
+                                     'roc_auc', 'f1'])
+
+    res_df = pd.read_csv('../../hn_perf/3d_xs_df/test/result.csv')
+    assert np.all(res_df.columns[1:] == ['f1_score', 'f2_score'])
