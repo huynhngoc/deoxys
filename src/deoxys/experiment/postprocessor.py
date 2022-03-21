@@ -81,7 +81,7 @@ class H5GenericMetaMapping:
                     meta_data = f[fold][dataset_name][:]
                     dtype = meta_data.dtype.name
                     if 'int' not in dtype and 'float' not in dtype:
-                        meta_data = meta_data.astype(str)
+                        meta_data = meta_data.astype(object)
                     data[dataset_name].extend(meta_data)
         # create h5 file with meta data
         with h5py.File(self.save_file, 'w') as f:
@@ -1738,6 +1738,8 @@ class DefaultPostProcessor(PostProcessor):
                             if name != 'metric_name'
                         }
                     })
+            else:
+                metric = metric_name
 
             print(f'calculating {metric_name}')
             if not self.run_test:
@@ -1750,7 +1752,7 @@ class DefaultPostProcessor(PostProcessor):
                         output_file,
                         metric_obj=metric,
                         process_fn=process_fn,
-                        metric_name=metric_name,
+                        metric_name=kwargs.get('metric_name', metric_name),
                         index_col_name='epochs',
                         index_col_fn=filename_to_epoch,
                     ).post_process()
@@ -1759,7 +1761,7 @@ class DefaultPostProcessor(PostProcessor):
                         input_folder,
                         output_file,
                         metric_obj=metric,
-                        metric_name=metric_name,
+                        metric_name=kwargs.get('metric_name', metric_name),
                         index_col_name='epochs',
                         index_col_fn=filename_to_epoch,
                     ).post_process()
