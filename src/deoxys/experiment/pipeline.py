@@ -497,7 +497,7 @@ class SegmentationExperimentPipeline(ExperimentPipeline):
             print("Error while getting best model:", e)
             print("Apply post processing on validation data first")
             path_to_model = self.apply_post_processors(
-                post_processor_class=post_processor_class,
+                post_processor_class=post_processor_class or self.DEFAULT_PP,
                 recipe=recipe,
                 analysis_base_path=analysis_base_path,
                 map_meta_data=map_meta_data,
@@ -507,6 +507,8 @@ class SegmentationExperimentPipeline(ExperimentPipeline):
             ).post_processors.get_best_model(monitor, **kwargs)
 
         print('loading model', path_to_model)
+        with open(self.log_base_path + '/info.txt', 'w') as f:
+            f.write(f'Best model: {path_to_model} based on {monitor}')
 
         return self.from_file(path_to_model)
 
@@ -615,7 +617,7 @@ class DefaultExperimentPipeline(ExperimentPipeline):
 
     def load_best_model(self, monitor='', post_processor_class=None,
                         recipe='auto',
-                        map_meta_data='patient_idx,slice_idx',
+                        map_meta_data='patient_idx',
                         main_meta_data='', metrics=None, metrics_kwargs=None,
                         metrics_sources='', process_functions=None,
                         **kwargs):
@@ -637,7 +639,7 @@ class DefaultExperimentPipeline(ExperimentPipeline):
             print("Error while getting best model:", e)
             print("Apply post processing on validation data first")
             path_to_model = self.apply_post_processors(
-                post_processor_class=post_processor_class,
+                post_processor_class=post_processor_class or self.DEFAULT_PP,
                 recipe=recipe,
                 map_meta_data=map_meta_data,
                 main_meta_data=main_meta_data,
@@ -648,6 +650,8 @@ class DefaultExperimentPipeline(ExperimentPipeline):
             ).post_processors.get_best_model(monitor, **kwargs)
 
         print('loading model', path_to_model)
+        with open(self.log_base_path + '/info.txt', 'w') as f:
+            f.write(f'Best model: {path_to_model} based on {monitor}')
 
         return self.from_file(path_to_model)
 

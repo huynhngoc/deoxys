@@ -1789,7 +1789,7 @@ class DefaultPostProcessor(PostProcessor):
         return self
 
     def get_best_model(self, monitor='', mode='max', keep_best_only=False,
-                       use_raw_log=False):
+                       use_raw_log=False, custom_modifier_fn=None):
         print('finding best model')
         epochs = self.epochs
 
@@ -1800,6 +1800,9 @@ class DefaultPostProcessor(PostProcessor):
             res_df = pd.DataFrame(epochs, columns=['epochs'])
 
             res_df = pd.read_csv(self.log_base_path + '/log_new.csv')
+
+            if custom_modifier_fn is not None:
+                res_df = custom_modifier_fn(res_df, self)
 
             epochs = res_df['epochs']
 
