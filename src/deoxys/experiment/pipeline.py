@@ -23,7 +23,8 @@ class ExperimentPipeline(Experiment):
 
         super().__init__(log_base_path, best_model_monitors, best_model_modes)
 
-    def _create_prediction_checkpoint(self, base_path, period, use_original):
+    def _create_prediction_checkpoint(self, base_path, period, use_original,
+                                      save_inputs=True):
         temp_base_path = self.temp_base_path
         if not os.path.exists(temp_base_path):
             os.makedirs(temp_base_path)
@@ -36,7 +37,7 @@ class ExperimentPipeline(Experiment):
         return PredictionCheckpoint(
             filepath=pred_base_path + self.PREDICTION_PATH +
             self.PREDICTION_NAME,
-            period=period, use_original=use_original)
+            period=period, use_original=use_original, save_inputs=save_inputs)
 
     def plot_prediction(self, masked_images=None,
                         contour=True,

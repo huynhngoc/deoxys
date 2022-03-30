@@ -179,12 +179,15 @@ class PredictionCheckpoint(DeoxysModelCallback):
     _max_size = os.environ.get('MAX_SAVE_STEP_GB', 1)
 
     def __init__(self, filepath=None, period=1, use_original=False,
+                 save_inputs=True,
                  dbclient=None, session=None):
         self.period = period
         self.epochs_since_last_save = 0
 
         self.filepath = filepath
         self.use_original = use_original
+
+        self.save_inputs = save_inputs
 
         self.dbclient = dbclient
         self.session = session
@@ -252,13 +255,14 @@ class PredictionCheckpoint(DeoxysModelCallback):
                             x = next_x
                             y = next_y
                         else:
-                            x = np.concatenate((x, next_x))
+                            if self.save_inputs:
+                                x = np.concatenate((x, next_x))
                             y = np.concatenate((y, next_y))
 
-                    hf = h5py.File(filepath, 'a')
-                    hf.create_dataset('x', data=x, compression="gzip")
-                    hf.create_dataset('y', data=y, compression="gzip")
-                    hf.close()
+                    with h5py.File(filepath, 'a') as hf:
+                        if self.save_inputs:
+                            hf.create_dataset('x', data=x, compression="gzip")
+                        hf.create_dataset('y', data=y, compression="gzip")
 
             # for large data of same size, predict each chunk
             elif len(data_info) == 1:
@@ -274,9 +278,10 @@ class PredictionCheckpoint(DeoxysModelCallback):
                 target_chunks = (1,) + next_y.shape[1:]
 
                 with h5py.File(filepath, 'w') as hf:
-                    hf.create_dataset('x',
-                                      shape=input_shape, chunks=input_chunks,
-                                      compression='gzip')
+                    if self.save_inputs:
+                        hf.create_dataset('x',
+                                          shape=input_shape, chunks=input_chunks,
+                                          compression='gzip')
                     hf.create_dataset('y',
                                       shape=target_shape, chunks=target_chunks,
                                       compression='gzip')
@@ -289,7 +294,8 @@ class PredictionCheckpoint(DeoxysModelCallback):
                     next_x = next_x[0]
                 with h5py.File(filepath, 'a') as hf:
                     next_index = len(next_x)
-                    hf['x'][:next_index] = next_x
+                    if self.save_inputs:
+                        hf['x'][:next_index] = next_x
                     hf['y'][:next_index] = next_y
                     hf['predicted'][:next_index] = predicted
 
@@ -305,7 +311,8 @@ class PredictionCheckpoint(DeoxysModelCallback):
                     next_index = curr_index + len(next_x)
 
                     with h5py.File(filepath, 'a') as hf:
-                        hf['x'][curr_index:next_index] = next_x
+                        if self.save_inputs:
+                            hf['x'][curr_index:next_index] = next_x
                         hf['y'][curr_index:next_index] = next_y
                         hf['predicted'][curr_index:next_index] = predicted
 
@@ -327,10 +334,11 @@ class PredictionCheckpoint(DeoxysModelCallback):
                     else:
                         mode = 'a'
                     with h5py.File(filepath, mode) as hf:
-                        hf.create_dataset(f'{curr_info_idx:02d}/x',
-                                          shape=input_shape,
-                                          chunks=input_chunks,
-                                          compression='gzip')
+                        if self.save_inputs:
+                            hf.create_dataset(f'{curr_info_idx:02d}/x',
+                                              shape=input_shape,
+                                              chunks=input_chunks,
+                                              compression='gzip')
                         hf.create_dataset(f'{curr_info_idx:02d}/y',
                                           shape=target_shape,
                                           chunks=target_chunks,
@@ -346,7 +354,8 @@ class PredictionCheckpoint(DeoxysModelCallback):
                         next_x = next_x[0]
                     with h5py.File(filepath, 'a') as hf:
                         next_index = len(next_x)
-                        hf[f'{curr_info_idx:02d}/x'][:next_index] = next_x
+                        if self.save_inputs:
+                            hf[f'{curr_info_idx:02d}/x'][:next_index] = next_x
                         hf[f'{curr_info_idx:02d}/y'][:next_index] = next_y
                         hf[f'{curr_info_idx:02d}/predicted'][
                             :next_index] = predicted
@@ -364,8 +373,9 @@ class PredictionCheckpoint(DeoxysModelCallback):
                         next_index = curr_index + len(next_x)
 
                         with h5py.File(filepath, 'a') as hf:
-                            hf[f'{curr_info_idx:02d}/x'][
-                                curr_index:next_index] = next_x
+                            if self.save_inputs:
+                                hf[f'{curr_info_idx:02d}/x'][
+                                    curr_index:next_index] = next_x
                             hf[f'{curr_info_idx:02d}/y'][
                                 curr_index:next_index] = next_y
                             hf[f'{curr_info_idx:02d}/predicted'][

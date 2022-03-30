@@ -125,7 +125,8 @@ class Experiment:
                        prediction_checkpoint_period=0,
                        save_origin_images=False,
                        verbose=1,
-                       epochs=None, initial_epoch=None, **custom_kwargs
+                       epochs=None, initial_epoch=None,
+                       save_val_inputs=True, **custom_kwargs
                        ):
         log_base_path = self.log_base_path
 
@@ -167,7 +168,8 @@ class Experiment:
                 callback = self._create_prediction_checkpoint(
                     log_base_path,
                     prediction_checkpoint_period,
-                    use_original=save_origin_images
+                    use_original=save_origin_images,
+                    save_inputs=save_val_inputs
                 )
                 callbacks.append(callback)
 
@@ -444,10 +446,11 @@ class Experiment:
             period=period,
             filepath=base_path + self.MODEL_PATH + self.MODEL_NAME)
 
-    def _create_prediction_checkpoint(self, base_path, period, use_original):
+    def _create_prediction_checkpoint(self, base_path, period, use_original,
+                                      save_inputs=True):
         return PredictionCheckpoint(
             filepath=base_path + self.PREDICTION_PATH + self.PREDICTION_NAME,
-            period=period, use_original=use_original)
+            period=period, use_original=use_original, save_inputs=save_inputs)
 
     def _plot_predicted_images(self, data_path, out_path, images,
                                contour=True,
