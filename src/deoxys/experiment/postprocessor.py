@@ -1626,7 +1626,7 @@ class DefaultPostProcessor(PostProcessor):
             try:
                 model_path = log_base_path + self.MODEL_PATH
                 model_files = os.listdir(model_path)
-                self.epochs = [int(filename[-7:-4])
+                self.epochs = [int(filename[-6:-3])
                                for filename in model_files]
             except Exception as e:
                 print("Error while getting epochs by model files:", e)
