@@ -30,7 +30,7 @@ class Experiment:
     PREDICTED_IMAGE_PATH = '/images'
     TEST_OUTPUT_PATH = '/test'
     PREDICT_TEST_NAME = '/prediction_test.h5'
-    _max_size = 1
+    _max_size = float(os.environ.get('MAX_SAVE_STEP_GB', 1))
 
     def __init__(self,
                  log_base_path='logs',
