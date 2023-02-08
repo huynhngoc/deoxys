@@ -15,6 +15,7 @@ import shutil
 import matplotlib.pyplot as plt
 from sklearn.metrics._scorer import get_scorer
 import warnings
+import gc
 
 
 class H5GenericMetaMapping:
@@ -186,6 +187,7 @@ class H5GenericMetric:
             scores = self.calculate_metrics(
                 targets, prediction, **kwargs)
             self.update_score(scores)
+            gc.collect()
 
         self.save_score()
 
@@ -525,6 +527,7 @@ class H5Merge2dSlice:
                 mf.create_group(self.predicted)
 
             for i in range(len(indice) - 1):
+                gc.collect()
                 start = indice[i]
                 end = indice[i+1]
 
@@ -566,6 +569,7 @@ class H5Merge2dSlice:
                 total = f[self.inputs[curr_data_idx]].shape[0]
 
             for i in range(len(indice) - 1):
+                gc.collect()
                 if indice[i] - offset >= total:
                     offset = indice[i]
                     curr_data_idx += 1
@@ -644,6 +648,7 @@ class H5Transform3d:
                 mf.create_group(self.predicted)
 
             for i in range(len(map_data)):
+                gc.collect()
                 curr_name = str(map_data[i])
                 with h5py.File(self.ref_file, 'r') as f:
                     img = f[self.inputs][i]
@@ -678,6 +683,7 @@ class H5Transform3d:
                 total = f[self.inputs[curr_data_idx]].shape[0]
 
             for i in range(len(map_data)):
+                gc.collect()
                 if i - offset >= total:
                     offset = i
                     curr_data_idx += 1
