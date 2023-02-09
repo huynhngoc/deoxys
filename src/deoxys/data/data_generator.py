@@ -426,6 +426,7 @@ class H5DataGenerator(DataGenerator):
                 np.random.shuffle(self.folds)
 
     def next_seg(self):
+        gc.collect()
         if self.seg_idx == len(self.seg_list):
             # move to next fold
             self.next_fold()
@@ -1004,6 +1005,7 @@ class H5MultiDataGenerator(DataGenerator):  # pragma: no cover
                 np.random.shuffle(self.folds)
 
     def next_seg(self):
+        gc.collect()
         if self.seg_idx == len(self.seg_list):
             # move to next fold
             self.next_fold()
