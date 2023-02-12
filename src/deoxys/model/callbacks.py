@@ -276,18 +276,27 @@ class PredictionCheckpoint(DeoxysModelCallback):
                 input_chunks = (1,) + data_info[0]['shape']
                 target_shape = (data_info[0]['total'],) + next_y.shape[1:]
                 target_chunks = (1,) + next_y.shape[1:]
+                if len(target_shape) == 1:
+                    predicted_shape = target_shape + (1,)
+                    predicted_chunks = True
+                    target_chunks = True
+                else:
+                    predicted_shape = target_shape
+                    predicted_chunks = target_chunks
 
                 with h5py.File(filepath, 'w') as hf:
                     if self.save_inputs:
                         hf.create_dataset('x',
-                                          shape=input_shape, chunks=input_chunks,
+                                          shape=input_shape,
+                                          chunks=input_chunks,
                                           compression='gzip')
                     hf.create_dataset('y',
                                       shape=target_shape, chunks=target_chunks,
                                       compression='gzip')
 
                     hf.create_dataset('predicted',
-                                      shape=target_shape, chunks=target_chunks,
+                                      shape=predicted_shape,
+                                      chunks=predicted_chunks,
                                       compression='gzip')
                 # handle multiple inputs
                 if type(next_x) == list:
@@ -329,6 +338,13 @@ class PredictionCheckpoint(DeoxysModelCallback):
                     input_chunks = (1,) + info['shape']
                     target_shape = (info['total'],) + next_y.shape[1:]
                     target_chunks = (1,) + next_y.shape[1:]
+                    if len(target_shape) == 1:
+                        predicted_shape = target_shape + (1,)
+                        predicted_chunks = True
+                        target_chunks = True
+                    else:
+                        predicted_shape = target_shape
+                        predicted_chunks = target_chunks
                     if curr_info_idx == 0:
                         mode = 'w'
                     else:
@@ -345,8 +361,8 @@ class PredictionCheckpoint(DeoxysModelCallback):
                                           compression='gzip')
 
                         hf.create_dataset(f'{curr_info_idx:02d}/predicted',
-                                          shape=target_shape,
-                                          chunks=target_chunks,
+                                          shape=predicted_shape,
+                                          chunks=predicted_chunks,
                                           compression='gzip')
 
                     # handle multiple inputs
