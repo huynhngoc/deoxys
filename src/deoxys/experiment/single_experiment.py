@@ -306,6 +306,13 @@ class Experiment:
             input_chunks = (1,) + data_info[0]['shape']
             target_shape = (data_info[0]['total'],) + next_y.shape[1:]
             target_chunks = (1,) + next_y.shape[1:]
+            if len(target_shape) == 1:
+                predicted_shape = target_shape + (1,)
+                predicted_chunks = True
+                target_chunks = True
+            else:
+                predicted_shape = target_shape
+                predicted_chunks = target_chunks
 
             with h5py.File(filepath, 'w') as hf:
                 hf.create_dataset('x',
@@ -316,9 +323,13 @@ class Experiment:
                                   compression='gzip')
 
                 hf.create_dataset('predicted',
-                                  shape=target_shape, chunks=target_chunks,
+                                  shape=predicted_shape,
+                                  chunks=predicted_chunks,
                                   compression='gzip')
 
+            # handle multiple inputs
+            if type(next_x) == list:
+                next_x = next_x[0]
             with h5py.File(filepath, 'a') as hf:
                 next_index = len(next_x)
                 hf['x'][:next_index] = next_x
@@ -328,6 +339,10 @@ class Experiment:
             for _ in range(test_gen.total_batch - 1):
                 next_x, next_y = next(data_gen)
                 predicted = self.model.predict(next_x, verbose=1)
+
+                # handle multiple inputs
+                if type(next_x) == list:
+                    next_x = next_x[0]
 
                 curr_index = next_index
                 next_index = curr_index + len(next_x)
@@ -350,6 +365,14 @@ class Experiment:
                 input_chunks = (1,) + info['shape']
                 target_shape = (info['total'],) + next_y.shape[1:]
                 target_chunks = (1,) + next_y.shape[1:]
+                if len(target_shape) == 1:
+                    predicted_shape = target_shape + (1,)
+                    predicted_chunks = True
+                    target_chunks = True
+                else:
+                    predicted_shape = target_shape
+                    predicted_chunks = target_chunks
+
                 if curr_info_idx == 0:
                     mode = 'w'
                 else:
@@ -365,10 +388,13 @@ class Experiment:
                                       compression='gzip')
 
                     hf.create_dataset(f'{curr_info_idx:02d}/predicted',
-                                      shape=target_shape,
-                                      chunks=target_chunks,
+                                      shape=predicted_shape,
+                                      chunks=predicted_chunks,
                                       compression='gzip')
 
+                # handle multiple inputs
+                if type(next_x) == list:
+                    next_x = next_x[0]
                 with h5py.File(filepath, 'a') as hf:
                     next_index = len(next_x)
                     hf[f'{curr_info_idx:02d}/x'][:next_index] = next_x
@@ -379,6 +405,10 @@ class Experiment:
                 while next_index < info['total']:
                     next_x, next_y = next(data_gen)
                     predicted = self.model.predict(next_x, verbose=1)
+
+                    # handle multiple inputs
+                    if type(next_x) == list:
+                        next_x = next_x[0]
 
                     curr_index = next_index
                     next_index = curr_index + len(next_x)
