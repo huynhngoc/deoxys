@@ -954,19 +954,49 @@ class H5MultiDataGenerator(DataGenerator):  # pragma: no cover
         if self._description is None:
             fold_names = self.folds
             description = []
+
+            # total number of samples
+            total = self.hf[fold_names[0]][self.x_name].shape[0]
             # find the shape of the inputs in the first fold
-            shape = self.hf[fold_names[0]][self.x_name].shape
+            seg_x = self.hf[fold_names[0]][self.x_name][:1]
+            seg_y = self.hf[fold_names[0]][self.y_name][:1]
+
+            # pass it through the preprocessor to cover changes in channels
+            if self.preprocessors:
+                if type(self.preprocessors) == list:
+                    for preprocessor in self.preprocessors:
+                        seg_x, seg_y = preprocessor.transform(seg_x, seg_y)
+                else:
+                    seg_x, seg_y = self.preprocessors.transform(
+                        seg_x, seg_y)
+            # find the shape of the inputs in the first fold
+            shape = seg_x.shape
             obj = {'shape': shape[1:], 'total': shape[0]}
 
             for fold_name in fold_names[1:]:  # iterate through each fold
-                shape = self.hf[fold_name][self.x_name].shape
+                # total number of samples
+                total = self.hf[fold_name][self.x_name].shape[0]
+                # find the shape of the inputs in the first fold
+                seg_x = self.hf[fold_name][self.x_name][:1]
+                seg_y = self.hf[fold_name][self.y_name][:1]
+
+                # pass it through the preprocessor to cover changes in channels
+                if self.preprocessors:
+                    if type(self.preprocessors) == list:
+                        for preprocessor in self.preprocessors:
+                            seg_x, seg_y = preprocessor.transform(seg_x, seg_y)
+                    else:
+                        seg_x, seg_y = self.preprocessors.transform(
+                            seg_x, seg_y)
+                shape = seg_x.shape
+
                 # if the shape are the same, increase the total number
                 if np.all(obj['shape'] == shape[1:]):
-                    obj['total'] += shape[0]
+                    obj['total'] += total
                 # else create a new item
                 else:
                     description.append(obj.copy())
-                    obj = {'shape': shape[1:], 'total': shape[0]}
+                    obj = {'shape': shape[1:], 'total': total}
 
             # append the last item
             description.append(obj.copy())
