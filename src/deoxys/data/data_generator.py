@@ -971,7 +971,7 @@ class H5MultiDataGenerator(DataGenerator):  # pragma: no cover
                         seg_x, seg_y)
             # find the shape of the inputs in the first fold
             shape = seg_x.shape
-            obj = {'shape': shape[1:], 'total': shape[0]}
+            obj = {'shape': shape[1:], 'total': total}
 
             for fold_name in fold_names[1:]:  # iterate through each fold
                 # total number of samples
