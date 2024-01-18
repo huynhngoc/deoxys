@@ -278,11 +278,11 @@ class PredictionCheckpoint(DeoxysModelCallback):
                 target_shape = (data_info[0]['total'],) + next_y.shape[1:]
                 target_chunks = (1,) + next_y.shape[1:]
                 if len(target_shape) == 1:
-                    predicted_shape = target_shape[0] + predicted.shape[1:]
+                    predicted_shape = target_shape[:1] + predicted.shape[1:]
                     predicted_chunks = True
                     target_chunks = True
                 else:
-                    predicted_shape = target_shape[0] + predicted.shape[1:]
+                    predicted_shape = target_shape[:1] + predicted.shape[1:]
                     predicted_chunks = (1,) + predicted.shape[1:]
 
                 with h5py.File(filepath, 'w') as hf:
