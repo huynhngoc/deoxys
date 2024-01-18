@@ -8,6 +8,7 @@ import os
 import h5py
 import numpy as np
 import warnings
+import gc
 
 from tensorflow.keras.callbacks import CSVLogger
 from ..model.callbacks import DeoxysModelCheckpoint, PredictionCheckpoint, \
@@ -351,6 +352,7 @@ class Experiment:
                     hf['x'][curr_index:next_index] = next_x
                     hf['y'][curr_index:next_index] = next_y
                     hf['predicted'][curr_index:next_index] = predicted
+                gc.collect()
 
         # data of different size
         else:
@@ -420,6 +422,7 @@ class Experiment:
                             curr_index:next_index] = next_y
                         hf[f'{curr_info_idx:02d}/predicted'][
                             curr_index:next_index] = predicted
+                    gc.collect()
 
     def run_test(self, use_best_model=False,
                  masked_images=None,

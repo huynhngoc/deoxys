@@ -13,6 +13,7 @@ import io
 import csv
 import os
 import h5py
+import gc
 from collections import OrderedDict, Iterable
 
 from ..utils import Singleton
@@ -277,12 +278,12 @@ class PredictionCheckpoint(DeoxysModelCallback):
                 target_shape = (data_info[0]['total'],) + next_y.shape[1:]
                 target_chunks = (1,) + next_y.shape[1:]
                 if len(target_shape) == 1:
-                    predicted_shape = target_shape + (1,)
+                    predicted_shape = target_shape[0] + predicted.shape[1:]
                     predicted_chunks = True
                     target_chunks = True
                 else:
-                    predicted_shape = target_shape
-                    predicted_chunks = target_chunks
+                    predicted_shape = target_shape[0] + predicted.shape[1:]
+                    predicted_chunks = (1,) + predicted.shape[1:]
 
                 with h5py.File(filepath, 'w') as hf:
                     if self.save_inputs:
@@ -324,6 +325,7 @@ class PredictionCheckpoint(DeoxysModelCallback):
                             hf['x'][curr_index:next_index] = next_x
                         hf['y'][curr_index:next_index] = next_y
                         hf['predicted'][curr_index:next_index] = predicted
+                    gc.collect()
 
             # data of different size
             else:
@@ -396,6 +398,8 @@ class PredictionCheckpoint(DeoxysModelCallback):
                                 curr_index:next_index] = next_y
                             hf[f'{curr_info_idx:02d}/predicted'][
                                 curr_index:next_index] = predicted
+
+                        gc.collect()
 
             if self.dbclient:
                 item = OrderedDict(
