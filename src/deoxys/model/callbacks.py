@@ -14,7 +14,7 @@ import csv
 import os
 import h5py
 import gc
-from collections import OrderedDict, Iterable
+from collections.abc import OrderedDict, Iterable
 
 from ..utils import Singleton
 from ..database import Tables, HDF5Attr, LogAttr
