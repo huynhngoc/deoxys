@@ -7,7 +7,7 @@ __email__ = "ngoc.huynh.bao@nmbu.no"
 from ..utils import Singleton
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from collections.abc import OrderedDict
+from collections import OrderedDict
 from datetime import datetime
 from time import time
 import json
